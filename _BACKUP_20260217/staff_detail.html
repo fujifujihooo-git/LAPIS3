@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>担当者詳細 - LAPIS2</title>
+    <!-- New Modern Style -->
+    <link rel="stylesheet" href="style_modern.css?v=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=BIZ+UDGothic:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        /* Local overrides for detail pages */
+        .form-section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-main);
+            font-size: 0.9rem;
+        }
+
+        .required {
+            color: #ef4444;
+            margin-left: 4px;
+        }
+
+        .form-control,
+        .form-select,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            background: #fff;
+        }
+
+        .form-control:focus,
+        .form-select:focus,
+        textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+            outline: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="page-container">
+        <!-- Sidebar -->
+        <nav id="sidebar">
+            <div class="sidebar-header">
+                <a href="index.html" class="logo-text">
+                    <span style="color: var(--primary);">✦</span> LAPIS2
+                </a>
+            </div>
+
+            <ul class="sidebar-nav">
+                <li class="nav-header">Main</li>
+                <li class="nav-item">
+                    <a href="index.html">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-label">案件管理</span>
+                    </a>
+                </li>
+
+                <li class="nav-header">Management</li>
+                <li class="nav-item">
+                    <a href="customer_list.html">
+                        <span class="nav-icon">🏢</span>
+                        <span class="nav-label">顧客管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="license_list.html">
+                        <span class="nav-icon">📜</span>
+                        <span class="nav-label">許認可管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="invoice_list.html">
+                        <span class="nav-icon">💰</span>
+                        <span class="nav-label">請求管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="sales_list.html">
+                        <span class="nav-icon">📈</span>
+                        <span class="nav-label">売上管理</span>
+                    </a>
+                </li>
+
+                <li class="nav-header">Settings</li>
+                <li class="nav-item">
+                    <a href="license_washout.html">
+                        <span class="nav-icon">📅</span>
+                        <span class="nav-label">決算期別一覧</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="staff_list.html" class="active">
+                        <span class="nav-icon">👥</span>
+                        <span class="nav-label">担当者管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="government_office_list.html">
+                        <span class="nav-icon">🏛️</span>
+                        <span class="nav-label">官公庁マスタ</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <!-- END Sidebar -->
+
+        <!-- Main Container -->
+        <div id="main-container">
+            <!-- Header -->
+            <header id="header">
+                <div class="header-left">
+                    <button id="mobile-toggle"
+                        style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted); display: none;">☰</button>
+                    <div class="header-breadcrumb">
+                        <a href="staff_list.html" style="text-decoration: none; color: var(--text-muted);">担当者一覧</a>
+                        <span style="margin: 0 8px; color: var(--text-muted);">/</span>
+                        <span id="page-title">担当者詳細</span>
+                    </div>
+                </div>
+                <div class="header-right" id="header-right">
+                    <!-- User Status injected here -->
+                </div>
+            </header>
+            <!-- END Header -->
+
+            <!-- Page Content -->
+            <main id="page-content">
+
+                <!-- Actions Bar -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">担当者情報編集</h2>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" id="btn-back">
+                            <span>←</span> 一覧へ
+                        </button>
+                        <button type="button" class="btn btn-danger-outline" id="btn-delete" style="display: none;">
+                            <span>🗑️</span> 削除
+                        </button>
+                        <button type="button" class="btn btn-primary" id="btn-save">
+                            <span>💾</span> 保存
+                        </button>
+                    </div>
+                </div>
+
+                <div class="block">
+                    <div class="block-content">
+                        <!-- Profile -->
+                        <h3 class="form-section-title">プロフィール</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="staff_name">氏名 <span class="required">*</span></label>
+                                <input type="text" id="staff_name" class="form-control" placeholder="例: 山田 太郎">
+                            </div>
+                            <div class="form-group">
+                                <label for="staff_name_kana">フリガナ</label>
+                                <input type="text" id="staff_name_kana" class="form-control" placeholder="例: ヤマダ タロウ">
+                            </div>
+                            <div class="form-group">
+                                <label for="role">権限ロール <span class="required">*</span></label>
+                                <select id="role" class="form-select">
+                                    <option value="staff">一般</option>
+                                    <option value="admin">管理者</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Contact & Address -->
+                        <h3 class="form-section-title" style="margin-top: 32px;">連絡先・住所</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="mobile_phone">携帯番号</label>
+                                <input type="tel" id="mobile_phone" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="email">メールアドレス</label>
+                                <input type="email" id="email" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-grid" style="grid-template-columns: 150px 1fr;">
+                            <div class="form-group">
+                                <label for="postal_code">郵便番号</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="text" id="postal_code" class="form-control" maxlength="8">
+                                    <button type="button" class="btn btn-secondary btn-sm" id="btn-search-address"
+                                        style="white-space: nowrap;" disabled>検索</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="address">住所</label>
+                                <input type="text" id="address" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="building_name">建物名</label>
+                                <input type="text" id="building_name" class="form-control">
+                            </div>
+                        </div>
+
+                        <!-- Qualification -->
+                        <h3 class="form-section-title" style="margin-top: 32px;">資格・その他</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="qualification">保有資格</label>
+                                <input type="text" id="qualification" class="form-control" placeholder="例: 行政書士">
+                            </div>
+                            <div class="form-group">
+                                <label for="hire_date">入社日</label>
+                                <input type="date" id="hire_date" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="status">在籍状況</label>
+                                <select id="status" class="form-select">
+                                    <option value="在籍">在籍</option>
+                                    <option value="休職">休職</option>
+                                    <option value="退職">退職</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 24px;">
+                            <label for="remarks">備考</label>
+                            <textarea id="remarks" class="form-control" rows="4" placeholder="備考..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: right; margin-top: 20px; color: var(--text-muted); font-size: 0.8rem;">
+                    <p>登録日: <span id="created_at">-</span></p>
+                    <p>最終更新日: <span id="updated_at">-</span></p>
+                </div>
+
+                <footer style="margin-top: 60px; text-align: center; color: #aaa; font-size: 0.8rem;">
+                    &copy; 2026 LAPIS2 Project
+                </footer>
+            </main>
+        </div>
+
+        <!-- Mobile Overlay -->
+        <div class="sidebar-overlay" onclick="document.body.classList.remove('sidebar-open')"></div>
+    </div>
+
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="common.js"></script>
+    <script src="staff_detail.js"></script>
+
+    <script>
+        document.getElementById('mobile-toggle')?.addEventListener('click', function () {
+            document.body.classList.toggle('sidebar-open');
+        });
+    </script>
+</body>
+
+</html>

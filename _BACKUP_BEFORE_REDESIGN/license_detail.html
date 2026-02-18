@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>許認可詳細 - LAPIS2</title>
+    <link rel="stylesheet" href="style_v2.css?v=4">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <main class="dashboard-container">
+        <header class="unified-header">
+            <div class="unified-header-tier1">
+                <nav class="unified-nav">
+                    <a href="index.html" class="unified-nav-item">案件管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="customer_list.html" class="unified-nav-item">顧客管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_list.html" class="unified-nav-item active">許認可管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="invoice_list.html" class="unified-nav-item">請求管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="sales_list.html" class="unified-nav-item">売上管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_washout.html" class="unified-nav-item">決算期別</a>
+                    <span class="nav-separator">|</span>
+                    <a href="staff_list.html" class="unified-nav-item">担当者管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="government_office_list.html" class="unified-nav-item">官公庁マスタ</a>
+                </nav>
+            </div>
+            <div class="unified-header-tier2">
+                <h1 id="page-title">許認可詳細</h1>
+            </div>
+            <div class="unified-header-tier3">
+                <button type="button" class="secondary-btn" id="btn-back">← 一覧に戻る</button>
+                <button type="button" class="secondary-btn" id="btn-back-to-customer">顧客詳細に戻る</button>
+                <div style="flex: 1;"></div>
+                <button type="button" class="danger-btn" id="btn-delete-header" style="display: none;">削除</button>
+                <button type="button" class="primary-btn" id="btn-save">保存</button>
+            </div>
+        </header>
+
+        <header class="dashboard-header" style="display: none;">
+            <div class="brand">
+                <h1 id="page-title-old" style="font-size: 1.75rem;">許認可詳細</h1>
+                <p class="subtitle" id="customer-name-display" style="font-size: 1rem; margin-top: 4px;"></p>
+            </div>
+            <div class="header-actions">
+                <nav class="main-nav">
+                    <a href="index.html" class="nav-item">案件管理</a>
+                    <a href="customer_list.html" class="nav-item">顧客管理</a>
+                    <a href="license_list.html" class="nav-item active">許認可管理</a>
+                    <a href="staff_list.html" class="nav-item">担当者管理</a>
+                    <a href="government_office_list.html" class="nav-item">官公庁マスタ</a>
+                </nav>
+                <button class="secondary-btn" id="btn-back-top">一覧に戻る</button>
+            </div>
+        </header>
+
+        <!-- Basic Info Section -->
+        <section class="filter-glass" style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="font-size: 1.1rem; font-weight: 600; color: #1e293b;">■ 基本情報</h3>
+                <div class="header-actions" style="margin-bottom: 8px; display: none;">
+                    <button class="primary-btn" id="btn-save">💾 保存</button>
+                    <button class="danger-btn" id="btn-delete" style="display: none;">🗑 削除</button>
+                </div>
+            </div>
+
+            <!-- Row 1: Customer & Status -->
+            <div style="display: grid; grid-template-columns: 1fr 180px; gap: 16px; align-items: flex-start;">
+                <!-- Customer info -->
+                <div id="customer-info">
+                    <!-- Customer Search (for new only) -->
+                    <div id="customer-search-group" class="filter-group" style="display: none;">
+                        <label for="customer-search">顧客検索 <span style="color: #ef4444;">*</span></label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="customer-search" placeholder="顧客を検索して選択..." style="flex: 1;">
+                            <button type="button" class="secondary-btn" id="btn-search-customer">検索</button>
+                        </div>
+                        <div id="customer-search-results" style="margin-top: 8px;"></div>
+                    </div>
+                    <!-- Customer Display (selected/fixed) -->
+                    <div id="customer-display-group" class="filter-group" style="display: none;">
+                        <label>顧客</label>
+                        <div id="customer-selected-display"
+                            style="padding: 10px 14px; background: rgba(255,255,255,0.5); border: 1px solid var(--border-color); border-radius: 6px; font-weight: 600;">
+                            -</div>
+                        <input type="hidden" id="customer-id">
+                    </div>
+                </div>
+
+                <!-- Status column -->
+                <div class="filter-group">
+                    <label for="status">状態 <span style="color: #ef4444;">*</span></label>
+                    <select id="status" required>
+                        <option value="有効">有効</option>
+                        <option value="失効">失効</option>
+                        <option value="取消">取消</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Row 2: License Type, Governing Office, & License Numbers -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 8px;">
+                <div class="filter-group">
+                    <label for="license-type-id">許認可種別 <span style="color: #ef4444;">*</span></label>
+                    <select id="license-type-id" required>
+                        <option value="">選択してください</option>
+                    </select>
+                </div>
+                <div class="filter-group" style="position: relative;">
+                    <label for="government-office-search">管轄官公庁</label>
+                    <input type="text" id="government-office-search" placeholder="入力して検索..." autocomplete="off">
+                    <input type="hidden" id="government-office-id">
+                    <div id="office-autocomplete-list" class="autocomplete-items"></div>
+                </div>
+                <div class="filter-group">
+                    <label for="license-number-1">許認可番号1</label>
+                    <input type="text" id="license-number-1" placeholder="例: 一般-07">
+                </div>
+                <div class="filter-group">
+                    <label for="license-number-2">許認可番号2</label>
+                    <input type="text" id="license-number-2" placeholder="例: 999999">
+                </div>
+            </div>
+        </section>
+
+        <!-- Expiry Info Section -->
+        <section class="filter-glass" style="display: block; margin-top: 24px;">
+            <h3 style="font-size: 1.1rem; font-weight: 600; color: #1e293b; margin-bottom: 16px;">■ 期限情報</h3>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                <!-- Row 1: Input Fields -->
+                <div class="filter-group">
+                    <label for="start-date">開始日</label>
+                    <input type="date" id="start-date">
+                </div>
+                <div class="filter-group">
+                    <label for="expiry-date">期限（満了日）</label>
+                    <input type="date" id="expiry-date">
+                </div>
+                <div class="filter-group">
+                    <label for="notice-date">案内日</label>
+                    <input type="date" id="notice-date">
+                </div>
+
+                <!-- Row 2: Calculation Results -->
+                <div></div> <!-- Empty for Start Date column -->
+                <div style="padding-top: 4px;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">残り日数:</label>
+                        <span id="remaining-days" class="days-none"
+                            style="font-weight: 600; font-size: 0.95rem;">-</span>
+                    </div>
+                </div>
+                <div style="padding-top: 4px;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">案内まで:</label>
+                        <span id="notice-days" class="days-none" style="font-weight: 600; font-size: 0.95rem;">-</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- History Section -->
+        <section class="filter-glass" style="display: block; margin-top: 24px;">
+            <h3 style="font-size: 1.1rem; font-weight: 600; color: #1e293b; margin-bottom: 16px;">■ 履歴一覧</h3>
+
+            <!-- History Add Form (Top row) -->
+            <div
+                style="display: grid; grid-template-columns: 15fr 20fr 50fr 15fr; gap: 12px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.3); align-items: flex-end; width: 100%;">
+                <div class="filter-group">
+                    <label for="change-type" style="font-size: 0.875rem;">変更区分 <span
+                            style="color: #ef4444;">*</span></label>
+                    <select id="change-type" required>
+                        <option value="新規">新規</option>
+                        <option value="更新">更新</option>
+                        <option value="変更">変更</option>
+                        <option value="廃止">廃止</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="changed-by" style="font-size: 0.875rem;">変更者 <span
+                            style="color: #ef4444;">*</span></label>
+                    <select id="changed-by" required>
+                        <option value="">選択してください</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="comment" style="font-size: 0.875rem;">コメント</label>
+                    <input type="text" id="comment" placeholder="コメントを入力してください">
+                </div>
+                <div class="filter-group">
+                    <button class="secondary-btn" id="btn-add-history"
+                        style="width: 100%; white-space: nowrap;">履歴を追加</button>
+                </div>
+            </div>
+
+            <!-- History Table (Bottom row, full width) -->
+            <div class="table-wrapper">
+                <table id="history-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%; text-align: left; padding: 12px;">日時</th>
+                            <th style="width: 15%; text-align: left; padding: 12px;">変更区分</th>
+                            <th style="width: 15%; text-align: left; padding: 12px;">変更者</th>
+                            <th style="width: 50%; text-align: left; padding: 12px;">コメント</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body">
+                        <!-- JSで動的に追加 -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Remarks Section -->
+        <section class="filter-glass" style="display: block; margin-top: 24px;">
+            <h3 style="font-size: 1.1rem; font-weight: 600; color: #1e293b; margin-bottom: 20px;">■ 備考</h3>
+            <div class="filter-group" style="width: 100%; margin-bottom: 16px;">
+                <textarea id="remarks" rows="6" placeholder="備考を入力してください"
+                    style="width: 100%; min-height: 120px;"></textarea>
+            </div>
+
+            <!-- Metadata -->
+            <div style="border-top: 1px solid rgba(0, 0, 0, 0.05); padding-top: 12px; margin-top: 8px;">
+                <div style="display: flex; gap: 32px; font-size: 0.85rem; color: var(--text-muted);">
+                    <div>
+                        <strong style="color: #475569;">登録日:</strong> <span id="created-date">-</span>
+                    </div>
+                    <div>
+                        <strong style="color: #475569;">最終更新日:</strong> <span id="last-updated">-</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div style="margin-top: 24px; text-align: right; display: none;">
+            <button class="danger-btn" id="btn-delete" style="font-size: 0.875rem;">🗑 許認可情報を削除する</button>
+        </div>
+
+        <footer style="margin-top: 40px;">
+            <p>&copy; 2026 LAPIS2 Project</p>
+        </footer>
+    </main>
+
+    <button id="back-to-top" class="back-to-top">↑</button>
+    <script src="common.js"></script>
+    <script src="license_detail.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>請求管理 - LAPIS2</title>
+    <link rel="stylesheet" href="style_v2.css?v=4">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <main class="dashboard-container">
+        <header class="unified-header">
+            <div class="unified-header-tier1">
+                <nav class="unified-nav">
+                    <a href="index.html" class="unified-nav-item">案件管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="customer_list.html" class="unified-nav-item">顧客管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_list.html" class="unified-nav-item">許認可管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="invoice_list.html" class="unified-nav-item active">請求管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="sales_list.html" class="unified-nav-item">売上管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_washout.html" class="unified-nav-item">決算期別</a>
+                    <span class="nav-separator">|</span>
+                    <a href="staff_list.html" class="unified-nav-item">担当者管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="government_office_list.html" class="unified-nav-item">官公庁マスタ</a>
+                </nav>
+            </div>
+            <div class="unified-header-tier2">
+                <h1>請求管理</h1>
+            </div>
+            <div class="unified-header-tier3">
+                <button class="primary-btn" id="btn-new-invoice">
+                    <span>+ 新規請求作成</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Filter Section -->
+        <section class="filter-glass" style="display: grid; gap: 16px; grid-template-columns: 1fr;">
+            <!-- Row 1: Customer (45%), Status (35%), Checkbox (20%) -->
+            <div style="display: grid; grid-template-columns: 4.5fr 3.5fr 2fr; gap: 20px; align-items: flex-end;">
+                <div class="filter-group">
+                    <label for="filter-customer">顧客名</label>
+                    <input type="text" id="filter-customer" placeholder="顧客名で検索...">
+                </div>
+                <div class="filter-group">
+                    <label for="filter-status">ステータス</label>
+                    <select id="filter-status">
+                        <option value="">すべて</option>
+                        <option value="下書き">下書き</option>
+                        <option value="発行済">発行済</option>
+                        <option value="一部入金">一部入金</option>
+                        <option value="入金済">入金済</option>
+                        <option value="延滞">延滞</option>
+                    </select>
+                </div>
+                <div class="filter-group"
+                    style="flex-direction: row; align-items: center; gap: 8px; padding-bottom: 12px;">
+                    <input type="checkbox" id="include-paid" style="width: auto; margin: 0;">
+                    <label for="include-paid" style="margin: 0; cursor: pointer; text-transform: none;">入金済を含む</label>
+                </div>
+            </div>
+            <!-- Row 2: Date Range (30%+5%+30%), All Periods (20%), Reset Button (15%) -->
+            <div
+                style="display: grid; grid-template-columns: 30fr 5fr 30fr 20fr 15fr; gap: 8px; align-items: flex-end;">
+                <div class="filter-group">
+                    <label>期間</label>
+                    <input type="date" id="filter-date-start" style="width: 100%;">
+                </div>
+                <div style="text-align: center; padding-bottom: 10px; color: var(--text-muted);">〜</div>
+                <div class="filter-group">
+                    <label>&nbsp;</label>
+                    <input type="date" id="filter-date-end" style="width: 100%;">
+                </div>
+                <div class="filter-group"
+                    style="flex-direction: row; align-items: center; gap: 8px; padding-bottom: 12px; padding-left: 20px;">
+                    <input type="checkbox" id="all-periods" style="width: auto; margin: 0;">
+                    <label for="all-periods" style="margin: 0; cursor: pointer; text-transform: none;">すべての期間</label>
+                </div>
+                <button class="secondary-btn" id="btn-reset-filters"
+                    style="width: 100%; height: 44px; padding: 8px 16px; white-space: nowrap;">すべてリセット</button>
+            </div>
+        </section>
+
+        <!-- Count Display -->
+        <div
+            style="margin-bottom: 12px; display: flex; justify-content: flex-end; font-size: 0.9rem; color: var(--text-muted);">
+            <div id="count-display">表示件数：0件 / 全体：0件</div>
+        </div>
+
+        <!-- Invoice List Table -->
+        <section class="table-glass">
+            <div class="table-wrapper">
+                <table id="invoice-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="invoice_number">請求番号</th>
+                            <th class="sortable" data-sort="customer_name">顧客名</th>
+                            <th class="sortable" data-sort="invoice_date">請求日</th>
+                            <th class="sortable" data-sort="total_amount">合計金額</th>
+                            <th class="sortable" data-sort="status">ステータス</th>
+                            <th class="sortable" data-sort="paid_amount">入金額</th>
+                            <th class="sortable" data-sort="balance">残高</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoice-list-body">
+                        <!-- JSで動的に追加 -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 LAPIS2 Project</p>
+        </footer>
+    </main>
+
+    <button id="back-to-top" class="back-to-top">↑</button>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="common.js"></script>
+    <script src="invoice_list.js"></script>
+</body>
+
+</html>

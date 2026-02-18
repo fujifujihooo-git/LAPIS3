@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>許認可種別詳細 - LAPIS2</title>
+    <link rel="stylesheet" href="style_v2.css?v=4">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <main class="dashboard-container">
+        <header class="unified-header">
+            <div class="unified-header-tier1">
+                <nav class="unified-nav">
+                    <a href="index.html" class="unified-nav-item">案件管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="customer_list.html" class="unified-nav-item">顧客管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_list.html" class="unified-nav-item active">許認可管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="invoice_list.html" class="unified-nav-item">請求管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="sales_list.html" class="unified-nav-item">売上管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_washout.html" class="unified-nav-item">決算期別</a>
+                    <span class="nav-separator">|</span>
+                    <a href="staff_list.html" class="unified-nav-item">担当者管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="government_office_list.html" class="unified-nav-item">官公庁マスタ</a>
+                </nav>
+            </div>
+            <div class="unified-header-tier2">
+                <h1 id="page-title">許認可種別詳細</h1>
+            </div>
+            <div class="unified-header-tier3">
+                <button type="button" class="secondary-btn" id="btn-back">← 一覧に戻る</button>
+                <button type="button" class="danger-btn" id="btn-delete" style="display: none;">削除</button>
+                <button type="button" class="primary-btn" id="btn-save">保存</button>
+            </div>
+        </header>
+
+        <header class="dashboard-header" style="display: none;">
+            <div class="brand">
+                <h1>LAPIS2</h1>
+                <p class="subtitle">License Type Detail</p>
+            </div>
+            <div class="header-actions">
+                <button class="secondary-btn" id="btn-back-old">← 一覧に戻る</button>
+                <button class="primary-btn" id="btn-save-old">💾 保存</button>
+                <button class="danger-btn" id="btn-delete-old" style="display: none;">🗑 削除</button>
+            </div>
+        </header>
+
+        <!-- Page Title -->
+        <section style="display: none;">
+            <h2 style="font-size: 1.5rem; font-weight: 600; color: #1e293b;" id="page-title-old">許認可種別詳細</h2>
+        </section>
+
+        <!-- Detail Form -->
+        <form id="license-type-form">
+            <section class="form-section">
+                <h2>基本情報</h2>
+                <div class="form-grid grid-2-col">
+                    <div class="form-group">
+                        <label for="license-type-id">種別ID <span class="required">*</span></label>
+                        <input type="number" id="license-type-id" placeholder="例: 1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="license-type-name">種別名 <span class="required">*</span></label>
+                        <input type="text" id="license-type-name" placeholder="例: 建設業許可" required>
+                    </div>
+                </div>
+
+                <div class="form-grid grid-2-col" style="margin-top: 16px;">
+                    <div class="form-group">
+                        <label for="sort-order">表示順</label>
+                        <input type="number" id="sort-order" placeholder="例: 10" min="0">
+                        <small style="color: var(--text-muted); display: block; margin-top: 4px;">数字が小さい順に並びます</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="status">状態 <span class="required">*</span></label>
+                        <select id="status" required>
+                            <option value="有効">有効</option>
+                            <option value="無効">無効</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid grid-2-col" style="margin-top: 16px;">
+                    <div class="form-group" style="display: flex; align-items: center; gap: 12px; padding-top: 28px;">
+                        <input type="checkbox" id="has-expiry" style="width: auto; margin: 0;">
+                        <label for="has-expiry" style="margin: 0; cursor: pointer;">期限あり</label>
+                    </div>
+                    <div class="form-group" id="notice-days-group" style="display: none;">
+                        <label for="default-notice-days">デフォルト案内日数前</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="number" id="default-notice-days" placeholder="90" min="0"
+                                style="max-width: 120px;">
+                            <span>日前</span>
+                        </div>
+                        <small
+                            style="color: var(--text-muted); display: block; margin-top: 4px;">空欄の場合、案内なしとなります</small>
+                    </div>
+                </div>
+            </section>
+
+            <section class="form-section">
+                <h2>その他</h2>
+                <div class="form-group full-width">
+                    <label for="remarks">備考</label>
+                    <textarea id="remarks" rows="4" placeholder="備考を入力してください"></textarea>
+                </div>
+            </section>
+
+            <!-- Metadata -->
+            <div style="border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 24px;">
+                <div
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 0.85rem; color: var(--text-muted);">
+                    <div>
+                        <strong>登録日:</strong> <span id="created-date">-</span>
+                    </div>
+                    <div>
+                        <strong>最終更新日:</strong> <span id="last-updated">-</span>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class="action-bar" style="display: none;">
+            <button type="button" class="secondary-btn">キャンセル</button>
+            <button type="submit" class="primary-btn">保存</button>
+        </div>
+
+        <footer style="margin-top: 40px;">
+            <p>&copy; 2026 LAPIS2 Project</p>
+        </footer>
+    </main>
+
+    <button id="back-to-top" class="back-to-top">↑</button>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="common.js"></script>
+    <script src="license_type_detail.js"></script>
+</body>
+
+</html>

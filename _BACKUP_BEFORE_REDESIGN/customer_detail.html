@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAPIS2 - 顧客詳細</title>
+    <link rel="stylesheet" href="style_v2.css?v=4">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+
+<body>
+    <main class="dashboard-container">
+        <header class="unified-header">
+            <div class="unified-header-tier1">
+                <nav class="unified-nav">
+                    <a href="index.html" class="unified-nav-item">案件管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="customer_list.html" class="unified-nav-item active">顧客管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_list.html" class="unified-nav-item">許認可管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="invoice_list.html" class="unified-nav-item">請求管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="sales_list.html" class="unified-nav-item">売上管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_washout.html" class="unified-nav-item">決算期別</a>
+                    <span class="nav-separator">|</span>
+                    <a href="staff_list.html" class="unified-nav-item">担当者管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="government_office_list.html" class="unified-nav-item">官公庁マスタ</a>
+                </nav>
+            </div>
+            <div class="unified-header-tier2">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1 id="page-title">顧客詳細</h1>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <label for="customer_id" style="font-size: 0.875rem; color: #64748b; margin: 0;">Customer
+                            ID:</label>
+                        <input type="number" id="customer_id"
+                            style="width: 80px; padding: 4px 8px; font-size: 0.875rem; background: rgba(255,255,255,0.5); border: 1px solid var(--border-color); border-radius: 4px;">
+                    </div>
+                </div>
+            </div>
+            <div class="unified-header-tier3">
+                <button type="button" class="secondary-btn" id="btn-back">← 一覧に戻る</button>
+                <button type="button" class="danger-btn" id="btn-delete">削除</button>
+                <div style="flex: 1;"></div>
+                <button type="button" class="secondary-btn" id="btn-export-excel"
+                    style="background: #ecfdf5; color: #065f46; border-color: #a7f3d0;">
+                    <span style="margin-right: 4px;">📊</span> Excel出力
+                </button>
+                <button type="button" class="secondary-btn" id="btn-export-pdf"
+                    style="background: #fff1f2; color: #9f1239; border-color: #fecdd3;">
+                    <span style="margin-right: 4px;">📄</span> PDF出力
+                </button>
+                <button type="submit" form="customer-form" class="primary-btn">保存</button>
+            </div>
+        </header>
+
+        <header class="dashboard-header" style="display: none;">
+            <div class="brand">
+                <h1>顧客詳細</h1>
+                <div style="display: flex; align-items: center; gap: 12px; margin-top: 4px;">
+                    <label for="customer_id" style="font-size: 0.875rem; color: #64748b; margin: 0;">Customer
+                        ID:</label>
+                    <input type="number" id="customer_id_hidden"
+                        style="width: 80px; padding: 4px 8px; font-size: 0.875rem; background: rgba(255,255,255,0.5); border: 1px solid var(--border-color); border-radius: 4px;">
+                </div>
+            </div>
+            <div class="header-actions">
+                <nav class="main-nav">
+                    <a href="index.html" class="nav-item">案件管理</a>
+                    <a href="customer_list.html" class="nav-item active">顧客管理</a>
+                    <a href="license_list.html" class="nav-item">許認可管理</a>
+                    <a href="staff_list.html" class="nav-item">担当者管理</a>
+                    <a href="government_office_list.html" class="nav-item">官公庁マスタ</a>
+                </nav>
+                <button class="secondary-btn" id="btn-back-top">一覧に戻る</button>
+            </div>
+        </header>
+
+        <form id="customer-form">
+            <!-- ■ 基本情報 -->
+            <section class="form-section">
+                <h2>基本情報</h2>
+                <div class="form-grid grid-customer-basic-r1" style="margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label for="customer_name">顧客名 <span class="required">*</span></label>
+                        <input type="text" id="customer_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="customer_kana">フリガナ</label>
+                        <input type="text" id="customer_kana">
+                    </div>
+                    <div class="form-group">
+                        <label for="representative_name">代表者名</label>
+                        <input type="text" id="representative_name">
+                    </div>
+                </div>
+                <div class="form-grid grid-customer-basic-r2">
+                    <div class="form-group">
+                        <label for="customer_type">顧客区分 <span class="required">*</span></label>
+                        <select id="customer_type" required>
+                            <option value="法人">法人</option>
+                            <option value="個人">個人</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="fiscal_year_end_month">決算期（月）</label>
+                        <select id="fiscal_year_end_month">
+                            <option value="">(選択)</option>
+                            <!-- JSで生成 -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="fiscal_year_end_day">決算期（日）</label>
+                        <select id="fiscal_year_end_day">
+                            <option value="">(選択)</option>
+                            <!-- JSで生成 -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="corporate_number">法人番号</label>
+                        <input type="text" id="corporate_number" placeholder="例: 1234567890123">
+                    </div>
+                    <div class="form-group">
+                        <label for="primary_staff_id">外務担当者</label>
+                        <select id="primary_staff_id">
+                            <option value="">(未選択)</option>
+                            <!-- JSで生成 -->
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ■ 連絡先情報 -->
+            <section class="form-section">
+                <h2>連絡先情報</h2>
+                <div class="form-grid grid-contact-row1 full-width" style="margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label for="postal_code">郵便番号</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="postal_code" placeholder="例：1234567" style="flex: 1;">
+                            <button type="button" class="lookup-btn" id="btn-lookup-zip"
+                                style="padding: 0 12px; white-space: nowrap;">住所検索</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="address">住所</label>
+                        <input type="text" id="address">
+                    </div>
+                    <div class="form-group">
+                        <label for="building_name">建物名</label>
+                        <input type="text" id="building_name">
+                    </div>
+                </div>
+                <div class="form-grid grid-contact-row2 full-width">
+                    <div class="form-group">
+                        <label for="phone">電話番号</label>
+                        <input type="tel" id="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="fax">FAX番号</label>
+                        <input type="tel" id="fax">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">メールアドレス</label>
+                        <input type="email" id="email">
+                    </div>
+                </div>
+            </section>
+
+            <!-- ■ 拠点一覧 -->
+            <section class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h2 style="margin-bottom: 0; border-bottom: none;">拠点一覧</h2>
+                    <button type="button" class="primary-btn" id="btn-add-office"
+                        onclick="const cid = new URLSearchParams(window.location.search).get('id'); if(cid && cid !== 'new') location.href='office_detail.html?v='+Date.now()+'&customer_id='+cid+'&id=new'; else alert('先に顧客情報を保存してください');"
+                        style="padding: 8px 16px; font-size: 0.875rem;">
+                        <span class="icon">＋</span> 拠点追加
+                    </button>
+                </div>
+                <div class="table-wrapper">
+                    <table id="offices-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">拠点名</th>
+                                <th style="width: 40%;">住所</th>
+                                <th style="width: 20%;">電話番号</th>
+                                <th style="width: 10%;">状態</th>
+                            </tr>
+                        </thead>
+                        <tbody id="offices-list-body">
+                            <!-- JSで動的に追加 -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ■ 担当者一覧 -->
+            <section class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h2 style="margin-bottom: 0; border-bottom: none;">担当者一覧</h2>
+                    <button type="button" class="primary-btn" id="btn-add-contact"
+                        style="padding: 8px 16px; font-size: 0.875rem;">
+                        <span class="icon">＋</span> 担当者追加
+                    </button>
+                </div>
+                <div class="table-wrapper">
+                    <table id="contacts-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30%;">氏名</th>
+                                <th style="width: 20%;">所属拠点</th>
+                                <th style="width: 20%;">役職</th>
+                                <th style="width: 20%;">電話</th>
+                                <th style="width: 5%;">状態</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contacts-list-body">
+                            <!-- JSで動的に追加 -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ■ 許認可一覧 -->
+            <section class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h2 style="margin-bottom: 0; border-bottom: none;">許認可一覧</h2>
+                    <button type="button" class="primary-btn" id="btn-add-license"
+                        style="padding: 8px 16px; font-size: 0.875rem;">
+                        <span class="icon">＋</span> 許認可追加
+                    </button>
+                </div>
+                <div class="table-wrapper">
+                    <table id="licenses-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30%;">許認可種別</th>
+                                <th style="width: 20%;">許可番号</th>
+                                <th style="width: 15%;">期限（満了日）</th>
+                                <th style="width: 15%;">案内まで</th>
+                                <th style="width: 10%;">状態</th>
+                            </tr>
+                        </thead>
+                        <tbody id="licenses-list-body">
+                            <!-- JSで動的に追加 -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ■ 管理情報 -->
+            <section class="form-section">
+                <h2>管理情報</h2>
+                <div class="form-grid grid-4-col">
+                    <div class="form-group">
+                        <label for="status">状態 <span class="required">*</span></label>
+                        <select id="status" required>
+                            <option value="稼働中">稼働中</option>
+                            <option value="休眠">休眠</option>
+                            <option value="取引終了">取引終了</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="nenga">年賀</label>
+                        <select id="nenga">
+                            <option value="なし">なし</option>
+                            <option value="あり">あり</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="chugen">中元</label>
+                        <select id="chugen">
+                            <option value="なし">なし</option>
+                            <option value="あり">あり</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="fax_ok">FAX</label>
+                        <select id="fax_ok">
+                            <option value="送信OK">送信OK</option>
+                            <option value="送信不可">送信不可</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="remarks">備考</label>
+                        <textarea id="remarks" placeholder="顧客に関する特記事項"></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ■ 関連案件一覧 -->
+            <section class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h2 style="margin-bottom: 0; border-bottom: none;">関連案件一覧</h2>
+                    <button type="button" class="primary-btn" id="btn-add-related-case"
+                        style="padding: 8px 16px; font-size: 0.875rem;">
+                        <span class="icon">＋</span> 新規案件登録
+                    </button>
+                </div>
+                <div class="table-wrapper">
+                    <table id="related-cases-table">
+                        <thead>
+                            <tr>
+                                <th>ステータス</th>
+                                <th>受任日</th>
+                                <th>業務内容</th>
+                                <th>受付日</th>
+                                <th>残り日数</th>
+                                <th>担当者</th>
+                            </tr>
+                        </thead>
+                        <tbody id="related-cases-body">
+                            <!-- JSで追加 -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <div class="action-bar" style="display: none;">
+                <button type="button" class="danger-btn" id="btn-delete" style="margin-right: auto;">削除する</button>
+                <button type="button" class="secondary-btn" id="btn-back">一覧に戻る</button>
+                <button type="submit" class="primary-btn">保存</button>
+            </div>
+
+            <p class="footer-info">最終更新日時: <span id="last-updated-display">-</span></p>
+        </form>
+
+        <!-- ■ 印刷用隠しテンプレート (Print Hidden Template) -->
+        <div id="print-template" style="display: none;">
+            <div
+                style="padding: 40px; font-family: 'BIZ UDGothic', sans-serif; color: #333; line-height: 1.5; background: white;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; border-bottom: 2px solid #333; padding-bottom: 8px;">
+                    <h1 style="margin: 0; font-size: 24px;">顧客基本台帳</h1>
+                    <div style="text-align: right; font-size: 10px;">出力日時: <span id="print-now">-</span></div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 30px;">
+                    <div>
+                        <div style="margin-bottom: 12px;">
+                            <label style="font-size: 10px; color: #666; display: block;">顧客名</label>
+                            <div style="font-size: 18px; font-weight: bold; border-bottom: 1px solid #ddd; padding: 4px 0;"
+                                id="p-customer-name">-</div>
+                            <div style="font-size: 10px; color: #666;" id="p-customer-kana">-</div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                            <div>
+                                <label style="font-size: 10px; color: #666; display: block;">代表者名</label>
+                                <div style="font-size: 13px; border-bottom: 1px solid #ddd; padding: 2px 0;"
+                                    id="p-rep-name">-</div>
+                            </div>
+                            <div>
+                                <label style="font-size: 10px; color: #666; display: block;">法人番号</label>
+                                <div style="font-size: 13px; border-bottom: 1px solid #ddd; padding: 2px 0;"
+                                    id="p-corporate-number">-</div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                            <div>
+                                <label style="font-size: 10px; color: #666; display: block;">決算期</label>
+                                <div style="font-size: 13px; border-bottom: 1px solid #ddd; padding: 2px 0;"
+                                    id="p-fiscal">-</div>
+                            </div>
+                            <div>
+                                <label style="font-size: 10px; color: #666; display: block;">外務担当者</label>
+                                <div style="font-size: 13px; border-bottom: 1px solid #ddd; padding: 2px 0;"
+                                    id="p-primary-staff">-</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background: #f8fafc; padding: 12px; border-radius: 4px;">
+                        <div style="margin-bottom: 8px;">
+                            <label style="font-size: 10px; color: #666; display: block;">Customer ID / 区分</label>
+                            <div style="font-size: 14px; font-weight: bold;"><span id="p-customer-id">-</span> [<span
+                                    id="p-type">-</span>]</div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <label style="font-size: 10px; color: #666; display: block;">所在地</label>
+                            <div style="font-size: 12px;">〒<span id="p-zip">-</span></div>
+                            <div style="font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 2px;"
+                                id="p-address">-</div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label style="font-size: 9px; color: #666; display: block;">TEL</label>
+                                <div style="font-size: 12px;" id="p-phone">-</div>
+                            </div>
+                            <div>
+                                <label style="font-size: 9px; color: #666; display: block;">FAX</label>
+                                <div style="font-size: 12px;" id="p-main-fax">-</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 4px;">
+                            <label style="font-size: 9px; color: #666; display: block;">メールアドレス</label>
+                            <div style="font-size: 11px;" id="p-email">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 14px; background: #333; color: white; padding: 4px 8px; margin-bottom: 12px;">拠点一覧
+                </h3>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 12px;">
+                    <thead>
+                        <tr style="background: #eee;">
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">拠点名</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">住所</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">電話番号</th>
+                        </tr>
+                    </thead>
+                    <tbody id="p-offices-body"></tbody>
+                </table>
+
+                <h3 style="font-size: 14px; background: #333; color: white; padding: 4px 8px; margin-bottom: 12px;">
+                    有効な許認可</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 12px;">
+                    <thead>
+                        <tr style="background: #eee;">
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">許認可種別</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">許可番号</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">有効期限</th>
+                        </tr>
+                    </thead>
+                    <tbody id="p-licenses-body"></tbody>
+                </table>
+
+                <h3 style="font-size: 14px; background: #333; color: white; padding: 4px 8px; margin-bottom: 12px;">
+                    顧客担当者一覧</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #eee;">
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">氏名</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">所属拠点</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">役職</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">連絡先</th>
+                        </tr>
+                    </thead>
+                    <tbody id="p-contacts-body"></tbody>
+                </table>
+
+                <h3 style="font-size: 14px; background: #333; color: white; padding: 4px 8px; margin-bottom: 12px;">
+                    関連案件一覧</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #eee;">
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">ステータス</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">手続名</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">受任日</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">担当者</th>
+                        </tr>
+                    </thead>
+                    <tbody id="p-cases-body"></tbody>
+                </table>
+
+                <h3 style="font-size: 14px; background: #333; color: white; padding: 4px 8px; margin-bottom: 12px;">管理情報
+                </h3>
+                <div
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 12px; margin-bottom: 24px; border: 1px solid #ddd; padding: 12px;">
+                    <div>
+                        <div style="margin-bottom: 4px;"><strong>状態:</strong> <span id="p-status">-</span></div>
+                        <div style="margin-bottom: 4px;"><strong>年賀:</strong> <span id="p-nenga">-</span> /
+                            <strong>中元:</strong> <span id="p-chugen">-</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="margin-bottom: 4px;"><strong>FAX:</strong> <span id="p-fax-ok">-</span></div>
+                    </div>
+                    <div style="grid-column: span 2; border-top: 1px solid #eee; padding-top: 8px;">
+                        <strong>備考:</strong><br>
+                        <div style="white-space: pre-wrap;" id="p-remarks">-</div>
+                    </div>
+                </div>
+
+                <div
+                    style="margin-top: 40px; border-top: 1px dashed #ccc; padding-top: 10px; font-size: 10px; color: #999; text-align: center;">
+                    LAPIS2 案件管理システム - 顧客情報出力
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>&copy; 2026 LAPIS2 Project</p>
+        </footer>
+    </main>
+
+    <button id="back-to-top" class="back-to-top">↑</button>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="common.js"></script>
+    <script src="customer_detail.js"></script>
+</body>
+
+</html>

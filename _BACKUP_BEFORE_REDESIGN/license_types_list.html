@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>許認可種別マスタ - LAPIS2</title>
+    <link rel="stylesheet" href="style_v2.css?v=4">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <main class="dashboard-container">
+        <header class="unified-header">
+            <div class="unified-header-tier1">
+                <nav class="unified-nav">
+                    <a href="index.html" class="unified-nav-item">案件管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="customer_list.html" class="unified-nav-item">顧客管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_list.html" class="unified-nav-item active">許認可管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="invoice_list.html" class="unified-nav-item">請求管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="sales_list.html" class="unified-nav-item">売上管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_washout.html" class="unified-nav-item">決算期別</a>
+                    <span class="nav-separator">|</span>
+                    <a href="staff_list.html" class="unified-nav-item">担当者管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="government_office_list.html" class="unified-nav-item">官公庁マスタ</a>
+                </nav>
+            </div>
+            <div class="unified-header-tier2">
+                <h1 id="page-title">許認可種別一覧</h1>
+            </div>
+            <div class="unified-header-tier3">
+                <button class="primary-btn" id="btn-new-license-type">+ 新規追加</button>
+            </div>
+        </header>
+
+        <header class="dashboard-header" style="display: none;">
+            <div class="brand">
+                <h1>LAPIS2</h1>
+                <p class="subtitle">License Type Master</p>
+            </div>
+            <div class="header-actions">
+                <nav class="main-nav">
+                    <a href="index.html" class="nav-item">案件管理</a>
+                    <a href="customer_list.html" class="nav-item">顧客管理</a>
+                    <a href="license_list.html" class="nav-item active">許認可管理</a>
+                    <a href="staff_list.html" class="nav-item">担当者管理</a>
+                </nav>
+                <button class="primary-btn" id="btn-new-license-type-old">
+                    <span class="icon">＋</span> 新規追加
+                </button>
+            </div>
+        </header>
+
+        <!-- Page Title -->
+        <section style="display: none;">
+            <h2 style="font-size: 1.5rem; font-weight: 600; color: #1e293b;">許認可種別マスタ</h2>
+            <p style="color: var(--text-muted); margin-top: 8px;">許認可の種別を管理します。</p>
+        </section>
+
+        <!-- Filter Section -->
+        <section class="filter-glass">
+            <div class="filter-group">
+                <label for="filter-status">状態</label>
+                <select id="filter-status">
+                    <option value="有効">有効のみ</option>
+                    <option value="">すべて</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- License Types Table -->
+        <section class="table-glass">
+            <div class="table-wrapper">
+                <table id="license-types-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">ID</th>
+                            <th style="width: 30%;">種別名</th>
+                            <th style="width: 10%;">表示順</th>
+                            <th style="width: 20%;">期限あり/なし</th>
+                            <th style="width: 20%;">デフォルト案内日数</th>
+                            <th style="width: 10%;">状態</th>
+                        </tr>
+                    </thead>
+                    <tbody id="license-types-body">
+                        <!-- JSで動的に追加 -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 LAPIS2 Project</p>
+        </footer>
+    </main>
+
+    <button id="back-to-top" class="back-to-top">↑</button>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="common.js"></script>
+    <script src="license_types_list.js"></script>
+</body>
+
+</html>

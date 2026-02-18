@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAPIS2 - 担当者詳細</title>
+    <link rel="stylesheet" href="style_v2.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <main class="dashboard-container">
+        <header class="unified-header">
+            <div class="unified-header-tier1">
+                <nav class="unified-nav">
+                    <a href="index.html" class="unified-nav-item">案件管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="customer_list.html" class="unified-nav-item active">顧客管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_list.html" class="unified-nav-item">許認可管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="invoice_list.html" class="unified-nav-item">請求管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="sales_list.html" class="unified-nav-item">売上管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_washout.html" class="unified-nav-item">決算期別</a>
+                    <span class="nav-separator">|</span>
+                    <a href="staff_list.html" class="unified-nav-item">担当者管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="government_office_list.html" class="unified-nav-item">官公庁マスタ</a>
+                </nav>
+            </div>
+            <div class="unified-header-tier2">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1 id="page-title">担当者詳細：-</h1>
+                    <p id="contact-id-display" style="font-size: 0.875rem; color: #64748b; margin: 0;">Contact ID: -</p>
+                </div>
+            </div>
+            <div class="unified-header-tier3">
+                <button type="button" class="secondary-btn" id="btn-back">← 詳細に戻る</button>
+                <button type="button" class="danger-btn" id="btn-delete">削除</button>
+                <button type="submit" form="contact-form" class="primary-btn">保存</button>
+            </div>
+        </header>
+
+        <header class="dashboard-header" style="display: none;">
+            <div class="brand">
+                <h1 id="contact-title-old">担当者詳細：-</h1>
+                <p class="subtitle" id="contact-id-display-old">Contact ID: -</p>
+            </div>
+            <div class="header-actions">
+                <nav class="main-nav">
+                    <a href="staff_list.html" class="nav-item active">担当者管理</a>
+                    <a href="government_office_list.html" class="nav-item">官公庁マスタ</a>
+                </nav>
+                <button class="secondary-btn" id="btn-back-top">一覧に戻る</button>
+            </div>
+        </header>
+
+        <form id="contact-form">
+            <!-- ■ 基本情報 -->
+            <section class="form-section">
+                <h2>基本情報</h2>
+                <div class="form-grid grid-2-col" style="margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label for="contact_name">担当者名 <span class="required">*</span></label>
+                        <input type="text" id="contact_name" required placeholder="例：山田 太郎">
+                    </div>
+                    <div class="form-group">
+                        <label for="contact_kana">フリガナ</label>
+                        <input type="text" id="contact_kana">
+                    </div>
+                </div>
+                <div class="form-grid grid-4-col">
+                    <div class="form-group">
+                        <label for="office_id">所属拠点</label>
+                        <select id="office_id">
+                            <option value="">（未選択）</option>
+                            <!-- JSで顧客の拠点一覧を動的に追加 -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="department">部署</label>
+                        <input type="text" id="department">
+                    </div>
+                    <div class="form-group">
+                        <label for="title">役職</label>
+                        <input type="text" id="title">
+                    </div>
+                    <div class="form-group checkbox-group" style="padding-top: 32px;">
+                        <input type="checkbox" id="is_primary">
+                        <label for="is_primary">主担当として設定</label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ■ 連絡先情報 -->
+            <section class="form-section">
+                <h2>連絡先情報</h2>
+                <div class="form-grid grid-contact-fax" style="margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label for="phone">直通電話</label>
+                        <input type="tel" id="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="mobile">携帯電話</label>
+                        <input type="tel" id="mobile">
+                    </div>
+                    <div class="form-group">
+                        <label for="fax">FAX番号</label>
+                        <input type="tel" id="fax">
+                    </div>
+                </div>
+                <div class="form-grid full-width">
+                    <div class="form-group">
+                        <label for="email">メールアドレス</label>
+                        <input type="email" id="email">
+                    </div>
+                </div>
+            </section>
+
+            <!-- ■ 管理情報 -->
+            <section class="form-section">
+                <h2>管理情報</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="status">状態 <span class="required">*</span></label>
+                        <select id="status" required>
+                            <option value="在籍">在籍</option>
+                            <option value="退職">退職</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="remarks">備考</label>
+                        <textarea id="remarks" placeholder="担当者に関する特記事項"></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <div class="action-bar" style="display: none;">
+                <button type="button" class="danger-btn" id="btn-delete-old" style="margin-right: auto;">削除する</button>
+                <button type="button" class="secondary-btn" id="btn-back-old">キャンセル</button>
+                <button type="submit" class="primary-btn">保存</button>
+            </div>
+
+            <p class="footer-info">登録日: <span id="created-date-display">-</span> | 最終更新日時: <span
+                    id="last-updated-display">-</span></p>
+        </form>
+
+        <footer style="margin-top: 40px;">
+            <p>&copy; 2026 LAPIS2 Project</p>
+        </footer>
+    </main>
+
+    <button id="back-to-top" class="back-to-top">↑</button>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="common.js"></script>
+    <script src="contact_detail.js"></script>
+</body>
+
+</html>

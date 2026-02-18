@@ -1,0 +1,462 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Selectors ---
+    const washoutListBody = document.getElementById('license-list-body');
+    const filterLicenseType = document.getElementById('filter-license-type');
+    const filterFiscalMonth = document.getElementById('filter-fiscal-month');
+    const filterStaff = document.getElementById('filter-staff');
+    const filterSearch = document.getElementById('filter-search'); // Was filter-remarks
+    const btnSearch = document.getElementById('btn-search-execute');
+    const btnReset = document.getElementById('btn-reset-filters');
+    const btnExport = document.getElementById('btn-export-excel');
+    const btnExportPdf = document.getElementById('btn-export-pdf');
+    const countDisplay = document.getElementById('count-display');
+    const initialMessage = document.getElementById('initial-message');
+    const tableWrapper = document.getElementById('table-wrapper');
+
+    let staffMembers = [];
+    let governmentOffices = [];
+    let licenseTypes = [];
+    let filteredData = [];
+
+    // --- Functions ---
+
+    // 初期化：マスタデータのロード
+    async function init() {
+        try {
+
+            // マスタデータの並列取得
+            const [staffData, officeData, typeData] = await Promise.all([
+                getAllFromFirestore('staff'),
+                getAllFromFirestore('government_offices'),
+                getAllFromFirestore('license_types')
+            ]);
+
+            staffMembers = staffData;
+            governmentOffices = officeData;
+            licenseTypes = typeData;
+
+            console.log(`Debug: Staff loaded: ${staffMembers.length}`);
+            console.log(`Debug: Offices loaded: ${governmentOffices.length}`);
+            console.log(`Debug: Types loaded: ${licenseTypes.length}`);
+
+            if (staffMembers.length > 0) console.log('Sample Staff:', staffMembers[0]);
+            if (licenseTypes.length > 0) console.log('Sample Type:', licenseTypes[0]);
+
+            renderLicenseTypeOptions();
+            renderFiscalMonthOptions();
+            renderStaffOptions();
+
+            // 初期表示はメッセージのみ（検索待ち）
+            initialMessage.style.display = 'block';
+            tableWrapper.style.display = 'none';
+
+        } catch (error) {
+            console.error('Initialization failed:', error);
+            alert('マスタデータの読み込みに失敗しました。');
+        }
+    }
+
+    function renderLicenseTypeOptions() {
+        // sort_order順（同じ場合は名前順）でソート
+        // Relaxed filter: Show if '有効' OR 'active' OR status is missing
+        const activeTypes = licenseTypes.filter(lt => lt.status === '有効' || lt.status === 'active' || !lt.status);
+        activeTypes.sort((a, b) => {
+            const orderA = a.sort_order !== undefined ? a.sort_order : 999;
+            const orderB = b.sort_order !== undefined ? b.sort_order : 999;
+            if (orderA !== orderB) return orderA - orderB;
+            return a.license_type_name.localeCompare(b.license_type_name, 'ja');
+        });
+
+        filterLicenseType.innerHTML = '<option value="">すべて</option>';
+        // 種別名の重複を除去しつつ追加
+        const addedNames = new Set();
+        activeTypes.forEach(lt => {
+            if (lt.license_type_name && !addedNames.has(lt.license_type_name)) {
+                const opt = document.createElement('option');
+                opt.value = lt.license_type_name; // 名称でフィルタリングするため
+                opt.textContent = lt.license_type_name;
+                filterLicenseType.appendChild(opt);
+                addedNames.add(lt.license_type_name);
+            }
+        });
+    }
+
+    function renderFiscalMonthOptions() {
+        filterFiscalMonth.innerHTML = '<option value="">選択してください</option>';
+        for (let i = 1; i <= 12; i++) {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = `${i}月`;
+            filterFiscalMonth.appendChild(opt);
+        }
+    }
+
+    function renderStaffOptions() {
+        filterStaff.innerHTML = '<option value="">すべて</option>';
+        // staff_id順に表示
+        // Relaxed filter: Show if '在籍' OR 'active' OR status is missing
+        const activeStaff = staffMembers.filter(s => s.status === '在籍' || s.status === 'active' || !s.status)
+            .sort((a, b) => (a.staff_id || 0) - (b.staff_id || 0));
+
+        activeStaff.forEach(s => {
+            if (s.staff_name) {
+                const opt = document.createElement('option');
+                opt.value = s.staff_id;
+                opt.textContent = s.staff_name;
+                filterStaff.appendChild(opt);
+            }
+        });
+    }
+
+    // 検索実行（Firestoreからデータを取得）
+    async function searchData() {
+        const fmVal = filterFiscalMonth.value;
+        const ltVal = filterLicenseType.value;
+        const stVal = filterStaff.value;
+        const searchVal = filterSearch ? filterSearch.value.trim().toLowerCase() : '';
+
+        // 決算月が未選択の場合、処理を中断してメッセージを表示
+        if (fmVal === "") {
+            initialMessage.style.display = 'block';
+            initialMessage.textContent = '決算月を選択してください';
+            tableWrapper.style.display = 'none';
+            countDisplay.innerText = '表示件数：0件';
+            washoutListBody.innerHTML = '';
+            filteredData = [];
+            return;
+        }
+
+        // UI Loading
+        initialMessage.style.display = 'block';
+        initialMessage.textContent = 'データを検索中...';
+        tableWrapper.style.display = 'none';
+        washoutListBody.innerHTML = '';
+
+        try {
+            // 1. 顧客の検索 (決算月でフィルタ)
+            // Compat Syntax: db.collection(...)
+            let customersRef = db.collection('customers');
+
+            const monthNum = parseInt(fmVal);
+            // 数値と文字列の両方で検索する (データの揺らぎ対策)
+            const customersSnapshot = await customersRef.where('fiscal_year_end_month', 'in', [monthNum, String(monthNum)]).get();
+
+            const customers = [];
+            customersSnapshot.forEach(doc => {
+                customers.push(doc.data());
+            });
+
+            if (customers.length === 0) {
+                finishSearch([], fmVal);
+                return;
+            }
+
+            // 2. 該当顧客の許認可を取得
+            // 顧客IDのリストを作成
+            const customerIds = customers.map(c => c.customer_id);
+
+            // Firestoreの 'in' クエリは最大30件まで。顧客数が多い場合は分割処理が必要。
+            let licenses = [];
+            const chunkSize = 30;
+            const chunks = [];
+            for (let i = 0; i < customerIds.length; i += chunkSize) {
+                chunks.push(customerIds.slice(i, i + chunkSize));
+            }
+
+            const licensePromises = chunks.map(chunkIds => {
+                // Compat Syntax: db.collection(...).where(...)
+                return db.collection('customer_licenses').where('customer_id', 'in', chunkIds).get();
+            });
+
+            const licenseSnapshots = await Promise.all(licensePromises);
+            licenseSnapshots.forEach(snap => {
+                snap.forEach(doc => {
+                    const lic = doc.data();
+                    if (lic.status === '有効' || lic.status === 'active') { // 有効な許認可のみ
+                        licenses.push(lic);
+                    }
+                });
+            });
+
+            // 3. データ結合 (Join)
+            const joinedData = licenses.map(lic => {
+                const customer = customers.find(c => c.customer_id === lic.customer_id);
+                const lType = licenseTypes.find(lt => lt.license_type_id === lic.license_type_id);
+                const staff = customer ? staffMembers.find(s => s.staff_id === customer.primary_staff_id) : null;
+                const office = lic.government_office_id
+                    ? governmentOffices.find(o => o.office_id === lic.government_office_id)
+                    : null;
+                const officeName = office ? office.office_name : (lic.government_office || '-');
+
+                return {
+                    license: lic,
+                    customer: customer,
+                    licenseType: lType,
+                    staff: staff,
+                    officeName: officeName
+                };
+            });
+
+            // 4. クライアントサイドフィルタ (種別、担当者、キーワード)
+            const finalData = joinedData.filter(item => {
+                if (!item.customer) return false;
+                if (ltVal !== "" && (!item.licenseType || item.licenseType.license_type_name !== ltVal)) return false;
+                if (stVal !== "" && String(item.customer.primary_staff_id) !== stVal) return false;
+
+                if (searchVal !== "") {
+                    const custName = (item.customer.customer_name || '').toLowerCase();
+                    // const ceoName = (item.customer.ceo_name || '').toLowerCase(); // User requested to exclude CEO from search
+                    const remarks = (item.customer.remarks || '').toLowerCase();
+                    // Search by Customer Name (Company) or Remarks
+                    if (!custName.includes(searchVal) && !remarks.includes(searchVal)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            // ソート
+            finalData.sort((a, b) => {
+                // 決算月・日は同じ（フィルタ済み）なので、顧客名順などで
+                return a.customer.customer_name.localeCompare(b.customer.customer_name, 'ja');
+            });
+
+            filteredData = finalData;
+            finishSearch(filteredData, fmVal);
+
+        } catch (error) {
+            console.error('Search failed:', error);
+            initialMessage.textContent = 'データの検索中にエラーが発生しました: ' + error.message;
+            alert('検索に失敗しました: ' + error.message);
+        }
+    }
+
+    function finishSearch(data, fmVal) {
+        initialMessage.style.display = 'none';
+        tableWrapper.style.display = 'block';
+        renderTable(data, fmVal);
+    }
+
+    function renderTable(data, fmVal) {
+        washoutListBody.innerHTML = '';
+        const monthLabel = `${fmVal}月決算`;
+        countDisplay.textContent = `表示件数：${data.length}件（${monthLabel}）`;
+
+        if (data.length === 0) {
+            washoutListBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">該当するデータはありません。</td></tr>';
+            return;
+        }
+
+        data.forEach(item => {
+            const row = document.createElement('tr');
+            // Remove row click event to allow individual links
+            // row.style.cursor = 'pointer';
+            // row.addEventListener('click', ...);
+
+            const fiscalText = (item.customer.fiscal_year_end_month && item.customer.fiscal_year_end_day)
+                ? `${item.customer.fiscal_year_end_month}/${item.customer.fiscal_year_end_day}`
+                : '-';
+
+            const licenseName = item.licenseType ? item.licenseType.license_type_name : '不明';
+            const licenseNo = formatLicenseNumber(item.license);
+            const expiry = formatDate(item.license.expiry_date);
+
+            // 担当者名
+            const staffName = item.staff ? item.staff.staff_name : '<span style="color: #94a3b8;">(担当未設定)</span>';
+
+            // 備考の切り詰め (最初の20文字)
+            const remarksFull = item.customer.remarks || '';
+            const remarksDisplay = remarksFull.length > 20 ? remarksFull.substring(0, 20) + '...' : (remarksFull || '-');
+
+            // HTML Headers: Customer, Fiscal, License, Expiry, Staff, Remarks
+            // Note: Representative Name removed. Remarks added at end.
+            // Links added to Customer Name and License Type
+            row.innerHTML = `
+                <td>
+                    <a href="customer_detail.html?id=${item.customer.customer_id}" style="text-decoration: none; color: #0d6efd; font-weight: bold;">
+                        ${item.customer.customer_name}
+                    </a>
+                </td>
+                <td style="font-weight: 500;">${fiscalText}</td>
+                <td>
+                    <a href="license_detail.html?id=${item.license.license_id}" style="text-decoration: none; color: #0d6efd;">
+                        <div>${licenseName}</div>
+                    </a>
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">
+                        [${item.officeName}] ${licenseNo}
+                    </div>
+                </td>
+                <td>${expiry}</td>
+                <td>${staffName}</td>
+                <td style="font-size: 0.85rem; color: #64748b;" title="${remarksFull}">${remarksDisplay}</td>
+            `;
+            washoutListBody.appendChild(row);
+        });
+    }
+
+    // Excel出力
+    function exportExcel() {
+        if (filteredData.length === 0) {
+            alert('出力するデータがありません。');
+            return;
+        }
+
+        const exportData = [
+            ["顧客名", "外務担当者", "決算期", "許認可種別", "許可番号", "満了日", "顧客備考"]
+        ];
+
+        filteredData.forEach(item => {
+            const fiscalText = (item.customer.fiscal_year_end_month && item.customer.fiscal_year_end_day)
+                ? `${item.customer.fiscal_year_end_month}/${item.customer.fiscal_year_end_day}`
+                : '-';
+
+            exportData.push([
+                item.customer.customer_name,
+                item.staff ? item.staff.staff_name : "",
+                fiscalText,
+                item.licenseType ? item.licenseType.license_type_name : "",
+                `[${item.officeName}] ${formatLicenseNumber(item.license)}`,
+                item.license.expiry_date || "",
+                item.customer.remarks || ""
+            ]);
+        });
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(exportData);
+
+        // 列幅の調整
+        const wscols = [
+            { wch: 30 }, // 顧客名
+            { wch: 15 }, // 担当者
+            { wch: 10 }, // 決算
+            { wch: 20 }, // 許認可
+            { wch: 20 }, // 番号
+            { wch: 15 }, // 満了日
+            { wch: 40 }  // 備考
+        ];
+        ws['!cols'] = wscols;
+
+        XLSX.utils.book_append_sheet(wb, ws, "許認可洗い出し一覧");
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 10);
+        XLSX.writeFile(wb, `許認可洗い出し一覧_${timestamp}.xlsx`);
+    }
+
+    // PDF出力
+    function exportPDF() {
+        if (filteredData.length === 0) {
+            alert('出力するデータがありません。');
+            return;
+        }
+
+        const template = document.getElementById('print-template-washout');
+        const printContent = template.cloneNode(true);
+        printContent.style.display = 'block';
+
+        const fmVal = filterFiscalMonth.value;
+        const monthLabel = `${fmVal}月決算`;
+
+        // Populate Template
+        printContent.querySelector('#p-print-now').textContent = new Date().toLocaleString();
+        printContent.querySelector('#p-target-month').textContent = monthLabel;
+
+        const pBody = printContent.querySelector('#p-washout-body');
+        filteredData.forEach(item => {
+            const tr = document.createElement('tr');
+            const fiscalText = (item.customer.fiscal_year_end_month && item.customer.fiscal_year_end_day)
+                ? `${item.customer.fiscal_year_end_month}/${item.customer.fiscal_year_end_day}`
+                : '-';
+
+            tr.innerHTML = `
+                <td style="border: 1px solid #cbd5e1; padding: 8px;">
+                    <div style="font-weight: bold;">${item.customer.customer_name}</div>
+                    <div style="font-size: 0.75rem; color: #64748b;">${item.staff ? item.staff.staff_name : '(担当なし)'}</div>
+                </td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: center;">${fiscalText}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px;">
+                    <div>${item.licenseType ? item.licenseType.license_type_name : '不明'}</div>
+                    <div style="font-size: 0.7rem; color: #64748b;">[${item.officeName}] ${formatLicenseNumber(item.license)}</div>
+                </td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: center;">${formatDate(item.license.expiry_date)}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px; font-size: 0.8rem; color: #475569;">${item.customer.remarks || '-'}</td>
+            `;
+            pBody.appendChild(tr);
+        });
+
+        const opt = {
+            margin: [10, 10, 10, 10],
+            filename: `決算期別一覧_${monthLabel}_${new Date().toISOString().slice(0, 10)}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
+
+        html2pdf().set(opt).from(printContent).save();
+    }
+
+    // --- Event Listeners ---
+    // 決算月が変更されたら検索を実行
+    filterFiscalMonth.addEventListener('change', searchData);
+
+    // その他のフィルタは、すでに取得済みのデータ(filteredData)に対して行う？
+    // いえ、searchData内で filterCustomers -> fetchLicenses -> filterClientSide としているので、
+    // searchDataを呼べばOK。ただし、クライアントサイドフィルタだけ再実行する方が効率的だが、
+    // 実装をシンプルにするため searchData を呼ぶ。
+    // (データ量増加時に問題になる場合は、fetch済みデータをcacheしてfilterのみ実行に切り替える)
+
+    filterLicenseType.addEventListener('change', searchData);
+    filterStaff.addEventListener('change', searchData);
+
+    // キーワード検索はEnterキーまたはフォーカスアウトで実行
+    if (filterSearch) {
+        filterSearch.addEventListener('change', searchData);
+        filterSearch.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent form submission if any
+                searchData();
+            }
+        });
+    }
+
+    if (btnSearch) {
+        btnSearch.addEventListener('click', searchData);
+    }
+
+    btnReset.addEventListener('click', () => {
+        filterLicenseType.value = '';
+        filterFiscalMonth.value = '';
+        filterStaff.value = '';
+        if (filterSearch) filterSearch.value = '';
+        // リセット時はデータをクリアして初期状態へ
+        initialMessage.style.display = 'block';
+        initialMessage.textContent = '決算月を選択してください';
+        tableWrapper.style.display = 'none';
+        countDisplay.innerText = '表示件数：0件';
+        washoutListBody.innerHTML = '';
+        filteredData = [];
+    });
+
+    btnExport.addEventListener('click', exportExcel);
+    if (btnExportPdf) btnExportPdf.addEventListener('click', exportPDF);
+
+    // Start
+    // Initial Start - Robust Auth Check
+    const checkAndInit = () => {
+        if (typeof firebase !== 'undefined' && firebase.auth) {
+            const user = firebase.auth().currentUser;
+            if (user) {
+                init();
+            } else {
+                const unsub = firebase.auth().onAuthStateChanged(user => {
+                    if (user) {
+                        unsub();
+                        init();
+                    }
+                });
+            }
+        } else {
+            console.error('Firebase Auth not ready');
+        }
+    };
+    checkAndInit();
+});

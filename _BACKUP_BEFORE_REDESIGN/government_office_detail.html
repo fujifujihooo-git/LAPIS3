@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>官公庁詳細 - LAPIS2</title>
+    <link rel="stylesheet" href="style_v2.css?v=4">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <main class="dashboard-container">
+        <header class="unified-header">
+            <div class="unified-header-tier1">
+                <nav class="unified-nav">
+                    <a href="index.html" class="unified-nav-item">案件管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="customer_list.html" class="unified-nav-item">顧客管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_list.html" class="unified-nav-item">許認可管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="invoice_list.html" class="unified-nav-item">請求管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="sales_list.html" class="unified-nav-item">売上管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_washout.html" class="unified-nav-item">決算期別</a>
+                    <span class="nav-separator">|</span>
+                    <a href="staff_list.html" class="unified-nav-item">担当者管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="government_office_list.html" class="unified-nav-item active">官公庁マスタ</a>
+                </nav>
+            </div>
+            <div class="unified-header-tier2">
+                <h1 id="page-title">官公庁詳細</h1>
+                <p id="office-id-display" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;"></p>
+            </div>
+            <div class="unified-header-tier3">
+                <button type="button" class="secondary-btn" id="btn-back">← 一覧に戻る</button>
+                <button type="button" class="danger-btn" id="btn-delete">削除</button>
+                <button type="submit" form="office-form" class="primary-btn">保存</button>
+            </div>
+        </header>
+
+        <header class="dashboard-header" style="display: none;">
+            <div class="brand">
+                <h1>官公庁詳細</h1>
+                <p class="subtitle" id="office-id-display-old">Office ID: -</p>
+            </div>
+            <div class="header-actions">
+                <button class="secondary-btn" id="btn-back-old">← 一覧に戻る</button>
+            </div>
+        </header>
+
+        <form id="office-form">
+            <section class="form-section">
+                <h2>基本情報</h2>
+                <div class="form-grid grid-2-col">
+                    <div class="form-group">
+                        <label for="office_id_input">ID <span class="required">*</span></label>
+                        <input type="number" id="office_id_input" required placeholder="例：100">
+                    </div>
+                    <div class="form-group">
+                        <label for="office_name">官公庁名 <span class="required">*</span></label>
+                        <input type="text" id="office_name" required placeholder="例：東京都土木局">
+                    </div>
+                </div>
+                <div class="form-grid grid-3-col" style="margin-top: 16px;">
+                    <div class="form-group">
+                        <label for="office_prefecture">都道府県</label>
+                        <select id="office_prefecture">
+                            <option value="">（選択なし）</option>
+                            <option value="北海道">北海道</option>
+                            <option value="青森県">青森県</option>
+                            <option value="岩手県">岩手県</option>
+                            <option value="宮城県">宮城県</option>
+                            <option value="秋田県">秋田県</option>
+                            <option value="山形県">山形県</option>
+                            <option value="福島県">福島県</option>
+                            <option value="茨城県">茨城県</option>
+                            <option value="栃木県">栃木県</option>
+                            <option value="群馬県">群馬県</option>
+                            <option value="埼玉県">埼玉県</option>
+                            <option value="千葉県">千葉県</option>
+                            <option value="東京都">東京都</option>
+                            <option value="神奈川県">神奈川県</option>
+                            <option value="新潟県">新潟県</option>
+                            <option value="富山県">富山県</option>
+                            <option value="石川県">石川県</option>
+                            <option value="福井県">福井県</option>
+                            <option value="山梨県">山梨県</option>
+                            <option value="長野県">長野県</option>
+                            <option value="岐阜県">岐阜県</option>
+                            <option value="静岡県">静岡県</option>
+                            <option value="愛知県">爱知県</option>
+                            <option value="三重県">三重県</option>
+                            <option value="滋賀県">滋賀県</option>
+                            <option value="京都府">京都府</option>
+                            <option value="大阪府">大阪府</option>
+                            <option value="兵庫県">兵庫県</option>
+                            <option value="奈良県">奈良県</option>
+                            <option value="和歌山県">和歌山県</option>
+                            <option value="鳥取県">鳥取県</option>
+                            <option value="島根県">島根県</option>
+                            <option value="岡山県">岡山県</option>
+                            <option value="広島県">広島県</option>
+                            <option value="山口県">山口県</option>
+                            <option value="徳島県">徳島県</option>
+                            <option value="香川県">香川県</option>
+                            <option value="愛媛県">愛媛県</option>
+                            <option value="高知県">高知県</option>
+                            <option value="福岡県">福岡県</option>
+                            <option value="佐賀県">佐賀県</option>
+                            <option value="長崎県">長崎県</option>
+                            <option value="熊本県">熊本県</option>
+                            <option value="大分県">大分県</option>
+                            <option value="宮崎県">宮崎県</option>
+                            <option value="鹿児島県">鹿児島県</option>
+                            <option value="沖縄県">沖縄県</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="office_type">種別</label>
+                        <select id="office_type">
+                            <option value="都道府県">都道府県</option>
+                            <option value="市区町村">市区町村</option>
+                            <option value="国">国</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="status">状態 <span class="required">*</span></label>
+                        <select id="status" required>
+                            <option value="有効">有効</option>
+                            <option value="無効">無効</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <div class="action-bar">
+                <div class="action-bar" style="display: none;">
+                    <button type="button" class="secondary-btn" id="btn-cancel">キャンセル</button>
+                    <button type="submit" class="primary-btn">保存</button>
+                </div>
+
+                <p class="footer-info">登録日: <span id="created-date-display">-</span> | 最終更新日時: <span
+                        id="last-updated-display">-</span></p>
+        </form>
+
+        <footer style="margin-top: 40px;">
+            <p>&copy; 2026 LAPIS2 Project</p>
+        </footer>
+    </main>
+
+    <button id="back-to-top" class="back-to-top">↑</button>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="common.js"></script>
+    <script src="government_office_detail.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAPIS2 - 担当者詳細</title>
+    <link rel="stylesheet" href="style_v2.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <main class="dashboard-container">
+        <header class="unified-header">
+            <div class="unified-header-tier1">
+                <nav class="unified-nav">
+                    <a href="index.html" class="unified-nav-item">案件管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="customer_list.html" class="unified-nav-item">顧客管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_list.html" class="unified-nav-item">許認可管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="invoice_list.html" class="unified-nav-item">請求管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="sales_list.html" class="unified-nav-item">売上管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="license_washout.html" class="unified-nav-item">決算期別</a>
+                    <span class="nav-separator">|</span>
+                    <a href="staff_list.html" class="unified-nav-item active">担当者管理</a>
+                    <span class="nav-separator">|</span>
+                    <a href="government_office_list.html" class="unified-nav-item">官公庁マスタ</a>
+                </nav>
+            </div>
+            <div class="unified-header-tier2">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1 id="page-title">担当者詳細</h1>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <label for="staff_id" style="font-size: 0.875rem; color: #64748b; margin: 0;">Staff ID:</label>
+                        <input type="number" id="staff_id"
+                            style="width: 80px; padding: 4px 8px; font-size: 0.875rem; background: rgba(255,255,255,0.5); border: 1px solid var(--border-color); border-radius: 4px;">
+                    </div>
+                </div>
+            </div>
+            <div class="unified-header-tier3">
+                <button type="button" class="secondary-btn" id="btn-back">← 一覧に戻る</button>
+                <button type="button" class="danger-btn" id="btn-delete">削除</button>
+                <button type="submit" form="staff-form" class="primary-btn">保存</button>
+            </div>
+        </header>
+
+        <header class="dashboard-header" style="display: none;">
+            <div class="brand">
+                <h1 id="staff-title-old">担当者詳細</h1>
+                <div style="display: flex; align-items: center; gap: 12px; margin-top: 4px;">
+                    <label for="staff_id_old" style="font-size: 0.875rem; color: #64748b; margin: 0;">Staff ID:</label>
+                    <input type="number" id="staff_id_old"
+                        style="width: 80px; padding: 4px 8px; font-size: 0.875rem; background: rgba(255,255,255,0.5); border: 1px solid var(--border-color); border-radius: 4px;">
+                </div>
+            </div>
+            <div class="header-actions">
+                <nav class="main-nav">
+                    <a href="staff_list.html" class="nav-item active">担当者管理</a>
+                    <a href="government_office_list.html" class="nav-item">官公庁マスタ</a>
+                </nav>
+                <button class="secondary-btn" id="btn-back-top">一覧に戻る</button>
+            </div>
+        </header>
+
+        <form id="staff-form">
+            <!-- ■ プロフィール -->
+            <section class="form-section">
+                <h2>プロフィール</h2>
+                <div class="form-grid grid-2-col">
+                    <div class="form-group">
+                        <label for="staff_name">氏名 <span class="required">*</span></label>
+                        <input type="text" id="staff_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="staff_kana">フリガナ</label>
+                        <input type="text" id="staff_kana">
+                    </div>
+                </div>
+
+                <div class="form-grid grid-2-col" style="margin-top: 16px;">
+                    <div class="form-group">
+                        <label for="phone">電話番号</label>
+                        <input type="tel" id="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">メールアドレス</label>
+                        <input type="email" id="email">
+                    </div>
+                </div>
+
+                <div class="form-grid" style="grid-template-columns: 1fr 2fr; margin-top: 16px;">
+                    <div class="form-group">
+                        <label for="postal_code">郵便番号</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="postal_code" placeholder="例：1234567" style="flex: 1;">
+                            <button type="button" id="btn-search-address" class="lookup-btn" disabled>住所検索</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="address">住所</label>
+                        <input type="text" id="address">
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ■ 所属・役割 -->
+            <section class="form-section">
+                <h2>所属・役割</h2>
+                <div class="form-grid grid-3-col">
+                    <div class="form-group">
+                        <label for="department">所属部署</label>
+                        <input type="text" id="department">
+                    </div>
+                    <div class="form-group">
+                        <label for="role">役割 <span class="required">*</span></label>
+                        <select id="role" required>
+                            <option value="行政書士">行政書士</option>
+                            <option value="補助者">補助者</option>
+                            <option value="事務員">事務員</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="status">状態 <span class="required">*</span></label>
+                        <select id="status" required>
+                            <option value="在籍">在籍</option>
+                            <option value="休職">休職</option>
+                            <option value="退職">退職</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ■ 管理情報 -->
+            <section class="form-section">
+                <h2>管理情報</h2>
+                <div class="form-group full-width">
+                    <label for="remarks">備考</label>
+                    <textarea id="remarks" placeholder="特記事項（経験、資格、スキル等）"></textarea>
+                </div>
+            </section>
+
+            <div class="action-bar" style="display: none;">
+                <button type="button" class="danger-btn" id="btn-delete-old">削除</button>
+                <button type="button" class="secondary-btn" id="btn-back-old">一覧に戻る</button>
+                <button type="submit" class="primary-btn">保存</button>
+            </div>
+
+            <p class="footer-info">最終更新日時: <span id="last-updated-display">-</span></p>
+        </form>
+
+        <footer>
+            <p>&copy; 2026 LAPIS2 Project</p>
+        </footer>
+    </main>
+
+    <button id="back-to-top" class="back-to-top">↑</button>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="common.js"></script>
+    <script src="staff_detail.js"></script>
+</body>
+
+</html>

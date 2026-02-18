@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAPIS2 - ログイン</title>
+    <link rel="stylesheet" href="style_v2.css?v=8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin: 0;
+            background-color: #1e293b;
+            /* Calm Slate Blue-Grey */
+            background-image: radial-gradient(circle at center, #334155 0%, #0f172a 100%);
+            min-height: 100vh;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.98);
+            padding: 48px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        .login-logo-img {
+            max-width: 500px;
+            height: auto;
+            margin-bottom: 32px;
+        }
+
+        .login-form {
+            text-align: left;
+        }
+
+        .login-btn {
+            width: 100%;
+            margin-top: 24px;
+            height: 52px;
+            justify-content: center;
+            font-size: 1.1rem;
+            background-color: #1e3a8a;
+        }
+
+        .login-btn:hover {
+            background-color: #1e40af;
+        }
+
+        .login-footer {
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-card">
+        <img src="lapis_logo.png" alt="LAPIS Logo" class="login-logo-img">
+
+        <form id="login-form" class="login-form">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label for="login-email">メールアドレス</label>
+                <input type="email" id="login-email" placeholder="example@mail.com" required>
+            </div>
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label for="login-pass">パスワード</label>
+                <input type="password" id="login-pass" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="primary-btn login-btn">ログイン</button>
+        </form>
+
+        <div class="login-footer">
+            &copy; 2026 LAPIS2 Project
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="common.js"></script>
+    <script src="login.js"></script>
+</body>
+
+</html>

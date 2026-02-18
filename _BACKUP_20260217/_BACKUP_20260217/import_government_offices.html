@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>役所マスタ インポートツール (改良版)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f7f6;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+
+        .instruction {
+            background-color: #eef7ff;
+            border-left: 5px solid #3498db;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 180px;
+            margin-bottom: 15px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .controls-config {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .config-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        input[type="number"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 60px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            font-size: 15px;
+        }
+
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background-color: #7f8c8d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #636e72;
+        }
+
+        #log {
+            background-color: #2d3436;
+            color: #dfe6e9;
+            padding: 15px;
+            border-radius: 6px;
+            height: 150px;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+
+        .status-ok {
+            color: #55efc4;
+        }
+
+        .status-error {
+            color: #ff7675;
+        }
+
+        .status-info {
+            color: #74b9ff;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f1f3f5;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .preview-area {
+            margin-bottom: 30px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            background: #eee;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>役所マスタ インポートツール</h1>
+
+        <div class="instruction">
+            <p><strong>ステップ:</strong></p>
+            <ol>
+                <li>Excel等のデータを貼り付けます。</li>
+                <li><b>「プレビュー」</b>を押し、下の表に正しい項目が出ているか確認します。</li>
+                <li>項目がズレている場合（例：名称の列に「有効」と出ている等）は列番号を書き換えて再度プレビューしてください。</li>
+            </ol>
+        </div>
+
+        <textarea id="dataInput" placeholder="Excelからコピーしたデータをここに貼り付け（ヘッダー含む）"></textarea>
+
+        <div class="controls-config">
+            <div class="config-grid">
+                <div class="config-item">
+                    <label><b>ID (コード)</b> の列番号:</label>
+                    <input type="number" id="colId" value="0">
+                </div>
+                <div class="config-item">
+                    <label><b>名称</b> (例: 札幌市) の列番号:</label>
+                    <input type="number" id="colName" value="2">
+                </div>
+                <div class="config-item">
+                    <label><b>都道府県</b> (例: 北海道) の列番号:</label>
+                    <input type="number" id="colPref" value="1">
+                </div>
+            </div>
+            <div style="display: flex; gap: 20px;">
+                <label><input type="checkbox" id="skipHeader" checked> 1行目を無視する</label>
+                <label><input type="checkbox" id="autoType" checked> 種別を自動判定</label>
+            </div>
+            <p style="font-size: 12px; color: #666; margin-top: 10px;">※一番左の列が 0 番目です。コード 0 | 都道県 1 | 名称 2 ... の場合が多いです。
+            </p>
+        </div>
+
+        <div class="controls">
+            <button class="btn-primary" onclick="previewData()">1. プレビュー・解析</button>
+            <button class="btn-danger" id="btnExecute" onclick="executeImport()" disabled style="opacity: 0.5;">2.
+                実行（削除＆インポート）</button>
+            <button class="btn-secondary" onclick="exportBackup()">バックアップを保存</button>
+        </div>
+
+        <div id="previewArea" class="preview-area" style="display: none;">
+            <h3>解析結果プレビュー (先頭5件)</h3>
+            <table id="previewTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>官公庁名</th>
+                        <th>都道府県</th>
+                        <th>種別</th>
+                        <th>状態</th>
+                    </tr>
+                </thead>
+                <tbody id="previewBody"></tbody>
+            </table>
+        </div>
+
+        <div id="log">ログがここに表示されます...</div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'lapis2_government_offices';
+        let parsedData = [];
+
+        function log(message, type = 'info') {
+            const logEl = document.getElementById('log');
+            const span = document.createElement('div');
+            span.className = `status-${type}`;
+            span.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logEl.appendChild(span);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function previewData() {
+            const input = document.getElementById('dataInput').value.trim();
+            if (!input) { log('データがありません。', 'error'); return; }
+
+            const colId = parseInt(document.getElementById('colId').value);
+            const colName = parseInt(document.getElementById('colName').value);
+            const colPref = parseInt(document.getElementById('colPref').value);
+            const skip = document.getElementById('skipHeader').checked;
+            const auto = document.getElementById('autoType').checked;
+
+            const lines = input.split('\n');
+            const data = [];
+
+            lines.forEach((line, i) => {
+                if (skip && i === 0) return;
+                const parts = line.split(/\t/);
+                if (parts.length > Math.max(colId, colName, colPref)) {
+                    const rawId = parts[colId]?.trim() || '';
+                    const id = parseInt(rawId.replace(/[^0-9]/g, '')); // 数字のみ抽出して数値化
+                    const name = parts[colName]?.trim() || '';
+                    const pref = parts[colPref]?.trim() || '';
+                    let type = '市区町村';
+                    if (auto && (name === pref || name.endsWith('県') || name.endsWith('道') || name.endsWith('府') || name.endsWith('都'))) {
+                        if (name === pref) type = '都道府県';
+                    }
+                    data.push({ office_id: id, office_name: name, office_prefecture: pref, office_type: type, status: '有効' });
+                }
+            });
+
+            if (data.length > 0) {
+                parsedData = data.filter(d => !isNaN(d.office_id));
+                const body = document.getElementById('previewBody');
+                body.innerHTML = '';
+                parsedData.slice(0, 5).forEach(d => {
+                    body.innerHTML += `<tr><td>${d.office_id}</td><td>${d.office_name}</td><td>${d.office_prefecture}</td><td>${d.office_type}</td><td>${d.status}</td></tr>`;
+                });
+                document.getElementById('previewArea').style.display = 'block';
+                const btn = document.getElementById('btnExecute');
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                log(`${parsedData.length} 件を解析しました。表を確認してください。`, 'ok');
+            } else {
+                log('解析に失敗しました。列番号や貼り付けた内容を確認してください。IDが数値として読み取れない行は除外されます。', 'error');
+            }
+        }
+
+        function exportBackup() {
+            const cur = localStorage.getItem(STORAGE_KEY);
+            if (!cur) { log('保存されたデータはありません。', 'error'); return; }
+            const blob = new Blob([cur], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `backup_${Date.now()}.json`; a.click();
+            log('バックアップを保存しました。', 'ok');
+        }
+
+        async function executeImport() {
+            if (!confirm('既存の「都道府県」「市区町村」をFirestoreに入れ替えます。よろしいですか？')) return;
+            try {
+                log('Firestoreから既存データを取得中...', 'info');
+                const snapshot = await db.collection('government_offices').get();
+
+                // 削除対象：都道府県・市区町村のドキュメントのみ
+                const deleteTargets = [];
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    if (data.office_type === '都道府県' || data.office_type === '市区町村') {
+                        deleteTargets.push(doc.ref);
+                    }
+                });
+
+                if (deleteTargets.length > 0) {
+                    log(`${deleteTargets.length} 件の既存データを削除中...`, 'info');
+                    // Firestoreのバッチは最大500件まで
+                    for (let i = 0; i < deleteTargets.length; i += 450) {
+                        const batch = db.batch();
+                        deleteTargets.slice(i, i + 450).forEach(ref => batch.delete(ref));
+                        await batch.commit();
+                    }
+                    log(`${deleteTargets.length} 件を削除しました。`, 'ok');
+                }
+
+                // 新しいデータをインポート
+                const now = new Date().toLocaleString();
+                let maxId = 0;
+
+                // 「その他」の既存IDの最大値を取得
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    if (data.office_type === 'その他' && data.office_id > maxId) {
+                        maxId = data.office_id;
+                    }
+                });
+
+                log(`${parsedData.length} 件のデータをFirestoreにインポート中...`, 'info');
+                let imported = 0;
+
+                for (let i = 0; i < parsedData.length; i += 450) {
+                    const batch = db.batch();
+                    const chunk = parsedData.slice(i, i + 450);
+
+                    chunk.forEach(d => {
+                        const docId = `off_${d.office_id}`;
+                        if (d.office_id > maxId) maxId = d.office_id;
+                        batch.set(db.collection('government_offices').doc(docId), {
+                            ...d,
+                            created_date: now,
+                            last_updated: now
+                        });
+                        imported++;
+                    });
+
+                    await batch.commit();
+                    log(`${Math.min(i + 450, parsedData.length)} / ${parsedData.length} 件完了`, 'info');
+                }
+
+                // カウンターを更新
+                await db.collection('counters').doc('government_offices').set({ count: maxId }, { merge: true });
+
+                log(`インポート成功！${imported} 件をFirestoreに保存しました。カウンター: ${maxId}`, 'ok');
+                alert('完了しました。官公庁マスタ画面をリロードしてください。');
+                document.getElementById('btnExecute').disabled = true;
+            } catch (e) {
+                console.error(e);
+                log('エラー: ' + e.message, 'error');
+            }
+        }
+    </script>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="common.js"></script>
+    <script>
+        // Inline logic or reference to JS if exists
+    </script>
+</body>
+
+</html>

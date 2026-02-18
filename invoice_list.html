@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>請求管理 - LAPIS2</title>
+    <!-- New Modern Style -->
+    <link rel="stylesheet" href="style_modern.css?v=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=BIZ+UDGothic:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        /* Local overrides for complex filters */
+        .filter-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 12px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="page-container">
+        <!-- Sidebar -->
+        <nav id="sidebar">
+            <div class="sidebar-header">
+                <a href="index.html" class="logo-text">
+                    <span style="color: var(--primary);">✦</span> LAPIS2
+                </a>
+            </div>
+
+            <ul class="sidebar-nav">
+                <li class="nav-header">Main</li>
+                <li class="nav-item">
+                    <a href="index.html">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-label">案件管理</span>
+                    </a>
+                </li>
+
+                <li class="nav-header">Management</li>
+                <li class="nav-item">
+                    <a href="customer_list.html">
+                        <span class="nav-icon">🏢</span>
+                        <span class="nav-label">顧客管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="license_list.html">
+                        <span class="nav-icon">📜</span>
+                        <span class="nav-label">許認可管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="invoice_list.html" class="active">
+                        <span class="nav-icon">💰</span>
+                        <span class="nav-label">請求管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="sales_list.html">
+                        <span class="nav-icon">📈</span>
+                        <span class="nav-label">売上管理</span>
+                    </a>
+                </li>
+
+                <li class="nav-header">Settings</li>
+                <li class="nav-item">
+                    <a href="license_washout.html">
+                        <span class="nav-icon">📅</span>
+                        <span class="nav-label">決算期別一覧</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="staff_list.html">
+                        <span class="nav-icon">👥</span>
+                        <span class="nav-label">担当者管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="government_office_list.html">
+                        <span class="nav-icon">🏛️</span>
+                        <span class="nav-label">官公庁マスタ</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <!-- END Sidebar -->
+
+        <!-- Main Container -->
+        <div id="main-container">
+            <!-- Header -->
+            <header id="header">
+                <div class="header-left">
+                    <button id="mobile-toggle"
+                        style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted); display: none;">☰</button>
+                    <h1 class="page-title">請求管理</h1>
+                </div>
+                <div class="header-right" id="header-right">
+                    <!-- User Status injected here -->
+                </div>
+            </header>
+            <!-- END Header -->
+
+            <!-- Page Content -->
+            <main id="page-content">
+
+                <!-- Actions Bar -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">請求書の発行と入金状況を管理します。</p>
+                    <button id="btn-new-invoice" class="btn btn-primary">
+                        <span>＋</span> 新規請求作成
+                    </button>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="block">
+                    <div class="block-header">
+                        <h3 class="block-title">検索条件</h3>
+                        <div style="font-size: 0.85rem; color: var(--text-muted);" id="count-display">表示件数：0件</div>
+                    </div>
+                    <div class="block-content">
+                        <!-- Row 1 -->
+                        <div class="filter-row">
+                            <div style="flex: 2; min-width: 200px;">
+                                <label for="filter-customer"
+                                    style="display:block;margin-bottom:6px;font-size:0.85rem;font-weight:600;color:var(--text-muted);">顧客名</label>
+                                <input type="text" id="filter-customer" class="form-control" placeholder="顧客名で検索...">
+                            </div>
+                            <div style="flex: 1; min-width: 150px;">
+                                <label for="filter-status"
+                                    style="display:block;margin-bottom:6px;font-size:0.85rem;font-weight:600;color:var(--text-muted);">ステータス</label>
+                                <select id="filter-status" class="form-select">
+                                    <option value="">すべて</option>
+                                    <option value="下書き">下書き</option>
+                                    <option value="発行済">発行済</option>
+                                    <option value="一部入金">一部入金</option>
+                                    <option value="入金済">入金済</option>
+                                    <option value="延滞">延滞</option>
+                                </select>
+                            </div>
+                            <!-- Deprecated checkbox in new logic? Keeping just in case but relying on status filter mostly -->
+                        </div>
+
+                        <!-- Row 2 -->
+                        <div class="filter-row">
+                            <div style="flex: 1; min-width: 150px;">
+                                <label
+                                    style="display:block;margin-bottom:6px;font-size:0.85rem;font-weight:600;color:var(--text-muted);">期間
+                                    (開始)</label>
+                                <input type="date" id="filter-date-start" class="form-control">
+                            </div>
+                            <div
+                                style="display: flex; align-items: center; padding-bottom: 8px; color: var(--text-muted);">
+                                〜</div>
+                            <div style="flex: 1; min-width: 150px;">
+                                <label
+                                    style="display:block;margin-bottom:6px;font-size:0.85rem;font-weight:600;color:var(--text-muted);">期間
+                                    (終了)</label>
+                                <input type="date" id="filter-date-end" class="form-control">
+                            </div>
+                            <div style="flex: 0 0 auto; padding-bottom: 2px;">
+                                <button id="btn-reset-filters" class="btn btn-secondary">リセット</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Table -->
+                <div class="block">
+                    <div class="block-content" style="padding: 0;">
+                        <div class="table-responsive">
+                            <table class="table-modern" id="invoice-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" data-sort="invoice_number">請求番号</th>
+                                        <th class="sortable" data-sort="customer_name">顧客名</th>
+                                        <th class="sortable" data-sort="invoice_date">請求日</th>
+                                        <th class="sortable" data-sort="total_amount">合計金額</th>
+                                        <th class="sortable" data-sort="status">ステータス</th>
+                                        <th class="sortable" data-sort="paid_amount">入金額</th>
+                                        <th class="sortable" data-sort="balance">残高</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoice-list-body">
+                                    <!-- JS Populated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <footer style="margin-top: 60px; text-align: center; color: #aaa; font-size: 0.8rem;">
+                    &copy; 2026 LAPIS2 Project
+                </footer>
+            </main>
+        </div>
+
+        <!-- Mobile Overlay -->
+        <div class="sidebar-overlay" onclick="document.body.classList.remove('sidebar-open')"></div>
+    </div>
+
+    <!-- Back to top -->
+    <button id="back-to-top" class="back-to-top" style="
+        position: fixed; right: 20px; bottom: 20px; 
+        width: 40px; height: 40px; border-radius: 50%; 
+        background: var(--primary); color: #fff; border: none; 
+        font-size: 1.2rem; cursor: pointer; opacity: 0; pointer-events: none; transition: 0.3s;
+        z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    ">↑</button>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="common.js"></script>
+    <script src="invoice_list.js"></script>
+
+    <script>
+        document.getElementById('mobile-toggle')?.addEventListener('click', function () {
+            document.body.classList.toggle('sidebar-open');
+        });
+
+        const btnTop = document.getElementById('back-to-top');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                btnTop.style.opacity = '1';
+                btnTop.style.pointerEvents = 'auto';
+            } else {
+                btnTop.style.opacity = '0';
+                btnTop.style.pointerEvents = 'none';
+            }
+        });
+        btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    </script>
+</body>
+
+</html>

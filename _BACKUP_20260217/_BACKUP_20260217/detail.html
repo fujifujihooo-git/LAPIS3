@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>案件詳細 - LAPIS2</title>
+    <!-- New Modern Style -->
+    <link rel="stylesheet" href="style_modern.css?v=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=BIZ+UDGothic:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        /* Local overrides */
+    </style>
+</head>
+
+<body>
+    <div id="page-container">
+        <!-- Sidebar -->
+        <nav id="sidebar">
+            <div class="sidebar-header">
+                <a href="index.html" class="logo-text">
+                    <span style="color: var(--primary);">✦</span> LAPIS2
+                </a>
+            </div>
+
+            <ul class="sidebar-nav">
+                <li class="nav-header">Main</li>
+                <li class="nav-item">
+                    <a href="index.html" class="active">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-label">案件管理</span>
+                    </a>
+                </li>
+
+                <li class="nav-header">Management</li>
+                <li class="nav-item">
+                    <a href="customer_list.html">
+                        <span class="nav-icon">🏢</span>
+                        <span class="nav-label">顧客管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="license_list.html">
+                        <span class="nav-icon">📜</span>
+                        <span class="nav-label">許認可管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="invoice_list.html">
+                        <span class="nav-icon">💰</span>
+                        <span class="nav-label">請求管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="sales_list.html">
+                        <span class="nav-icon">📈</span>
+                        <span class="nav-label">売上管理</span>
+                    </a>
+                </li>
+
+                <li class="nav-header">Settings</li>
+                <li class="nav-item">
+                    <a href="license_washout.html">
+                        <span class="nav-icon">📅</span>
+                        <span class="nav-label">決算期別一覧</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="staff_list.html">
+                        <span class="nav-icon">👥</span>
+                        <span class="nav-label">担当者管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="government_office_list.html">
+                        <span class="nav-icon">🏛️</span>
+                        <span class="nav-label">官公庁マスタ</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <!-- END Sidebar -->
+
+        <!-- Main Container -->
+        <div id="main-container">
+            <!-- Header -->
+            <header id="header">
+                <div class="header-left">
+                    <button id="mobile-toggle"
+                        style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted); display: none;">☰</button>
+                    <div id="detail-title-area">
+                        <h1 class="page-title" id="page-title">案件詳細</h1>
+                        <span id="case-id-display"
+                            style="font-size: 0.8rem; color: var(--text-muted); font-weight: 400; margin-left: 8px;">Case
+                            ID: -</span>
+                    </div>
+                </div>
+                <div class="header-right" id="header-right">
+                    <!-- User Status injected here -->
+                </div>
+            </header>
+            <!-- END Header -->
+
+            <!-- Page Content -->
+            <main id="page-content">
+
+                <!-- Actions Bar -->
+                <div class="block" style="margin-bottom: 24px;">
+                    <div class="block-content d-flex justify-content-between align-items-center"
+                        style="padding: 16px 20px;">
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-secondary" id="btn-back">← 一覧に戻る</button>
+                            <button type="button" class="btn btn-secondary" id="btn-back-to-customer">顧客詳細に戻る</button>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-danger" id="btn-delete">削除</button>
+                            <button type="submit" form="case-form" class="btn btn-primary"
+                                style="min-width: 120px;">保存</button>
+                        </div>
+                    </div>
+                </div>
+
+                <form id="case-form">
+                    <!-- ■ 基本情報 -->
+                    <section class="form-section">
+                        <h2>基本情報</h2>
+                        <div class="form-grid grid-3-col">
+                            <div class="form-group" style="position: relative;">
+                                <label for="government_office_search">管轄官公庁 <span class="required">*</span></label>
+                                <input type="text" id="government_office_search" class="form-control" required
+                                    placeholder="入力して検索..." autocomplete="off">
+                                <input type="hidden" id="government_office_id">
+                                <div id="office-autocomplete-list" class="autocomplete-items"></div>
+                            </div>
+                            <div class="form-group">
+                                <label for="license_type">許認可種別 <span class="required">*</span></label>
+                                <select id="license_type" class="form-select" required>
+                                    <option value="">選択してください</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="procedure_name">手続名 <span class="required">*</span></label>
+                                <input type="text" id="procedure_name" class="form-control" required>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ■ 業務ステータス・担当者 -->
+                    <section class="form-section">
+                        <h2>業務管理</h2>
+                        <div class="form-grid grid-2-col">
+                            <div class="form-group">
+                                <label for="status">現在のステータス <span class="required">*</span></label>
+                                <div style="display: flex; align-items: center;">
+                                    <select id="status" class="form-select" required style="flex: 1;">
+                                        <option value="相談">相談</option>
+                                        <option value="受任">受任</option>
+                                        <option value="作成中">作成中</option>
+                                        <option value="申請準備完了">申請準備完了</option>
+                                        <option value="受付（受理）">受付（受理）</option>
+                                        <option value="補正対応中">補正対応中</option>
+                                        <option value="完了">完了</option>
+                                        <option value="返却済">返却済</option>
+                                        <option value="取下げ">取下げ</option>
+                                    </select>
+                                    <span id="status-badge-preview" class="badge" style="margin-left: 8px;">ステータス</span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="status_changed_by">変更者</label>
+                                <select id="status_changed_by" class="form-select">
+                                    <option value="">（未選択）</option>
+                                    <!-- JSで動的に追加 -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width" style="margin-top: 16px;">
+                            <label for="status_change_comment">変更理由・コメント（任意）</label>
+                            <textarea id="status_change_comment" class="form-control" rows="2"
+                                placeholder="ステータス変更の理由やコメントを入力してください"></textarea>
+                        </div>
+
+                        <div class="form-grid grid-2-col" style="margin-top: 16px;">
+                            <div class="form-group">
+                                <label for="field_staff_id">外務担当者 <span class="required">*</span></label>
+                                <select id="field_staff_id" class="form-select" required>
+                                    <option value="">選択してください</option>
+                                    <!-- JSで動的に追加 -->
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="document_staff_id">作成担当者</label>
+                                <select id="document_staff_id" class="form-select">
+                                    <option value="">（未指定）</option>
+                                    <!-- JSで動的に追加 -->
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ■ ステータス変更履歴 -->
+                    <section class="form-section">
+                        <h2>ステータス変更履歴</h2>
+                        <div class="table-responsive">
+                            <table class="table-modern">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 20%;">日時</th>
+                                        <th style="width: 30%;">変更内容</th>
+                                        <th style="width: 20%;">変更者</th>
+                                        <th style="width: 30%;">コメント</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="status-history-body">
+                                    <!-- JSで動的に追加 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- ■ 見積金額 -->
+                    <section class="form-section">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h2 style="margin-bottom: 0; border: none;">見積金額</h2>
+                            <button type="button" class="btn btn-sm btn-secondary" id="btn-add-item">+ 明細追加</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table-modern" id="estimate-item-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 15%;">種別</th>
+                                        <th style="width: 35%;">内容</th>
+                                        <th style="width: 15%;">単価</th>
+                                        <th style="width: 10%;">数量</th>
+                                        <th style="width: 15%;">金額</th>
+                                        <th style="width: 10%;">課税</th>
+                                        <th style="width: 5%;">編集</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="estimate-item-list-body">
+                                    <!-- 動的に追加 -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Total Summary Area -->
+                        <div style="margin-top: 24px;">
+                            <div class="summary-box">
+                                <div class="summary-row">
+                                    <span>報酬（課税対象）</span>
+                                    <span id="disp_taxable_amount">¥0</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span>消費税(10%)</span>
+                                    <span id="disp_tax_amount">¥0</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span>立替金（非課税）</span>
+                                    <span id="disp_nontaxable_amount">¥0</span>
+                                </div>
+                                <div class="summary-total">
+                                    <span>見積合計</span>
+                                    <span id="disp_total_estimate">¥0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hidden inputs for legacy compatibility -->
+                        <input type="hidden" id="estimated_fee">
+                        <input type="hidden" id="reimbursement_fee">
+                    </section>
+
+                    <!-- ■ 請求・入金状況 -->
+                    <section class="form-section" id="billing-section" style="display: none;">
+                        <h2>請求・入金状況</h2>
+                        <div class="form-grid grid-3-col" style="margin-bottom: 24px; gap: 20px;">
+                            <div
+                                style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                <span
+                                    style="font-size: 0.875rem; font-weight: 600; color: #0369a1; margin-bottom: 8px;">請求合計
+                                    (本件分)</span>
+                                <span id="disp_billing_total"
+                                    style="font-size: 1.75rem; font-weight: 800; color: #0369a1;">¥0</span>
+                            </div>
+                            <div
+                                style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                <span
+                                    style="font-size: 0.875rem; font-weight: 600; color: #166534; margin-bottom: 8px;">入金合計</span>
+                                <span id="disp_billing_paid"
+                                    style="font-size: 1.75rem; font-weight: 800; color: #166534;">¥0</span>
+                            </div>
+                            <div
+                                style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                <span id="label_billing_balance"
+                                    style="font-size: 0.875rem; font-weight: 600; color: #9f1239; margin-bottom: 8px;">未回収合計</span>
+                                <span id="disp_billing_balance"
+                                    style="font-size: 1.75rem; font-weight: 800; color: #9f1239;">¥0</span>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table-modern" id="billing-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 15%;">請求番号</th>
+                                        <th style="width: 15%;">請求日</th>
+                                        <th style="width: 20%;">請求金額 (税込)</th>
+                                        <th style="width: 15%;">ステータス</th>
+                                        <th style="width: 15%;">入金額</th>
+                                        <th style="width: 20%;">残金</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="billing-list-body">
+                                    <!-- JSで動的に追加 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <p style="font-size: 0.8rem; color: #64748b; margin-top: 8px;">
+                            ※一つの請求書に複数の案件が含まれる場合、本案件に関連する明細の合計額を表示します。</p>
+                    </section>
+
+                    <section class="form-section">
+                        <h2>日付管理</h2>
+                        <div class="form-grid date-row grid-3-col"> <!-- Added grid class -->
+                            <div class="form-group">
+                                <label for="contract_date">受任日</label>
+                                <input type="date" id="contract_date" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="application_scheduled_date">申請予定日</label>
+                                <input type="date" id="application_scheduled_date" class="form-control">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="acceptance_date">受付日</label>
+                                <input type="date" id="acceptance_date" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="completion_date">完了日</label>
+                                <input type="date" id="completion_date" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="return_date">返却日</label>
+                                <input type="date" id="return_date" class="form-control">
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ■ 申請情報 -->
+                    <section class="form-section">
+                        <h2>申請情報</h2>
+                        <div class="form-grid grid-3-col">
+                            <div class="form-group">
+                                <label for="application_method">申請方法</label>
+                                <select id="application_method" class="form-select">
+                                    <option value="">選択してください</option>
+                                    <option value="窓口提出">窓口提出</option>
+                                    <option value="郵送">郵送</option>
+                                    <option value="電子申請">電子申請</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="application_number">申請番号</label>
+                                <input type="text" id="application_number" class="form-control">
+                            </div>
+                            <div class="form-group checkbox-group"
+                                style="display: flex; align-items: center; margin-top: 30px;">
+                                <input type="checkbox" id="correction_flag"
+                                    style="width:18px; height:18px; margin-right:8px;">
+                                <label for="correction_flag" style="margin:0;">補正有無（ありの場合チェック）</label>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ■ 備考 -->
+                    <section class="form-section">
+                        <h2>備考</h2>
+                        <div class="form-group full-width">
+                            <textarea id="remarks" class="form-control" placeholder="案件に関する特記事項を入力してください。"></textarea>
+                        </div>
+                    </section>
+
+                    <p class="footer-info text-center"
+                        style="color: var(--text-muted); font-size: 0.85rem; margin-top: 24px;">最終更新日時: <span
+                            id="last-updated-display">-</span></p>
+                </form>
+
+                <footer style="margin-top: 60px; text-align: center; color: #aaa; font-size: 0.8rem;">
+                    &copy; 2026 LAPIS2 Project
+                </footer>
+            </main>
+        </div>
+
+        <!-- Mobile Overlay -->
+        <div class="sidebar-overlay" onclick="document.body.classList.remove('sidebar-open')"></div>
+    </div>
+
+    <!-- Estimate Item Modal -->
+    <div id="estimate-item-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>見積明細追加</h3>
+                <span style="cursor: pointer; font-size: 1.5rem;" id="btn-close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>種別</label>
+                    <select id="modal-item-type" class="form-select">
+                        <option value="報酬">報酬</option>
+                        <option value="立替金">立替金</option>
+                        <option value="その他">その他</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-top: 12px;">
+                    <label>内容</label>
+                    <input type="text" id="modal-description" class="form-control" placeholder="内容を入力...">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <div class="form-group">
+                        <label>単価</label>
+                        <input type="text" id="modal-unit-price" class="form-control amount-input" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>数量</label>
+                        <input type="text" id="modal-quantity" class="form-control amount-input" value="1">
+                    </div>
+                </div>
+                <div class="form-group checkbox-group" style="margin-top: 12px; display: flex; align-items: center;">
+                    <input type="checkbox" id="modal-is-taxable" checked
+                        style="width:18px; height:18px; margin-right:8px;">
+                    <label for="modal-is-taxable" style="margin:0;">課税対象</label>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <div class="modal-footer-left">
+                    <button type="button" class="btn btn-danger" id="btn-modal-delete-item"
+                        style="display: none;">削除</button>
+                </div>
+                <div class="modal-footer-right">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" id="btn-modal-save-item">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back to top -->
+    <button id="back-to-top" class="back-to-top" style="
+        position: fixed; right: 20px; bottom: 20px; 
+        width: 40px; height: 40px; border-radius: 50%; 
+        background: var(--primary); color: #fff; border: none; 
+        font-size: 1.2rem; cursor: pointer; opacity: 0; pointer-events: none; transition: 0.3s;
+        z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    ">↑</button>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="common.js"></script>
+    <script src="detail.js?v=8"></script>
+
+    <script>
+        document.getElementById('mobile-toggle')?.addEventListener('click', function () {
+            document.body.classList.toggle('sidebar-open');
+        });
+
+        const btnTop = document.getElementById('back-to-top');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                btnTop.style.opacity = '1';
+                btnTop.style.pointerEvents = 'auto';
+            } else {
+                btnTop.style.opacity = '0';
+                btnTop.style.pointerEvents = 'none';
+            }
+        });
+        btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    </script>
+</body>
+
+</html>
