@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>顧客詳細 - LAPIS2</title>
+    <title>官公庁マスタ - LAPIS2</title>
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -106,6 +106,15 @@
                 transform: translateY(0);
             }
         }
+
+        /* User requested 13pt for the Search Filter section ("検索フィルタ" to "有効のみ") */
+        .block-title,
+        .filter-item label,
+        .filter-item .form-select,
+        .filter-item .form-control,
+        .filter-item input[type="checkbox"]+label {
+            font-size: 13pt !important;
+        }
     </style>
 </head>
 
@@ -130,7 +139,7 @@
 
                 <li class="nav-header">Management</li>
                 <li class="nav-item">
-                    <a href="customer_list.html" class="active">
+                    <a href="customer_list.html">
                         <span class="nav-icon">🏢</span>
                         <span class="nav-label">顧客管理</span>
                     </a>
@@ -168,7 +177,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="government_office_list.html">
+                    <a href="government_office_list.html" class="active">
                         <span class="nav-icon">🏛️</span>
                         <span class="nav-label">官公庁マスタ</span>
                     </a>
@@ -185,9 +194,9 @@
                     <button id="mobile-toggle"
                         style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted); display: none;">☰</button>
                     <div class="header-breadcrumb">
-                        <a href="customer_list.html" style="text-decoration: none; color: var(--text-muted);">顧客一覧</a>
+                        <a href="index.html" style="text-decoration: none; color: var(--text-muted);">トップ</a>
                         <span style="margin: 0 8px; color: var(--text-muted);">/</span>
-                        <span id="header-customer-name">読み込み中...</span>
+                        <span id="header-page-name">官公庁マスタ</span>
                     </div>
                 </div>
                 <div class="header-right" id="header-right">
@@ -202,122 +211,131 @@
                 <!-- Actions Bar -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h2 id="page-title" style="margin: 0; font-size: 1.5rem; color: var(--text-main);">顧客詳細</h2>
-                        <p style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.9rem;"
-                            id="customer-id-display">ID: -</p>
+                        <h2 id="page-title" style="margin: 0; font-size: 1.5rem; color: var(--text-main);">官公庁マスタ</h2>
                     </div>
                     <div class="detail-header-actions">
-                        <button id="btn-edit-customer" class="btn btn-primary">
-                            <span>✏️</span> 編集
-                        </button>
-                        <button id="btn-delete-customer" class="btn btn-danger-outline">
-                            <span>🗑️</span> 削除
-                        </button>
+                        <a href="government_office_detail.html?id=new" class="btn btn-primary">
+                            <span>＋</span> 新規登録
+                        </a>
                     </div>
                 </div>
 
-                <!-- Tabs -->
-                <div class="tab-nav">
-                    <button class="tab-btn active" data-tab="basic-info">基本情報</button>
-                    <button class="tab-btn" data-tab="licenses">許認可情報</button>
-                    <button class="tab-btn" data-tab="projects">案件履歴</button>
-                    <!-- Add more tabs as needed from original -->
-                </div>
-
-                <!-- Tab Content: Basic Info -->
-                <div id="tab-basic-info" class="tab-content active">
-                    <div class="info-card">
-                        <h3 class="info-section-title">基本情報</h3>
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <label>顧客名</label>
-                                <div class="value" id="val-customer-name">-</div>
-                            </div>
-                            <div class="info-item">
-                                <label>フリガナ</label>
-                                <div class="value" id="val-customer-name-kana">-</div>
-                            </div>
-                            <div class="info-item">
-                                <label>代表者名</label>
-                                <div class="value" id="val-ceo-name">-</div>
-                            </div>
-                            <div class="info-item">
-                                <label>電話番号</label>
-                                <div class="value" id="val-phone">-</div>
-                            </div>
-                            <div class="info-item">
-                                <label>種別</label>
-                                <div class="value" id="val-type">-</div> <!-- Individual/Corporation -->
-                            </div>
-                            <div class="info-item">
-                                <label>登録日</label>
-                                <div class="value" id="val-created-at">-</div>
-                            </div>
+                <div class="block">
+                    <div class="block-header">
+                        <h3 class="block-title">検索フィルタ</h3>
+                        <div class="block-options">
+                            <!-- Reset button moved to bottom -->
                         </div>
                     </div>
-
-                    <div class="info-card">
-                        <h3 class="info-section-title">住所情報</h3>
-                        <div class="info-grid">
-                            <div class="info-item" style="grid-column: span 2;">
-                                <label>住所</label>
-                                <div class="value" id="val-address">-</div>
+                    <div class="block-content">
+                        <div class="filter-bar" style="font-size: 0.95rem;">
+                            <!-- フォントサイズ調整: sidebar (0.95rem) に合わせる -->
+                            <div class="filter-item">
+                                <label for="filter-prefecture" style="font-size: 0.9rem;">都道府県</label>
+                                <select id="filter-prefecture" class="form-select" style="font-size: 0.95rem;">
+                                    <option value="">すべて</option>
+                                    <option value="北海道">北海道</option>
+                                    <option value="青森県">青森県</option>
+                                    <option value="岩手県">岩手県</option>
+                                    <option value="宮城県">宮城県</option>
+                                    <option value="秋田県">秋田県</option>
+                                    <option value="山形県">山形県</option>
+                                    <option value="福島県">福島県</option>
+                                    <option value="茨城県">茨城県</option>
+                                    <option value="栃木県">栃木県</option>
+                                    <option value="群馬県">群馬県</option>
+                                    <option value="埼玉県">埼玉県</option>
+                                    <option value="千葉県">千葉県</option>
+                                    <option value="東京都">東京都</option>
+                                    <option value="神奈川県">神奈川県</option>
+                                    <option value="新潟県">新潟県</option>
+                                    <option value="富山県">富山県</option>
+                                    <option value="石川県">石川県</option>
+                                    <option value="福井県">福井県</option>
+                                    <option value="山梨県">山梨県</option>
+                                    <option value="長野県">長野県</option>
+                                    <option value="岐阜県">岐阜県</option>
+                                    <option value="静岡県">静岡県</option>
+                                    <option value="愛知県">愛知県</option>
+                                    <option value="三重県">三重県</option>
+                                    <option value="滋賀県">滋賀県</option>
+                                    <option value="京都府">京都府</option>
+                                    <option value="大阪府">大阪府</option>
+                                    <option value="兵庫県">兵庫県</option>
+                                    <option value="奈良県">奈良県</option>
+                                    <option value="和歌山県">和歌山県</option>
+                                    <option value="鳥取県">鳥取県</option>
+                                    <option value="島根県">島根県</option>
+                                    <option value="岡山県">岡山県</option>
+                                    <option value="広島県">広島県</option>
+                                    <option value="山口県">山口県</option>
+                                    <option value="徳島県">徳島県</option>
+                                    <option value="香川県">香川県</option>
+                                    <option value="愛媛県">愛媛県</option>
+                                    <option value="高知県">高知県</option>
+                                    <option value="福岡県">福岡県</option>
+                                    <option value="佐賀県">佐賀県</option>
+                                    <option value="長崎県">長崎県</option>
+                                    <option value="熊本県">熊本県</option>
+                                    <option value="大分県">大分県</option>
+                                    <option value="宮崎県">宮崎県</option>
+                                    <option value="鹿児島県">鹿児島県</option>
+                                    <option value="沖縄県">沖縄県</option>
+                                </select>
                             </div>
-                            <!-- Add mail address, etc if needed -->
+                            <div class="filter-item">
+                                <label for="filter-type" style="font-size: 0.9rem;">種別</label>
+                                <select id="filter-type" class="form-select" style="font-size: 0.95rem;">
+                                    <option value="">すべて</option>
+                                    <option value="国">国</option>
+                                    <option value="都道府県">都道府県</option>
+                                    <option value="市町村">市町村</option>
+                                    <option value="その他">その他</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label for="filter-office-name" style="font-size: 0.9rem;">官公庁名</label>
+                                <input type="text" id="filter-office-name" class="form-control" placeholder="名称で検索..."
+                                    style="font-size: 0.95rem;">
+                            </div>
+                            <div class="filter-item" style="padding-bottom: 2px;">
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                    <input type="checkbox" id="filter-status-active" style="width: 18px; height: 18px;"
+                                        checked>
+                                    <label for="filter-status-active"
+                                        style="margin:0; cursor:pointer; font-size: 0.9rem;">有効のみ</label>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- ボタンを下部に移動 -->
+                        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                            <button class="btn btn-sm btn-secondary" id="btn-reset"
+                                style="padding: 8px 16px; font-size: 0.95rem;">リセット</button>
+                            <button id="btn-search" class="btn btn-primary"
+                                style="padding: 8px 24px; font-size: 0.95rem;">
+                                <span>🔍</span> 検索
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tab Content: Licenses -->
-                <div id="tab-licenses" class="tab-content">
-                    <div class="block">
-                        <div class="block-header" style="display: flex; justify-content: space-between;">
-                            <h3 class="block-title">許認可一覧</h3>
-                            <button class="btn btn-sm btn-primary" id="btn-add-license">＋ 許認可追加</button>
-                        </div>
-                        <div class="block-content" style="padding: 0;">
-                            <div class="table-responsive">
-                                <table class="table-modern" id="license-table">
-                                    <thead>
-                                        <tr>
-                                            <th>種類</th>
-                                            <th>番号</th>
-                                            <th>有効期限</th>
-                                            <th>状態</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="license-list-body">
-                                        <!-- JS populated -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab Content: Projects -->
-                <div id="tab-projects" class="tab-content">
-                    <div class="block">
-                        <div class="block-header" style="display: flex; justify-content: space-between;">
-                            <h3 class="block-title">案件履歴</h3>
-                            <button class="btn btn-sm btn-primary" id="btn-add-project">＋ 案件追加</button>
-                        </div>
-                        <div class="block-content" style="padding: 0;">
-                            <div class="table-responsive">
-                                <table class="table-modern" id="project-table">
-                                    <thead>
-                                        <tr>
-                                            <th>案件名</th>
-                                            <th>ステータス</th>
-                                            <th>受任日</th>
-                                            <th>担当者</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="project-list-body">
-                                        <!-- JS populated -->
-                                    </tbody>
-                                </table>
-                            </div>
+                <div id="results-section" class="block" style="display: none;">
+                    <div class="block-content" style="padding: 0;">
+                        <div class="table-responsive">
+                            <table class="table-modern" id="office-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" data-sort="office_id">ID</th>
+                                        <th class="sortable" data-sort="office_name">名称</th>
+                                        <th class="sortable" data-sort="office_prefecture">都道府県</th>
+                                        <th class="sortable" data-sort="office_type">種別</th>
+                                        <th class="sortable" data-sort="status">状態</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="office-list-body">
+                                    <!-- JS populated -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -338,9 +356,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="firebase-config.js"></script>
-    <script src="common.js"></script>
-    <script src="customer_detail.js"></script>
+    <script src="firebase-config.js?v=20260219v14"></script>
+    <script src="common.js?v=20260219v14"></script>
+    <script src="government_office_list.js?v=20260219v14"></script>
 
     <script>
         document.getElementById('mobile-toggle')?.addEventListener('click', function () {

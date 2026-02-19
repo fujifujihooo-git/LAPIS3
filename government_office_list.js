@@ -17,14 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSort = { column: 'office_id', direction: 'asc' };
 
     async function init() {
-        try {
-            console.log('[government_office_list.js] init() called');
-            console.log('Fetching Government Offices from Firestore...');
-            offices = await getAllFromFirestore('government_offices');
-        } catch (error) {
-            console.error('Error fetching offices:', error);
-            showToast('データの取得に失敗しました', 'error');
-        }
+        console.log('[government_office_list.js] init() called');
+        // 初期データ読み込みは行わない（検索ボタン押下時のみ）
 
         // Sorting header listeners
         document.querySelectorAll('#office-table th.sortable').forEach(th => {
@@ -33,39 +27,85 @@ document.addEventListener('DOMContentLoaded', () => {
                 const direction = currentSort.column === column && currentSort.direction === 'asc' ? 'desc' : 'asc';
                 currentSort = { column, direction };
 
-                updateSortIndicators('office-table', column, direction);
                 filteredData = handleSort('office-table', filteredData, column, 'string', direction);
                 renderTable(true); // skip filtering
             });
         });
 
-        // デフォルトでは一覧を表示しない（検索ボタンを押した時のみ表示）
+        // 検索条件未入力時のメッセージ表示
+        listBody.innerHTML = `<tr><td colspan="5" class="no-data-cell" style="text-align: center; padding: 20px; color: var(--text-muted);">検索条件を入力して検索ボタンを押してください。</td></tr>`;
+        resultsSection.style.display = 'block';
+    }
+
+    async function searchOffices() {
+        const prefVal = filterPrefecture.value;
+        const typeVal = filterType.value;
+        const nameVal = filterOfficeName ? filterOfficeName.value.trim() : '';
+        const onlyActive = filterStatusActive.checked;
+
+        // クエリ発行条件のチェック（全件取得防止）
+        if (!prefVal && !typeVal && !nameVal) {
+            showToast('検索条件（都道府県、種別、または官公庁名）を少なくとも1つ指定してください', 'error');
+            return;
+        }
+
+        try {
+            console.log('Searching Government Offices...');
+            let query = db.collection('government_offices');
+
+            // 複合クエリにはインデックスが必要になる場合があるため、
+            // 簡易的にクライアントサイドフィルタリングと組み合わせるか、可能な範囲でクエリ絞り込みを行う。
+            // ここでは等価条件を優先して適用する。
+
+            if (prefVal) {
+                query = query.where('office_prefecture', '==', prefVal);
+            }
+            if (typeVal) {
+                if (typeVal === '市町村') {
+                    // DB上は「市区町村」となっているため、それを検索
+                    query = query.where('office_type', '==', '市区町村');
+                } else {
+                    query = query.where('office_type', '==', typeVal);
+                }
+            }
+            // ステータスでの絞り込みはインデックスが必要になる可能性が高いため、クライアントサイドで行うか、
+            // インデックス作成を許容して .where('status', '==', '有効') を追加する。
+            // 今回は既存実装に合わせてクライアントサイドフィルタリングを併用するが、
+            // データ量が多い場合はインデックスを作成してサーバーサイドで絞り込むべき。
+
+            const snapshot = await query.get();
+            let results = snapshot.docs.map(doc => doc.data());
+
+            // 官公庁名の部分一致検索（Firestoreは前方一致のみ標準対応だが、ここではJSで柔軟にフィルタする）
+            if (nameVal) {
+                const searchLower = nameVal.toLowerCase();
+                results = results.filter(o => (o.office_name || '').toLowerCase().includes(searchLower));
+            }
+
+            // ステータスフィルタ
+            if (onlyActive) {
+                results = results.filter(o => o.status === '有効');
+            }
+
+            offices = results; // 保存してソート等で再利用
+            filteredData = results;
+
+            // Default Sort
+            filteredData = handleSort('office-table', filteredData, currentSort.column, 'string', currentSort.direction);
+            updateSortIndicators('office-table', currentSort.column, currentSort.direction);
+
+            renderTable(true); // データは既にフィルタ済みなのでそのまま描画
+            showToast(`${filteredData.length}件のデータが見つかりました`);
+
+        } catch (error) {
+            console.error('Error searching offices:', error);
+            showToast('検索中にエラーが発生しました', 'error');
+        }
     }
 
     function renderTable(isSorted = false) {
-        if (!isSorted) {
-            const prefVal = filterPrefecture.value;
-            const typeVal = filterType.value;
-            const nameVal = filterOfficeName ? filterOfficeName.value.trim().toLowerCase() : '';
-            const onlyActive = filterStatusActive.checked;
-
-
-            filteredData = offices.filter(o => {
-                const matchPref = prefVal === '' || o.office_prefecture === prefVal;
-                const matchType = typeVal === '' || o.office_type === typeVal;
-                const matchStatus = !onlyActive || o.status === '有効';
-
-                // 官公庁名の部分一致検索
-                const nameLower = (o.office_name || '').toLowerCase();
-                const matchName = nameVal === '' || nameLower.includes(nameVal);
-
-                return matchPref && matchType && matchStatus && matchName;
-            });
-
-            // Current Sort Apply
-            filteredData = handleSort('office-table', filteredData, currentSort.column, 'string', currentSort.direction);
-            updateSortIndicators('office-table', currentSort.column, currentSort.direction);
-        }
+        // searchOfficesでデータは絞り込み済みだが、ソート時などに呼ばれることがある
+        // ここではfilteredDataを描画するだけにする
 
         listBody.innerHTML = '';
 
@@ -94,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 検索ボタンクリック
-    btnSearch.addEventListener('click', () => renderTable());
+    btnSearch.addEventListener('click', () => searchOffices());
 
     // リセットボタンクリック
     btnReset.addEventListener('click', () => {
@@ -102,19 +142,26 @@ document.addEventListener('DOMContentLoaded', () => {
         filterType.value = '';
         filterOfficeName.value = '';
         filterStatusActive.checked = true;
-        renderTable(); // Re-render with reset filters
+
+        // リセット時はクリアしてメッセージを表示
+        offices = [];
+        filteredData = [];
+        listBody.innerHTML = `<tr><td colspan="5" class="no-data-cell">検索条件を入力して検索ボタンを押してください。</td></tr>`;
     });
 
     // Enterキーでも検索できるように設定
     [filterPrefecture, filterType, filterOfficeName].forEach(el => {
         el.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') renderTable();
+            if (e.key === 'Enter') searchOffices();
         });
     });
 
-    btnNewOffice.addEventListener('click', () => {
-        window.location.href = 'government_office_detail.html';
-    });
+    // btnNewOffice はHTMLから削除されている可能性があるが、もし存在すれば維持
+    if (btnNewOffice) {
+        btnNewOffice.addEventListener('click', () => {
+            window.location.href = 'government_office_detail.html';
+        });
+    }
 
     init();
 });

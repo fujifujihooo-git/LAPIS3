@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let fetchId = null;
 
         // 1. Determine ID to search for
-        if (officeIdParam) {
+        if (officeIdParam && officeIdParam !== 'new') {
             // Check if param is purely numeric
             if (/^\d+$/.test(officeIdParam)) {
                 fetchId = parseInt(officeIdParam); // Use number for query
@@ -32,11 +32,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 let foundDoc = null;
 
                 // Strategy A: Query by Number 'office_id'
+                console.log(`[Detail] Strategy A: Querying office_id == ${Number(officeId)} (Number)`);
                 let snapshot = await db.collection('government_offices').where('office_id', '==', Number(officeId)).get();
 
                 if (snapshot.empty) {
                     // Strategy B: Query by String 'office_id'
-                    console.log('[Detail] Strategy A failed. Trying Strategy B (String ID)...');
+                    console.log(`[Detail] Strategy A failed. Strategy B: Querying office_id == "${String(officeId)}" (String)`);
                     snapshot = await db.collection('government_offices').where('office_id', '==', String(officeId)).get();
                 }
 
@@ -44,25 +45,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     foundDoc = snapshot.docs[0];
                     currentOffice = foundDoc.data();
                     currentOffice._docId = foundDoc.id;
-                    console.log('[Detail] Document found:', foundDoc.id);
+                    console.log('[Detail] Document found via Query:', foundDoc.id, currentOffice);
                 } else {
                     // Strategy C: Try fetching by Document ID direct (fallback for legacy links)
-                    // e.g. param 'off_123' or '123' treated as doc ID
                     const docIdTry = String(officeId).startsWith('off_') ? String(officeId) : `off_${officeId}`;
-                    console.log(`[Detail] Strategy B failed. Trying Strategy C (Doc ID: ${docIdTry})...`);
+                    console.log(`[Detail] Strategy B failed. Strategy C: Fetching Doc ID "${docIdTry}"...`);
                     const docRef = await db.collection('government_offices').doc(docIdTry).get();
                     if (docRef.exists) {
                         foundDoc = docRef;
                         currentOffice = docRef.data();
                         currentOffice._docId = docRef.id;
-                        console.log('[Detail] Document found by Doc ID:', docRef.id);
+                        console.log('[Detail] Document found via Doc ID:', docRef.id, currentOffice);
+                    } else {
+                        // Strategy D: Try raw ID as Doc ID (e.g. "11002")
+                        console.log(`[Detail] Strategy C failed. Strategy D: Fetching Doc ID "${officeId}"...`);
+                        const rawDocRef = await db.collection('government_offices').doc(String(officeId)).get();
+                        if (rawDocRef.exists) {
+                            foundDoc = rawDocRef;
+                            currentOffice = rawDocRef.data();
+                            currentOffice._docId = rawDocRef.id;
+                            console.log('[Detail] Document found via Raw Doc ID:', rawDocRef.id, currentOffice);
+                        }
                     }
                 }
 
                 if (currentOffice) {
                     // Ensure officeId is correctly set from the found document's office_id
                     officeId = currentOffice.office_id;
-                    pageTitle.textContent = '官公庁編集';
+                    pageTitle.textContent = '官公庁詳細';
                     officeIdDisplay.textContent = `Office ID: ${currentOffice.office_id}`;
                     populateForm(currentOffice);
                     btnDelete.style.display = 'block';
@@ -78,6 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             pageTitle.textContent = '官公庁新規登録';
+            // Hide delete button for new registration
+            if (btnDelete) btnDelete.style.display = 'none';
+
             // 新規登録時は次のIDをデフォルトでセット
             try {
                 const nextId = await getNextSequence('government_offices');
@@ -198,4 +211,46 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     init();
+    // --- Address Search Logic ---
+    const btnSearchAddress = document.getElementById('btn-search-address');
+    const postalCodeInput = document.getElementById('postal_code');
+    const addressInput = document.getElementById('address');
+
+    if (btnSearchAddress && postalCodeInput && addressInput) {
+        btnSearchAddress.addEventListener('click', async () => {
+            const zip = postalCodeInput.value.trim().replace(/-/g, '');
+            if (!/^\d{7}$/.test(zip)) {
+                alert('7桁の郵便番号を入力してください（例：1000001）');
+                return;
+            }
+
+            try {
+                // Determine button state to prevent double clicks
+                btnSearchAddress.disabled = true;
+                btnSearchAddress.textContent = '検索中...';
+
+                const response = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`);
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                const data = await response.json();
+
+                if (data.status === 200 && data.results) {
+                    const result = data.results[0];
+                    const fullAddress = result.address1 + result.address2 + result.address3;
+                    addressInput.value = fullAddress;
+                    // Optional: If you have a toast function, use it. Otherwise alert or console.
+                    console.log('Address found:', fullAddress);
+                } else {
+                    alert('該当する住所が見つかりませんでした。');
+                }
+            } catch (error) {
+                console.error('Address search error:', error);
+                alert('住所の取得に失敗しました。');
+            } finally {
+                btnSearchAddress.disabled = false;
+                btnSearchAddress.textContent = '検索';
+            }
+        });
+    }
+
 });
