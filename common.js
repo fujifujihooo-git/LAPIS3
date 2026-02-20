@@ -76,8 +76,14 @@ function checkAuth() {
             }
         } else {
             // セッション情報を最新に保つために Firestore から取得
+            // セッション情報を最新に保つために Firestore から取得
             const session = JSON.parse(localStorage.getItem('lapis2_session'));
-            if (!session || session.email !== user.email) {
+
+            // Modified: Do NOT auto-create session if on login page (let login.js handle 2FA)
+            // or if 2FA is explicitly pending.
+            const is2faPending = sessionStorage.getItem('lapis2_2fa_pending') === 'true';
+
+            if ((!session || session.email !== user.email) && !isLoginPage && !is2faPending) {
                 const staffData = await getDocFromFirestore('staff', 'email', user.email);
                 if (staffData) {
                     const newSession = {
@@ -89,12 +95,20 @@ function checkAuth() {
                     localStorage.setItem('lapis2_session', JSON.stringify(newSession));
                     renderUserStatus(newSession);
                 }
-            } else {
+            } else if (session && !is2faPending) {
                 renderUserStatus(session);
             }
 
             if (isLoginPage) {
-                window.location.href = 'index.html';
+                // Modified: Only redirect if session exists (2FA/Staff check completed)
+                // AND 2FA is NOT pending
+                const session = JSON.parse(localStorage.getItem('lapis2_session'));
+                const is2faPending = sessionStorage.getItem('lapis2_2fa_pending') === 'true';
+
+                if (session && session.email === user.email && !is2faPending) {
+                    window.location.href = 'index.html';
+                }
+                // Otherwise, stay on login page to allow 2FA flow (login.js handles the rest)
             }
         }
     });

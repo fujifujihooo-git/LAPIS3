@@ -104,7 +104,53 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
+    <script src="js/auth_2fa.js"></script>
     <script src="login.js"></script>
+
+    <!-- OTP Modal -->
+    <div id="otp-modal" class="modal" style="display: none;">
+        <div class="modal-content login-card" style="margin: 10% auto; padding: 40px; max-width: 500px;">
+            <h2
+                style="color: var(--primary); font-family: 'BIZ UDGothic', sans-serif; font-weight: 700; margin-bottom: 24px;">
+                認証コード入力
+            </h2>
+            <p style="text-align: left; font-size: 1.1rem; margin-bottom: 20px;">
+                メールに送信された6桁の数字を入力してください。
+            </p>
+
+            <form id="otp-form">
+                <div class="form-group">
+                    <label for="otp-code" style="font-size: 1.2rem;">認証コード</label>
+                    <input type="text" id="otp-code" class="form-control" placeholder="123456" maxlength="6"
+                        pattern="\d{6}" required
+                        style="font-size: 2rem; letter-spacing: 0.5rem; text-align: center; height: 70px;">
+                </div>
+
+                <div class="form-group" style="text-align: center; margin-bottom: 24px;">
+                    <input type="checkbox" id="trust-device-check"
+                        style="transform: scale(1.5); margin-right: 10px; cursor: pointer;">
+                    <label for="trust-device-check"
+                        style="display: inline-block; font-family: 'BIZ UDGothic', sans-serif; font-size: 1.1rem; font-weight: 700; cursor: pointer; color: var(--text-main);">
+                        このデバイスを30日間信頼する
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-login"
+                    style="height: 60px; font-size: 1.3rem; margin-top: 24px; background-color: #4D90FE;">
+                    認証してログイン
+                </button>
+            </form>
+
+            <div style="margin-top: 24px; text-align: center;">
+                <button id="btn-resend-otp" class="btn btn-secondary" style="font-size: 1rem;">
+                    コードを再送信
+                </button>
+                <div style="margin-top: 16px;">
+                    <a href="#" id="link-back-login" style="color: var(--text-muted);">ログイン画面に戻る</a>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

@@ -1,17 +1,17 @@
 console.log('[staff_list.js] Script file loaded');
+
 // Global state
-let staffMembers = [];
-let filteredData = [];
 let currentSort = { column: 'staff_id', direction: 'asc' }; // Default sort by ID
 
 document.addEventListener('DOMContentLoaded', async () => {
     // DOM Elements
     const staffListBody = document.getElementById('staff-list-body');
-    const filterStatus = document.getElementById('filter-status'); // Ensure ID matches HTML
-    const filterRole = document.getElementById('filter-role');     // Ensure ID matches HTML
-    const searchName = document.getElementById('search-name');     // Ensure ID matches HTML
-    const btnNew = document.getElementById('btn-new-staff');
+    const filterStatus = document.getElementById('filter-status');
+    const filterRole = document.getElementById('filter-role');
+    const searchName = document.getElementById('search-name');
+    const btnSearch = document.getElementById('btn-search');
     const btnReset = document.getElementById('btn-reset');
+    const btnNew = document.getElementById('btn-new-staff');
     const resultsSection = document.getElementById('results-section-staff');
 
     // Initialize
@@ -20,29 +20,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function init() {
         console.log('[staff_list.js] init() called');
 
-        try {
-            // Fetch data
-            staffMembers = await getAllFromFirestore('staff');
-
-            // Initial filter/sort application
-            filterAndRender();
-
-        } catch (error) {
-            console.error('Error fetching staff:', error);
-            showToast('データの取得に失敗しました', 'error');
-        }
+        // Note: No auto-fetch on load (Constraint: Reduce quota/initial load)
+        // User must click Search to see data.
 
         // Event Listeners
-        if (filterStatus) filterStatus.addEventListener('change', () => filterAndRender());
-        if (filterRole) filterRole.addEventListener('change', () => filterAndRender());
-        if (searchName) searchName.addEventListener('input', () => filterAndRender());
+        if (btnSearch) {
+            btnSearch.addEventListener('click', executeSearch);
+        }
 
         if (btnReset) {
             btnReset.addEventListener('click', () => {
                 if (filterStatus) filterStatus.value = '在籍';
                 if (filterRole) filterRole.value = '';
                 if (searchName) searchName.value = '';
-                filterAndRender();
+
+                // Clear results
+                if (staffListBody) staffListBody.innerHTML = '';
+                if (resultsSection) resultsSection.style.display = 'none';
             });
         }
 
@@ -52,47 +46,113 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
+        // Enter key support
+        [searchName, filterStatus, filterRole].forEach(el => {
+            if (el) {
+                el.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') executeSearch();
+                });
+            }
+        });
+
         // Sorting
         document.querySelectorAll('#staff-table th.sortable').forEach(th => {
             th.addEventListener('click', () => {
                 const column = th.dataset.sort;
+                // Toggle direction
                 const direction = currentSort.column === column && currentSort.direction === 'asc' ? 'desc' : 'asc';
                 currentSort = { column, direction };
                 updateSortIndicators('staff-table', column, direction);
-                filterAndRender(); // Re-render with new sort
+
+                // Re-sort currently displayed rows (Client-side sort of current results)
+                sortCurrentTable();
             });
         });
     }
 
-    function filterAndRender() {
-        let data = [...staffMembers];
+    async function executeSearch() {
+        console.log('Execute Search');
 
-        // 1. Filter
+        // 1. Build Query
+        let query = db.collection('staff');
+
         const sVal = filterStatus ? filterStatus.value : '';
         const rVal = filterRole ? filterRole.value : '';
-        const nameVal = searchName ? searchName.value.trim().toLowerCase() : '';
+        const nameVal = searchName ? searchName.value.trim() : '';
 
-        data = data.filter(item => {
-            // Status: If filter is empty, show all. If '在籍', show only '在籍'.
-            // Note: If you want specific default behavior (e.g. valid only), handle that in init or here.
-            // HTML value should drive this.
-            const matchStatus = sVal === '' || item.status === sVal;
-            const matchRole = rVal === '' || item.role === rVal;
+        // Apply Filters (Server-side)
+        if (sVal) {
+            query = query.where('status', '==', sVal);
+        }
+        if (rVal) {
+            query = query.where('role', '==', rVal);
+        }
 
-            const fullName = (item.staff_name || '') + (item.staff_kana || '');
-            const matchName = nameVal === '' || fullName.toLowerCase().includes(nameVal);
+        try {
+            if (resultsSection) resultsSection.style.display = 'block';
+            if (staffListBody) staffListBody.innerHTML = '<tr><td colspan="7" class="loading-cell">検索中...</td></tr>';
 
-            return matchStatus && matchRole && matchName;
-        });
+            const snapshot = await query.get();
 
-        // 2. Sort
-        // Use handleSort from common.js if available, or local implementation
-        // Assuming handleSort supports (tableId, data, column, type, direction)
-        // staff_id comes as number usually, but let's be safe
-        data = handleSort('staff-table', data, currentSort.column, currentSort.column === 'staff_id' ? 'number' : 'string', currentSort.direction);
+            if (snapshot.empty) {
+                renderTable([]);
+                return;
+            }
 
-        filteredData = data;
-        renderTable(data);
+            let data = snapshot.docs.map(doc => doc.data());
+
+            // 2. Client-side Filter (for Name/ID)
+            // Firestore cannot easily do "contains" for strings.
+            if (nameVal) {
+                const lowerName = nameVal.toLowerCase();
+                data = data.filter(item => {
+                    const fullName = (item.staff_name || '') + (item.staff_kana || '');
+                    const strId = String(item.staff_id || '');
+
+                    // Match Name or ID
+                    return fullName.toLowerCase().includes(lowerName) || strId.includes(lowerName);
+                });
+            }
+
+            // 3. Initial Sort
+            data = handleSort('staff-table', data, currentSort.column, currentSort.column === 'staff_id' ? 'number' : 'string', currentSort.direction);
+
+            renderTable(data);
+
+        } catch (error) {
+            console.error('Search Error:', error);
+
+            let errorMsg = '検索中にエラーが発生しました。';
+            // Index Error Detection
+            if (error.message && error.message.includes('requires an index')) {
+                errorMsg = '複合クエリのインデックスが必要です。コンソールを確認してください。';
+                console.warn('Click the link in the error above to create the index in Firebase Console.');
+            }
+
+            if (staffListBody) {
+                staffListBody.innerHTML = `<tr><td colspan="7" class="error-cell">${errorMsg}</td></tr>`;
+            }
+        }
+    }
+
+    function sortCurrentTable() {
+        // Retrieve current data from DOM or state? 
+        // Since we don't keep global state of "current results" easily without fetching again or parsing DOM,
+        // let's parse DOM or keep a temp variable.
+        // For simplicity and robustness, let's re-trigger search? No, that costs reads.
+        // Let's use the common.js sortTable which sorts the DOM.
+
+        // Determine column index based on dataset-sort
+        const th = document.querySelector(`th[data-sort="${currentSort.column}"]`);
+        if (!th) return;
+
+        // Get index
+        const headers = Array.from(th.parentNode.children);
+        const index = headers.indexOf(th);
+
+        if (index >= 0) {
+            sortTable(document.getElementById('staff-table'), index, currentSort.direction === 'asc');
+        }
     }
 
     function renderTable(data) {
@@ -101,7 +161,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (data.length === 0) {
             staffListBody.innerHTML = `<tr><td colspan="7" class="no-data-cell">該当するデータがありません</td></tr>`;
-            if (resultsSection) resultsSection.style.display = 'block';
             return;
         }
 
@@ -113,7 +172,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             const statusClass = getStaffStatusClass(item.status);
-            const lastUpdatedDate = formatDate(item.last_updated); // common.js utility
+            const lastUpdatedDate = formatDate(item.last_updated);
 
             row.innerHTML = `
                 <td><span style="color: var(--text-muted); font-family: monospace;">${item.staff_id}</span></td>
@@ -130,41 +189,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             staffListBody.appendChild(row);
         });
 
-        // filterRole.addEventListener('change', () => renderTable(staffMembers));
-        // searchName.addEventListener('input', () => renderTable(staffMembers));
+        // Update indicators
+        updateSortIndicators('staff-table', currentSort.column, currentSort.direction);
+    }
 
-        // Search Button
-        document.getElementById('btn-search').addEventListener('click', () => renderTable(staffMembers));
-
-        // Reset Button
-        document.getElementById('btn-reset').addEventListener('click', () => {
-            filterStatus.value = '在籍'; // Default to Active? Original HTML had first option '在籍', wait let's check
-            // Original HTML: <option value="在籍">在籍</option> is first.
-            // It's safer to just set to empty if "All" is desired, or '在籍' if checking default. 
-            // User didn't specify default, but standard reset usually goes to "All" or "Default".
-            // Let's look at `staff_list.html` again.
-            // Option 1: '在籍', Option 4: ''.
-            // Usually reset means "clear filters".
-            // In government_office_list, reset cleared everything.
-            filterStatus.value = '在籍';
-            filterRole.value = '';
-            searchName.value = '';
-
-            // Clear and hide
-            staffListBody.innerHTML = '';
-            document.getElementById('results-section-staff').style.display = 'none';
-        });
-
-        // Enter key support
-        [searchName, filterStatus, filterRole].forEach(el => {
-            el.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') renderTable(staffMembers);
-            });
-        });
-
-        btnNewStaff.addEventListener('click', () => {
-            window.location.href = 'staff_detail.html?id=new';
-        });
-
-        init();
-    });
+    // Helper for Status Class (Local or Common?)
+    // If common.js doesn't have it, define here.
+    function getStaffStatusClass(status) {
+        if (status === '在籍') return 'status-active'; // You might need to add CSS for this
+        if (status === '休職') return 'status-warning';
+        if (status === '退職') return 'status-inactive';
+        return '';
+    }
+});

@@ -15,7 +15,7 @@
     <style>
         /* Local overrides for detail pages */
         .form-section-title {
-            font-size: 1.1rem;
+            font-size: 13pt;
             font-weight: 600;
             margin-bottom: 20px;
             padding-bottom: 8px;
@@ -35,7 +35,7 @@
             margin-bottom: 8px;
             font-weight: 500;
             color: var(--text-main);
-            font-size: 0.9rem;
+            font-size: 13pt;
         }
 
         .required {
@@ -50,7 +50,7 @@
             padding: 10px 12px;
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            font-size: 0.95rem;
+            font-size: 13pt;
             transition: all 0.2s;
             background: #fff;
         }
@@ -157,13 +157,15 @@
 
                 <!-- Actions Bar -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
+                    <!-- Left: Back Button + Title -->
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">担当者情報編集</h2>
-                    </div>
-                    <div class="d-flex gap-2">
                         <button type="button" class="btn btn-secondary" id="btn-back">
                             <span>←</span> 一覧へ
                         </button>
+                        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">担当者詳細</h2>
+                    </div>
+                    <!-- Right: Delete, Save Buttons -->
+                    <div class="d-flex gap-2">
                         <button type="button" class="btn btn-danger-outline" id="btn-delete" style="display: none;">
                             <span>🗑️</span> 削除
                         </button>
@@ -221,7 +223,7 @@
                                 <input type="email" id="email" class="form-control">
                             </div>
                         </div>
-                        <div class="form-grid" style="grid-template-columns: 150px 1fr;">
+                        <div class="form-grid" style="grid-template-columns: 240px 1fr;">
                             <div class="form-group">
                                 <label for="postal_code">郵便番号</label>
                                 <div style="display: flex; gap: 8px;">
