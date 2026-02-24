@@ -84,13 +84,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             let results = [];
 
             if (phoneVal) {
-                // 電話番号での検索（前方一致）
+                // 電話番号での検索（部分一致）
+                // Firestoreは部分一致(LIKE '%xx%')をサポートしないため、
+                // 全件取得しクライアント側でハイフン除去後に部分一致フィルタリング
+                // ※ 顧客データが数千件を超える場合はパフォーマンス低下の可能性あり
                 const snapshot = await db.collection('customers')
-                    .where('phone', '>=', phoneVal)
-                    .where('phone', '<=', phoneVal + '\uf8ff')
-                    .limit(50)
+                    .limit(500)
                     .get();
-                results = snapshot.docs.map(d => d.data());
+                const allCustomers = snapshot.docs.map(d => d.data());
+
+                // ハイフン除去済み文字列同士で部分一致比較
+                results = allCustomers.filter(c => {
+                    const targetPhone = (c.phone || '').replace(/-/g, '');
+                    return targetPhone.includes(phoneVal);
+                });
             } else if (searchVal) {
                 // 顧客名での検索：全件取得してクライアント側で部分一致フィルタリング
                 // Firestoreは部分一致検索をサポートしていないため、この方法を使用

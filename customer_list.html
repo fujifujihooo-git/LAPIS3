@@ -14,6 +14,20 @@
         rel="stylesheet">
     <style>
         /* Local overrides */
+
+        /* 13pt font for description and search section */
+        .description-text {
+            font-size: 13pt !important;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        .block-title,
+        .filter-item label,
+        .filter-item .form-select,
+        .filter-item .form-control {
+            font-size: 13pt !important;
+        }
     </style>
 </head>
 
@@ -81,6 +95,12 @@
                         <span class="nav-label">官公庁マスタ</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="license_types_list.html">
+                        <span class="nav-icon">📋</span>
+                        <span class="nav-label">許認可マスタ</span>
+                    </a>
+                </li>
             </ul>
         </nav>
         <!-- END Sidebar -->
@@ -105,19 +125,15 @@
 
                 <!-- Actions Bar -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">顧客情報の検索・登録・編集を行います。</p>
+                    <p class="description-text">顧客情報の検索・登録・編集を行います。</p>
                     <button id="btn-new-customer" class="btn btn-primary">
                         <span>＋</span> 新規顧客登録
                     </button>
                 </div>
 
-                <!-- Search & Filters -->
                 <div class="block">
                     <div class="block-header">
                         <h3 class="block-title">検索条件</h3>
-                        <div class="block-options">
-                            <button class="btn btn-sm btn-secondary" id="btn-reset-filters">すべてリセット</button>
-                        </div>
                     </div>
                     <div class="block-content">
                         <div class="filter-bar">
@@ -130,17 +146,22 @@
                                     <option value="取引終了">取引終了</option>
                                 </select>
                             </div>
-                            <div class="filter-item" style="flex: 2;">
+                            <div class="filter-item">
                                 <label for="filter-search">顧客名・フリガナ</label>
                                 <input type="text" id="filter-search" class="form-control" placeholder="顧客名またはカナで検索...">
                             </div>
-                            <div class="filter-item" style="flex: 1.5;">
+                            <div class="filter-item">
                                 <label for="filter-phone">電話番号</label>
-                                <div style="display: flex; gap: 8px;">
-                                    <input type="text" id="filter-phone" class="form-control" placeholder="番号で検索...">
-                                    <button id="btn-search-execute" class="btn btn-primary">検索</button>
-                                </div>
+                                <input type="text" id="filter-phone" class="form-control" placeholder="番号で検索...">
                             </div>
+                        </div>
+                        <!-- ボタンを下部に分離 -->
+                        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                            <button id="btn-reset-filters" class="btn btn-sm btn-secondary"
+                                style="padding: 8px 16px;">リセット</button>
+                            <button id="btn-search-execute" class="btn btn-primary" style="padding: 8px 24px;">
+                                <span>🔍</span> 検索
+                            </button>
                         </div>
                     </div>
                 </div>

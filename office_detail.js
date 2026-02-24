@@ -47,9 +47,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (officeIdParam === 'new') {
             officeTitle.textContent = '新規拠点登録';
-            officeIdDisplay.textContent = '新規登録';
-            createdDateDisplay.textContent = '保存時に設定';
-            lastUpdatedDisplay.textContent = '保存時に設定';
+            if (officeIdDisplay) officeIdDisplay.textContent = '新規登録';
+            if (createdDateDisplay) createdDateDisplay.textContent = '保存時に設定';
+            if (lastUpdatedDisplay) lastUpdatedDisplay.textContent = '保存時に設定';
             if (btnDelete) btnDelete.style.display = 'none';
 
             // Generate next ID preview (optional, or do on save)
@@ -86,15 +86,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function populateForm(data) {
-        officeIdDisplay.textContent = `Office ID: ${data.office_id}`;
-        officeTitle.textContent = `拠点詳細：${data.office_name}`;
-        createdDateDisplay.textContent = data.created_date || '-';
-        lastUpdatedDisplay.textContent = data.last_updated || '-';
+        if (officeIdDisplay) officeIdDisplay.textContent = `Office ID: ${data.office_id}`;
+        if (officeTitle) officeTitle.textContent = `拠点詳細：${data.office_name}`;
+        if (createdDateDisplay) createdDateDisplay.textContent = data.created_date || '-';
+        if (lastUpdatedDisplay) lastUpdatedDisplay.textContent = data.last_updated || '-';
 
         const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
 
         setVal('office_name', data.office_name || '');
-        document.getElementById('is_main').checked = !!data.is_main;
+        const isMainEl = document.getElementById('is_main');
+        if (isMainEl) isMainEl.checked = !!data.is_main;
         setVal('postal_code', data.postal_code || '');
         setVal('address', data.address || '');
         setVal('building_name', data.building_name || '');
@@ -107,7 +108,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function handleSave(e) {
         if (e) e.preventDefault();
 
-        const isMain = document.getElementById('is_main').checked;
+        const isMainEl = document.getElementById('is_main');
+        const isMain = isMainEl ? isMainEl.checked : false;
         const now = new Date().toISOString();
 
         // Prepare data
@@ -194,7 +196,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Event Listeners ---
-    form.addEventListener('submit', handleSave);
+    if (form) {
+        form.addEventListener('submit', handleSave);
+    }
+    // btn-save ボタンの直接クリックでも保存を実行
+    const btnSave = document.getElementById('btn-save');
+    if (btnSave) {
+        btnSave.addEventListener('click', handleSave);
+    }
     if (btnHeaderSave) btnHeaderSave.addEventListener('click', handleSave);
     if (btnDelete) btnDelete.addEventListener('click', handleDelete);
 

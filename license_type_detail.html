@@ -62,6 +62,15 @@
             box-shadow: 0 0 0 3px var(--primary-light);
             outline: none;
         }
+
+        /* User requested 13pt font for the form section */
+        .block-content .form-section-title,
+        .block-content .form-group label,
+        .block-content .form-control,
+        .block-content .form-select,
+        .block-content textarea {
+            font-size: 13pt !important;
+        }
     </style>
 </head>
 
@@ -92,7 +101,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="license_list.html" class="active">
+                    <a href="license_list.html">
                         <span class="nav-icon">📜</span>
                         <span class="nav-label">許認可管理</span>
                     </a>
@@ -129,6 +138,12 @@
                         <span class="nav-label">官公庁マスタ</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="license_types_list.html" class="active">
+                        <span class="nav-icon">📋</span>
+                        <span class="nav-label">許認可マスタ</span>
+                    </a>
+                </li>
             </ul>
         </nav>
         <!-- END Sidebar -->
@@ -140,14 +155,7 @@
                 <div class="header-left">
                     <button id="mobile-toggle"
                         style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted); display: none;">☰</button>
-                    <div class="header-breadcrumb">
-                        <a href="license_list.html" style="text-decoration: none; color: var(--text-muted);">許認可一覧</a>
-                        <span style="margin: 0 8px; color: var(--text-muted);">/</span>
-                        <a href="license_types_list.html"
-                            style="text-decoration: none; color: var(--text-muted);">許認可種別マスタ</a>
-                        <span style="margin: 0 8px; color: var(--text-muted);">/</span>
-                        <span id="page-title">種別詳細</span>
-                    </div>
+                    <h1 class="page-title">許認可種別詳細</h1>
                 </div>
                 <div class="header-right" id="header-right">
                     <!-- User Status injected here -->
@@ -160,13 +168,16 @@
 
                 <!-- Actions Bar -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
+                    <!-- Left: Back Button + Title -->
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">種別情報編集</h2>
-                    </div>
-                    <div class="d-flex gap-2">
                         <button type="button" class="btn btn-secondary" id="btn-back">
                             <span>←</span> 一覧へ
                         </button>
+                        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">許認可種別詳細</h2>
+                    </div>
+
+                    <!-- Right: Delete, Save Buttons -->
+                    <div class="d-flex gap-2">
                         <button type="button" class="btn btn-danger-outline" id="btn-delete" style="display: none;">
                             <span>🗑️</span> 削除
                         </button>

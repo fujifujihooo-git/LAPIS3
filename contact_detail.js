@@ -1,23 +1,21 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // --- Selectors ---
     const form = document.getElementById('contact-form');
-    const contactIdDisplay = document.getElementById('contact-id-display');
     const contactTitle = document.getElementById('page-title');
-    const createdDateDisplay = document.getElementById('created-date-display');
-    const lastUpdatedDisplay = document.getElementById('last-updated-display');
     const btnBack = document.getElementById('btn-back');
     const btnBackTop = document.getElementById('btn-back-top');
     const btnDelete = document.getElementById('btn-delete');
+    const btnSave = document.getElementById('btn-save');
     const officeSelect = document.getElementById('office_id');
+    const customerLink = document.getElementById('customer-link');
 
     // --- State ---
     let currentContact = null;
+    let currentDocId = null; // Firestoreドキュメントのactual ID
     let contactIdParam = null;
     let customerId = null;
-    let offices = []; // 拠点の選択肢用
 
     // --- Functions ---
-
     function getParamsFromUrl() {
         const params = new URLSearchParams(window.location.search);
         return {
@@ -37,55 +35,49 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // パンくずの顧客詳細リンクを設定
+        const backUrl = `customer_detail.html?id=${customerId}`;
+        if (customerLink) customerLink.href = backUrl;
+
         try {
             // 1. 拠点の取得（この顧客に紐づく拠点のみ）
-            const officesSnap = await db.collection('offices')
-                .where('customer_id', '==', customerId)
-                .where('status', '==', '有効') // 有効な拠点のみ選択肢に出す
-                .get();
+            if (officeSelect) {
+                const officesSnap = await db.collection('offices')
+                    .where('customer_id', '==', customerId)
+                    .get();
 
-            offices = officesSnap.docs.map(doc => doc.data());
-
-            // 拠点をプルダウンに追加
-            offices.forEach(o => {
-                const opt = document.createElement('option');
-                opt.value = o.office_id;
-                opt.textContent = o.office_name;
-                officeSelect.appendChild(opt);
-            });
+                officesSnap.docs.forEach(doc => {
+                    const o = doc.data();
+                    const opt = document.createElement('option');
+                    opt.value = o.office_id;
+                    opt.textContent = o.office_name + (o.status !== 'active' ? ' (無効)' : '');
+                    officeSelect.appendChild(opt);
+                });
+            }
 
             // 2. 担当者データの取得
             if (contactIdParam === 'new') {
                 // 新規登録
-                contactTitle.textContent = '新規担当者登録';
-                contactIdDisplay.textContent = '新規登録';
-                createdDateDisplay.textContent = '保存時に設定';
-                lastUpdatedDisplay.textContent = '保存時に設定';
-                btnDelete.style.display = 'none';
-
-                // 次のIDを取得して表示だけしておく（保存時に確定）
-                const nextId = await getNextSequence('contacts');
-                // contactIdDisplay.textContent = `(Next ID: ${nextId})`; 
+                if (contactTitle) contactTitle.textContent = '新規担当者登録';
+                if (btnDelete) btnDelete.style.display = 'none';
             } else {
                 // 既存データの編集
                 const cId = parseInt(contactIdParam);
-                // ドキュメントIDのパターンは `contact_{id}` または `cnt_{id}` とする
-                // migrate-data.html 等の経緯が不明だが、customer_detail.js では where で取得しているため
-                // クエリで取得するのが確実。
-                // ただし、ID指定詳細画面なので、doc IDを知りたい。
-                // ここでは `cust_` に倣って `cnt_` とするが、既存データがどうなっているか...
-                // 安全のため、contactsコレクションを `contact_id` で検索する。
-
-                const snap = await db.collection('contacts').where('contact_id', '==', cId).limit(1).get();
+                const snap = await db.collection('contacts')
+                    .where('contact_id', '==', cId)
+                    .limit(1)
+                    .get();
 
                 if (snap.empty) {
                     alert('担当者が見つかりません。');
-                    window.location.href = `customer_detail.html?id=${customerId}`;
+                    window.location.href = backUrl;
                     return;
                 }
 
+                currentDocId = snap.docs[0].id; // ドキュメントIDを保持
                 currentContact = snap.docs[0].data();
                 populateForm(currentContact);
+                if (btnDelete) btnDelete.style.display = '';
             }
 
         } catch (error) {
@@ -95,46 +87,62 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function populateForm(data) {
-        contactIdDisplay.textContent = `Contact ID: ${data.contact_id}`;
-        contactTitle.textContent = `担当者詳細：${data.contact_name}`;
-        createdDateDisplay.textContent = data.created_date || '-';
-        lastUpdatedDisplay.textContent = data.last_updated || '-';
+        if (contactTitle) contactTitle.textContent = `担当者詳細：${data.contact_name || ''}`;
 
-        document.getElementById('contact_name').value = data.contact_name || '';
-        document.getElementById('contact_kana').value = data.contact_kana || '';
-        document.getElementById('department').value = data.department || '';
-        document.getElementById('title').value = data.title || '';
-        document.getElementById('office_id').value = data.office_id || '';
-        document.getElementById('is_primary').checked = !!data.is_primary;
-        document.getElementById('phone').value = data.phone || '';
-        document.getElementById('mobile').value = data.mobile || '';
-        document.getElementById('fax').value = data.fax || '';
-        document.getElementById('email').value = data.email || '';
-        document.getElementById('status').value = data.status || '在籍';
-        document.getElementById('remarks').value = data.remarks || '';
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        };
+
+        setVal('contact_name', data.contact_name || '');
+        setVal('contact_kana', data.contact_kana || '');
+        setVal('department', data.department || '');
+        setVal('title', data.title || '');
+        setVal('office_id', data.office_id || '');
+        setVal('phone', data.phone || '');
+        setVal('mobile', data.mobile || '');
+        setVal('fax', data.fax || '');
+        setVal('email', data.email || '');
+        setVal('status', data.status || '在籍');
+        setVal('remarks', data.remarks || '');
+
+        const isPrimaryEl = document.getElementById('is_primary');
+        if (isPrimaryEl) isPrimaryEl.checked = !!data.is_primary;
+
+        // ヘッダーの担当者名表示
+        const headerName = document.getElementById('header-contact-name');
+        if (headerName) headerName.textContent = data.contact_name || '';
     }
 
     async function handleSave(e) {
-        e.preventDefault();
+        if (e) e.preventDefault();
 
-        const isPrimary = document.getElementById('is_primary').checked;
+        // --- バリデーション ---
+        const contactName = (document.getElementById('contact_name')?.value || '').trim();
+        if (!contactName) {
+            showToast('氏名は必須です。', 'error');
+            document.getElementById('contact_name')?.focus();
+            return;
+        }
 
-        // 主担当フラグの排他制御：Firestoreのトランザクションを使うか、
-        // 簡易的に「自分を保存する前に、他を更新する」か。
-        // ここでは簡易実装：もし自分がPrimaryなら、同顧客の他のPrimaryを下ろすバッチ処理を入れる。
+        const isPrimaryEl = document.getElementById('is_primary');
+        const isPrimary = isPrimaryEl ? isPrimaryEl.checked : false;
+        const now = new Date().toISOString();
 
         try {
+            // 二重送信防止
+            if (btnSave) btnSave.disabled = true;
+
             const batch = db.batch();
 
+            // 主担当フラグの排他制御
             if (isPrimary) {
-                // 同じ顧客の他の「主担当」担当者を検索
                 const otherPrimarySnap = await db.collection('contacts')
                     .where('customer_id', '==', customerId)
                     .where('is_primary', '==', true)
                     .get();
 
                 otherPrimarySnap.forEach(doc => {
-                    // 自分自身以外（新規の場合はIDがないので全て、編集の場合はID不一致）
                     const d = doc.data();
                     if (contactIdParam === 'new' || d.contact_id !== parseInt(contactIdParam)) {
                         batch.update(doc.ref, { is_primary: false });
@@ -144,39 +152,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const updatedData = {
                 customer_id: customerId,
-                contact_name: document.getElementById('contact_name').value.trim(),
-                contact_kana: document.getElementById('contact_kana').value.trim(),
-                department: document.getElementById('department').value.trim(),
-                title: document.getElementById('title').value.trim(),
-                office_id: parseInt(document.getElementById('office_id').value) || null,
+                contact_name: contactName,
+                contact_kana: (document.getElementById('contact_kana')?.value || '').trim(),
+                department: (document.getElementById('department')?.value || '').trim(),
+                title: (document.getElementById('title')?.value || '').trim(),
+                office_id: parseInt(document.getElementById('office_id')?.value) || null,
                 is_primary: isPrimary,
-                phone: document.getElementById('phone').value.trim(),
-                mobile: document.getElementById('mobile').value.trim(),
-                fax: document.getElementById('fax').value.trim(),
-                email: document.getElementById('email').value.trim(),
-                status: document.getElementById('status').value,
-                remarks: document.getElementById('remarks').value.trim(),
-                last_updated: new Date().toLocaleString()
+                phone: (document.getElementById('phone')?.value || '').trim(),
+                mobile: (document.getElementById('mobile')?.value || '').trim(),
+                fax: (document.getElementById('fax')?.value || '').trim(),
+                email: (document.getElementById('email')?.value || '').trim(),
+                status: document.getElementById('status')?.value || '在籍',
+                remarks: (document.getElementById('remarks')?.value || '').trim(),
+                last_updated: now
             };
 
-            let docRef;
             if (contactIdParam === 'new') {
                 const nextId = await getNextSequence('contacts');
                 updatedData.contact_id = nextId;
-                updatedData.created_date = new Date().toLocaleDateString();
-
-                docRef = db.collection('contacts').doc(`cnt_${nextId}`);
+                updatedData.created_date = now;
+                const docRef = db.collection('contacts').doc(`cnt_${nextId}`);
                 batch.set(docRef, updatedData);
             } else {
-                const cId = parseInt(contactIdParam);
-                // 文書IDを特定する必要がある（contact_idから逆引き済みならcurrentContactから取れるが...）
-                // initでcurrentContactを取っていれば、そのIDを使う。
-                // ただし、doc.id を init で保持していないので、もう一度検索するか、
-                // initで docId を保持するように修正する方がきれい。
-                // ここではクエリして取得する（頻度は低いので許容）
-                const snap = await db.collection('contacts').where('contact_id', '==', cId).limit(1).get();
-                if (!snap.empty) {
-                    docRef = snap.docs[0].ref;
+                // 保持済みのドキュメントIDを使用（再クエリ不要）
+                if (currentDocId) {
+                    const docRef = db.collection('contacts').doc(currentDocId);
                     batch.update(docRef, updatedData);
                 } else {
                     throw new Error('保存対象のデータが見つかりません');
@@ -184,49 +184,68 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             await batch.commit();
-            alert('保存しました。');
-            window.location.href = `customer_detail.html?id=${customerId}`;
+            showToast('保存しました', 'success');
+            setTimeout(() => {
+                window.location.href = `customer_detail.html?id=${customerId}`;
+            }, 1000);
 
         } catch (error) {
             console.error('Save failed:', error);
-            alert('保存に失敗しました: ' + error.message);
+            showToast('保存に失敗しました: ' + error.message, 'error');
+        } finally {
+            if (btnSave) btnSave.disabled = false;
         }
     }
 
     async function handleDelete() {
         if (contactIdParam === 'new') return;
+        if (!confirm('この担当者を削除してもよろしいですか？')) return;
 
-        if (confirm('この担当者を削除してもよろしいですか？')) {
-            try {
+        try {
+            if (currentDocId) {
+                await db.collection('contacts').doc(currentDocId).delete();
+            } else {
+                // フォールバック: クエリで検索
                 const cId = parseInt(contactIdParam);
                 const snap = await db.collection('contacts').where('contact_id', '==', cId).limit(1).get();
-
                 if (!snap.empty) {
                     await snap.docs[0].ref.delete();
-                    alert('削除しました。');
-                    window.location.href = `customer_detail.html?id=${customerId}`;
                 } else {
                     alert('削除対象が見つかりません。');
+                    return;
                 }
-            } catch (error) {
-                console.error('Delete failed:', error);
-                alert('削除に失敗しました。');
             }
+            showToast('削除しました', 'success');
+            setTimeout(() => {
+                window.location.href = `customer_detail.html?id=${customerId}`;
+            }, 1000);
+        } catch (error) {
+            console.error('Delete failed:', error);
+            showToast('削除に失敗しました: ' + error.message, 'error');
         }
     }
 
     // --- Event Listeners ---
-    form.addEventListener('submit', handleSave);
+    // フォームsubmit
+    if (form) {
+        form.addEventListener('submit', handleSave);
+    }
 
+    // 保存ボタン直接クリック（form外からでも動作）
+    if (btnSave) {
+        btnSave.addEventListener('click', handleSave);
+    }
+
+    // 戻るボタン
     [btnBack, btnBackTop].forEach(btn => {
         btn?.addEventListener('click', () => {
-            if (confirm('変更内容は保存されません。戻りますか？')) {
-                window.location.href = `customer_detail.html?id=${customerId}`;
-            }
+            window.location.href = `customer_detail.html?id=${customerId}`;
         });
     });
 
+    // 削除ボタン
     if (btnDelete) btnDelete.addEventListener('click', handleDelete);
 
+    // 初期化
     init();
 });

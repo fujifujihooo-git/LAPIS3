@@ -14,6 +14,20 @@
         rel="stylesheet">
     <style>
         /* Local overrides */
+
+        /* 13pt font for search section */
+        .block-title,
+        .filter-item label,
+        .filter-item .form-select,
+        .filter-item .form-control {
+            font-size: 13pt !important;
+        }
+
+        .description-text {
+            font-size: 13pt !important;
+            color: var(--text-muted);
+            margin: 0;
+        }
     </style>
 </head>
 
@@ -81,6 +95,12 @@
                         <span class="nav-label">官公庁マスタ</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="license_types_list.html">
+                        <span class="nav-icon">📋</span>
+                        <span class="nav-label">許認可マスタ</span>
+                    </a>
+                </li>
             </ul>
         </nav>
         <!-- END Sidebar -->
@@ -105,7 +125,7 @@
 
                 <!-- Actions Bar -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">顧客の決算月ごとの一覧を表示します。</p>
+                    <p class="description-text">顧客の決算月ごとの一覧を表示します。</p>
                     <button class="btn btn-secondary" id="btn-export-excel">
                         <span>📊</span> Excel出力
                     </button>
@@ -138,8 +158,8 @@
                                 </select>
                             </div>
                             <div class="filter-item">
-                                <label for="filter-search">検索 (顧客名・代表者名)</label>
-                                <input type="text" id="filter-search" class="form-control" placeholder="顧客名（会社名）で検索...">
+                                <label for="filter-search">顧客名</label>
+                                <input type="text" id="filter-search" class="form-control" placeholder="顧客名で検索...">
                             </div>
                             <div class="filter-item">
                                 <label for="filter-staff">担当者</label>
@@ -148,9 +168,6 @@
                                     <!-- JS populated -->
                                 </select>
                             </div>
-                            <!-- License Type not in original but good to have? Original had it? Check original. 
-                                 Original: filter-license-type, filter-search, filter-fiscal-month
-                            -->
                             <div class="filter-item">
                                 <label for="filter-license-type">許認可種別</label>
                                 <select id="filter-license-type" class="form-select">
@@ -158,15 +175,14 @@
                                     <!-- JS populated -->
                                 </select>
                             </div>
-
-                            <div class="filter-item" style="padding-bottom: 2px;">
-                                <button id="btn-search-execute" class="btn btn-primary" style="width: 100%;">
-                                    <span>🔍</span> 検索
-                                </button>
-                            </div>
-                            <div class="filter-item" style="padding-bottom: 2px; flex: 0;">
-                                <button id="btn-reset-filters" class="btn btn-secondary">リセット</button>
-                            </div>
+                        </div>
+                        <!-- ボタンを下部に分離 -->
+                        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                            <button id="btn-reset-filters" class="btn btn-sm btn-secondary"
+                                style="padding: 8px 16px;">リセット</button>
+                            <button id="btn-search-execute" class="btn btn-primary" style="padding: 8px 24px;">
+                                <span>🔍</span> 検索
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -222,8 +238,10 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-    <!-- Original uses this? -->
+    <!-- ExcelJS: 書式設定対応のExcel出力ライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+    <!-- FileSaver: ブラウザからファイルを保存するためのライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
     <script src="license_washout.js"></script>

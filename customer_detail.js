@@ -242,7 +242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td style="font-weight: 600;">${o.office_name || '-'}</td>
                 <td>${o.address || '-'}</td>
                 <td>${o.phone || '-'}</td>
-                <td><span class="badge ${o.status === '有効' ? 'status-junin' : 'status-torisage'}">${o.status || '-'}</span></td>
+                <td><span class="badge ${o.status === 'active' ? 'status-junin' : 'status-torisage'}">${o.status === 'active' ? '有効' : (o.status === 'inactive' ? '無効' : (o.status || '-'))}</span></td>
             `;
             tr.style.cursor = 'pointer';
             tr.addEventListener('click', () => {
@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td>${officeName}</td>
                 <td>${c.title || '-'}</td>
                 <td>${c.phone || '-'}</td>
-                <td><span class="badge ${c.status === '有効' ? 'status-junin' : 'status-torisage'}">${c.status || '-'}</span></td>
+                <td><span class="badge ${(c.status === 'active' || c.status === '在籍') ? 'status-junin' : 'status-torisage'}">${c.status === 'active' ? '有効' : (c.status === 'inactive' ? '無効' : (c.status || '-'))}</span></td>
             `;
             tr.style.cursor = 'pointer';
             tr.addEventListener('click', () => {
@@ -397,118 +397,501 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // --- Export Utility ---
+    // HTMLタグを除去してプレーンテキストを返す（Excel/PDF出力用）
+    function plainText(val) {
+        if (val === undefined || val === null || val === '') return '';
+        if (typeof val === 'string' && val.includes('<')) {
+            return val.replace(/<[^>]*>/g, '').trim() || '';
+        }
+        return val;
+    }
+    // 日付をプレーンテキストで返す（HTML不可のExcel/PDF用）
+    function plainDate(dateStr) {
+        if (!dateStr || dateStr === 'null') return '';
+        if (dateStr && typeof dateStr.toDate === 'function') {
+            const d = dateStr.toDate();
+            return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+        }
+        if (typeof dateStr === 'string') return dateStr.replace(/-/g, '/');
+        return '';
+    }
+    // 許可番号をプレーンテキストで返す
+    function plainLicenseNumber(license) {
+        if (!license) return '';
+        const n1 = license.license_number_1 || '';
+        const n2 = license.license_number_2 || '';
+        if (!n1 && !n2) return '';
+        return `${n1}${n2 ? '-' + n2 : ''}`;
+    }
+
     // --- Export Functions ---
-    function populatePrintTemplate(data) {
-        // Basic Info
-        document.getElementById('print-now').textContent = new Date().toLocaleString();
-        document.getElementById('p-customer-name').textContent = data.customer_name || '-';
-        document.getElementById('p-customer-kana').textContent = data.customer_kana || '-';
-        document.getElementById('p-rep-name').textContent = data.representative_name || '-';
-        document.getElementById('p-corporate-number').textContent = data.corporate_number || '-';
-        document.getElementById('p-fiscal').textContent = `${data.fiscal_year_end_month || '-'}月 ${data.fiscal_year_end_day || '-'}日`;
-
+    function buildPrintHTML(data) {
         const staff = staffMembers.find(s => s.staff_id === data.primary_staff_id);
-        document.getElementById('p-primary-staff').textContent = staff ? staff.staff_name : '-';
+        const staffName = staff ? staff.staff_name : '-';
+        const now = new Date().toLocaleString('ja-JP');
 
-        document.getElementById('p-customer-id').textContent = data.customer_id;
-        document.getElementById('p-type').textContent = data.customer_type;
-        document.getElementById('p-zip').textContent = data.postal_code || '-';
-        document.getElementById('p-address').textContent = (data.address || '') + (data.building_name ? ' ' + data.building_name : '');
-        document.getElementById('p-phone').textContent = data.phone || '-';
-        document.getElementById('p-main-fax').textContent = data.fax || '-';
-        document.getElementById('p-email').textContent = data.email || '-';
-        document.getElementById('p-status').textContent = data.status || '-';
-        document.getElementById('p-nenga').textContent = data.nenga || '-';
-        document.getElementById('p-chugen').textContent = data.chugen || '-';
-        document.getElementById('p-fax-ok').textContent = data.fax_ok || '-';
-        document.getElementById('p-remarks').textContent = data.remarks || '-';
+        // --- デザイン定数（Excel と統一） ---
+        const NAVY = '#1B2A4A';
+        const SUB_HEADER = '#3D5A80';
+        const LABEL_BG = '#E8ECF0';
+        const LIGHT_BG = '#F0F4F8';
+        const BORDER = '#B0B8C4';
 
-        // Lists
-        const pOffices = document.getElementById('p-offices-body');
-        const relatedOffices = offices.filter(o => o.customer_id === data.customer_id);
-        pOffices.innerHTML = relatedOffices.map(o => `<tr><td style="border:1px solid #ddd;padding:6px;">${o.office_name}</td><td style="border:1px solid #ddd;padding:6px;">${o.address || '-'}</td><td style="border:1px solid #ddd;padding:6px;">${o.phone || '-'}</td></tr>`).join('') || '<tr><td colspan="3" style="border:1px solid #ddd;padding:6px;">なし</td></tr>';
+        const sectionHeader = (title) => `
+            <tr><td colspan="6" style="background:${NAVY};color:#fff;font-weight:bold;font-size:13px;padding:6px 10px;border:1px solid ${BORDER};">${title}</td></tr>`;
 
-        const pLicenses = document.getElementById('p-licenses-body');
+        const kvRow = (pairs, isAlt) => {
+            let html = '<tr>';
+            for (let i = 0; i < 6; i += 2) {
+                const label = pairs[i] || '';
+                const value = pairs[i + 1] || '';
+                html += `<td style="background:${LABEL_BG};font-weight:bold;padding:4px 8px;border:1px solid ${BORDER};font-size:11px;width:15%;">${label}</td>`;
+                html += `<td style="${isAlt ? 'background:' + LIGHT_BG + ';' : ''}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;width:18%;">${value}</td>`;
+            }
+            html += '</tr>';
+            return html;
+        };
+
+        const tableHeader = (headers) => {
+            let html = '<tr>';
+            headers.forEach(h => {
+                html += `<td style="background:${SUB_HEADER};color:#fff;font-weight:bold;text-align:center;padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${h}</td>`;
+            });
+            html += '</tr>';
+            return html;
+        };
+
+        const tableRow = (values, colCount, isAlt) => {
+            let html = '<tr>';
+            values.forEach(v => {
+                html += `<td style="${isAlt ? 'background:' + LIGHT_BG + ';' : ''}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${v || '-'}</td>`;
+            });
+            html += '</tr>';
+            return html;
+        };
+
+        const emptyRow = (colCount) => `<tr><td colspan="${colCount}" style="text-align:center;color:#999;font-style:italic;padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">なし</td></tr>`;
+
+        // --- 各セクション生成 ---
+        // ■ 基本情報
+        let basicInfo = sectionHeader('■ 基本情報');
+        basicInfo += kvRow(['顧客名', data.customer_name || '-', 'フリガナ', data.customer_kana || '-', '顧客区分', data.customer_type || '-'], false);
+        basicInfo += kvRow(['代表者名', data.representative_name || '-', '外務担当', staffName, '状態', data.status || '-'], false);
+        basicInfo += kvRow(['法人番号', data.corporate_number || '-', '決算期', `${data.fiscal_year_end_month || '-'}月 ${data.fiscal_year_end_day || '-'}日`, '', ''], false);
+
+        // ■ 連絡先・住所
+        let contactInfo = sectionHeader('■ 連絡先・住所');
+        // 住所行: D:F結合（住所値を広く表示）
+        contactInfo += `<tr>
+            <td style="background:${LABEL_BG};font-weight:bold;padding:4px 8px;border:1px solid ${BORDER};font-size:11px;width:15%;">〒</td>
+            <td style="padding:4px 8px;border:1px solid ${BORDER};font-size:11px;width:18%;">${data.postal_code || '-'}</td>
+            <td style="background:${LABEL_BG};font-weight:bold;padding:4px 8px;border:1px solid ${BORDER};font-size:11px;width:15%;">住所</td>
+            <td colspan="3" style="padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${(data.address || '') + (data.building_name ? ' ' + data.building_name : '') || '-'}</td>
+        </tr>`;
+        contactInfo += kvRow(['電話番号', data.phone || '-', 'FAX', data.fax || '-', 'メール', data.email || '-'], false);
+        contactInfo += kvRow(['年賀状', data.nenga || '-', '中元', data.chugen || '-', 'FAX可否', data.fax_ok || '-'], false);
+        // 備考行: B:F結合（備考値を広く表示）
+        contactInfo += `<tr>
+            <td style="background:${LABEL_BG};font-weight:bold;padding:4px 8px;border:1px solid ${BORDER};font-size:11px;width:15%;">備考</td>
+            <td colspan="5" style="padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${data.remarks || '-'}</td>
+        </tr>`;
+
+        // ■ 拠点一覧
+        const relatedOffices = offices.filter(o => Number(o.customer_id) === data.customer_id);
+        let officeSection = sectionHeader('■ 拠点一覧');
+        officeSection += '<tr>' + ['拠点名', '住所', '電話番号'].map(h => `<td colspan="2" style="background:${SUB_HEADER};color:#fff;font-weight:bold;text-align:center;padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${h}</td>`).join('') + '</tr>';
+        if (relatedOffices.length === 0) {
+            officeSection += `<tr><td colspan="6" style="text-align:center;color:#999;font-style:italic;padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">なし</td></tr>`;
+        } else {
+            relatedOffices.forEach((o, idx) => {
+                const bg = idx % 2 === 1 ? `background:${LIGHT_BG};` : '';
+                officeSection += `<tr><td colspan="2" style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${o.office_name || '-'}</td><td colspan="2" style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${o.address || '-'}</td><td colspan="2" style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${o.phone || '-'}</td></tr>`;
+            });
+        }
+
+        // ■ 有効な許認可
         const relatedLicenses = licenses.filter(l => l.customer_id === data.customer_id && l.status === '有効');
-        pLicenses.innerHTML = relatedLicenses.map(l => {
-            const type = licenseTypes.find(lt => lt.license_type_id === l.license_type_id);
-            return `<tr><td style="border:1px solid #ddd;padding:6px;">${type ? type.license_type_name : '-'}</td><td style="border:1px solid #ddd;padding:6px;">${formatLicenseNumber(l)}</td><td style="border:1px solid #ddd;padding:6px;">${formatDate(l.expiry_date)}</td></tr>`;
-        }).join('') || '<tr><td colspan="3" style="border:1px solid #ddd;padding:6px;">なし</td></tr>';
+        let licenseSection = sectionHeader('■ 有効な許認可');
+        licenseSection += '<tr>' + ['許認可種別', '許可番号', '有効期限'].map(h => `<td colspan="2" style="background:${SUB_HEADER};color:#fff;font-weight:bold;text-align:center;padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${h}</td>`).join('') + '</tr>';
+        if (relatedLicenses.length === 0) {
+            licenseSection += `<tr><td colspan="6" style="text-align:center;color:#999;font-style:italic;padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">なし</td></tr>`;
+        } else {
+            relatedLicenses.forEach((l, idx) => {
+                const type = licenseTypes.find(lt => lt.license_type_id === l.license_type_id);
+                const bg = idx % 2 === 1 ? `background:${LIGHT_BG};` : '';
+                licenseSection += `<tr><td colspan="2" style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${type ? type.license_type_name : '-'}</td><td colspan="2" style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${plainLicenseNumber(l) || '-'}</td><td colspan="2" style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${plainDate(l.expiry_date) || '-'}</td></tr>`;
+            });
+        }
 
-        const pContacts = document.getElementById('p-contacts-body');
-        const relatedContacts = contacts.filter(c => c.customer_id === data.customer_id);
-        pContacts.innerHTML = relatedContacts.map(c => `<tr><td style="border:1px solid #ddd;padding:6px;">${c.contact_name}</td><td style="border:1px solid #ddd;padding:6px;">-</td><td style="border:1px solid #ddd;padding:6px;">${c.title || '-'}</td><td style="border:1px solid #ddd;padding:6px;">${c.phone || '-'}</td></tr>`).join('') || '<tr><td colspan="4" style="border:1px solid #ddd;padding:6px;">なし</td></tr>';
+        // ■ 担当者一覧
+        const relatedContacts = contacts.filter(c => Number(c.customer_id) === data.customer_id);
+        let contactSection = sectionHeader('■ 担当者一覧');
+        contactSection += '<tr><td style="background:' + SUB_HEADER + ';color:#fff;font-weight:bold;text-align:center;padding:4px 8px;border:1px solid ' + BORDER + ';font-size:11px;">氏名</td><td colspan="2" style="background:' + SUB_HEADER + ';color:#fff;font-weight:bold;text-align:center;padding:4px 8px;border:1px solid ' + BORDER + ';font-size:11px;">所属拠点</td><td style="background:' + SUB_HEADER + ';color:#fff;font-weight:bold;text-align:center;padding:4px 8px;border:1px solid ' + BORDER + ';font-size:11px;">役職</td><td colspan="2" style="background:' + SUB_HEADER + ';color:#fff;font-weight:bold;text-align:center;padding:4px 8px;border:1px solid ' + BORDER + ';font-size:11px;">電話番号</td></tr>';
+        if (relatedContacts.length === 0) {
+            contactSection += `<tr><td colspan="6" style="text-align:center;color:#999;font-style:italic;padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">なし</td></tr>`;
+        } else {
+            relatedContacts.forEach((c, idx) => {
+                const officeName = offices.find(o => o.office_id === c.office_id && Number(o.customer_id) === data.customer_id)?.office_name || '-';
+                const bg = idx % 2 === 1 ? `background:${LIGHT_BG};` : '';
+                contactSection += `<tr><td style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${c.contact_name || '-'}</td><td colspan="2" style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${officeName}</td><td style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${c.title || '-'}</td><td colspan="2" style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${c.phone || '-'}</td></tr>`;
+            });
+        }
 
-        const pCases = document.getElementById('p-cases-body');
-        const relatedCasesList = cases.filter(c => c.customer_id === data.customer_id);
-        pCases.innerHTML = relatedCasesList.map(c => `<tr><td style="border:1px solid #ddd;padding:6px;">${c.status}</td><td style="border:1px solid #ddd;padding:6px;">${c.license_type}</td><td style="border:1px solid #ddd;padding:6px;">${formatDate(c.contract_date)}</td><td style="border:1px solid #ddd;padding:6px;">-</td></tr>`).join('') || '<tr><td colspan="4" style="border:1px solid #ddd;padding:6px;">なし</td></tr>';
+        // ■ 関連案件
+        const relatedCases = cases.filter(c => c.customer_id === data.customer_id);
+        let caseSection = sectionHeader('■ 関連案件');
+        caseSection += '<tr><td style="background:' + SUB_HEADER + ';color:#fff;font-weight:bold;text-align:center;padding:4px 8px;border:1px solid ' + BORDER + ';font-size:11px;">ステータス</td><td colspan="2" style="background:' + SUB_HEADER + ';color:#fff;font-weight:bold;text-align:center;padding:4px 8px;border:1px solid ' + BORDER + ';font-size:11px;">業務内容</td><td style="background:' + SUB_HEADER + ';color:#fff;font-weight:bold;text-align:center;padding:4px 8px;border:1px solid ' + BORDER + ';font-size:11px;">受任日</td><td colspan="2" style="background:' + SUB_HEADER + ';color:#fff;font-weight:bold;text-align:center;padding:4px 8px;border:1px solid ' + BORDER + ';font-size:11px;">完了日</td></tr>';
+        if (relatedCases.length === 0) {
+            caseSection += `<tr><td colspan="6" style="text-align:center;color:#999;font-style:italic;padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">なし</td></tr>`;
+        } else {
+            relatedCases.forEach((c, idx) => {
+                const bg = idx % 2 === 1 ? `background:${LIGHT_BG};` : '';
+                caseSection += `<tr><td style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${c.status || '-'}</td><td colspan="2" style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${c.license_type || '-'}</td><td style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${plainDate(c.contract_date) || '-'}</td><td colspan="2" style="${bg}padding:4px 8px;border:1px solid ${BORDER};font-size:11px;">${plainDate(c.completion_date) || '-'}</td></tr>`;
+            });
+        }
+
+        // --- 全体HTML ---
+        return `
+        <div style="padding:30px;font-family:'BIZ UDPGothic','Hiragino Kaku Gothic ProN',sans-serif;color:#333;line-height:1.4;background:#fff;">
+            <div style="margin-bottom:12px;">
+                <div style="font-size:22px;font-weight:bold;color:${NAVY};margin-bottom:4px;">顧客詳細：${data.customer_name || ''}</div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#666;">
+                    <span>顧客ID: ${data.customer_id}</span>
+                    <span>出力日: ${new Date().toLocaleDateString('ja-JP')}</span>
+                </div>
+            </div>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">${basicInfo}</table>
+            <div style="height:6px;"></div>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">${contactInfo}</table>
+            <div style="height:6px;"></div>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">${officeSection}</table>
+            <div style="height:6px;"></div>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">${licenseSection}</table>
+            <div style="height:6px;"></div>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">${contactSection}</table>
+            <div style="height:6px;"></div>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">${caseSection}</table>
+            <div style="margin-top:24px;text-align:center;font-size:9px;color:#999;border-top:1px dashed #ccc;padding-top:8px;">LAPIS2 案件管理システム - 顧客詳細出力</div>
+        </div>`;
     }
 
     if (btnExportPdf) {
         btnExportPdf.addEventListener('click', () => {
             if (!currentCustomer) return;
-            populatePrintTemplate(currentCustomer);
             const element = document.getElementById('print-template');
-            element.style.display = 'block'; // Make visible for capture
+            element.innerHTML = buildPrintHTML(currentCustomer);
+            element.style.display = 'block';
             html2pdf(element, {
-                margin: 10,
-                filename: `顧客情報_${currentCustomer.customer_name}_${new Date().toISOString().split('T')[0]}.pdf`,
+                margin: 8,
+                filename: `顧客詳細_${currentCustomer.customer_name}_${new Date().toISOString().split('T')[0]}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             }).then(() => {
-                element.style.display = 'none'; // Hide again
+                element.style.display = 'none';
             });
         });
     }
 
     if (btnExportExcel) {
-        btnExportExcel.addEventListener('click', () => {
+        btnExportExcel.addEventListener('click', async () => {
             if (!currentCustomer) return;
-            // Prepare Data
-            const id = currentCustomer.customer_id;
-            const wb = XLSX.utils.book_new();
+            try {
+                btnExportExcel.disabled = true;
+                btnExportExcel.textContent = '生成中...';
 
-            // 1. Basic Info
-            const basicData = [[
-                "顧客ID", "顧客名", "顧客区分", "代表者名", "郵便番号", "住所", "電話番号", "FAX", "メール", "状態"
-            ], [
-                id, currentCustomer.customer_name, currentCustomer.customer_type, currentCustomer.representative_name,
-                currentCustomer.postal_code, (currentCustomer.address || '') + (currentCustomer.building_name || ''),
-                currentCustomer.phone, currentCustomer.fax, currentCustomer.email, currentCustomer.status
-            ]];
-            const ws1 = XLSX.utils.aoa_to_sheet(basicData);
-            XLSX.utils.book_append_sheet(wb, ws1, "基本情報");
+                const wb = new ExcelJS.Workbook();
+                wb.creator = 'LAPIS2';
+                const ws = wb.addWorksheet('顧客詳細', {
+                    pageSetup: {
+                        paperSize: 9, // A4
+                        orientation: 'portrait',
+                        fitToPage: true,
+                        fitToWidth: 1,
+                        fitToHeight: 0,
+                        margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.4, header: 0.2, footer: 0.2 }
+                    }
+                });
 
-            // 2. Licenses
-            const relLicenses = licenses.filter(l => l.customer_id === id).map(l => {
-                const type = licenseTypes.find(lt => lt.license_type_id === l.license_type_id);
-                return {
-                    "許認可種別": type ? type.license_type_name : '-',
-                    "許可番号": formatLicenseNumber(l),
-                    "有効期限": l.expiry_date,
-                    "状態": l.status
+                // ===== デザイン定数 =====
+                const NAVY = '1B2A4A';
+                const SUB_HEADER = '3D5A80';
+                const LIGHT_BG = 'F0F4F8';
+                const LABEL_BG = 'E8ECF0';
+                const WHITE = 'FFFFFF';
+                const FONT_NAME = 'BIZ UDPゴシック';
+                const FONT_SIZE = 11;
+                const BORDER_COLOR = 'B0B8C4';
+
+                const thinBorder = {
+                    top: { style: 'thin', color: { argb: BORDER_COLOR } },
+                    left: { style: 'thin', color: { argb: BORDER_COLOR } },
+                    bottom: { style: 'thin', color: { argb: BORDER_COLOR } },
+                    right: { style: 'thin', color: { argb: BORDER_COLOR } }
                 };
-            });
-            if (relLicenses.length) {
-                const ws2 = XLSX.utils.json_to_sheet(relLicenses);
-                XLSX.utils.book_append_sheet(wb, ws2, "許認可");
-            }
+                const shrinkAlign = { vertical: 'middle', shrinkToFit: true };
+                const shrinkAlignWrap = { vertical: 'middle', shrinkToFit: true, wrapText: false };
 
-            // 3. Cases
-            const relCases = cases.filter(c => c.customer_id === id).map(c => ({
-                "案件ID": c.case_id,
-                "業務内容": c.license_type,
-                "ステータス": c.status,
-                "受任日": c.contract_date,
-                "完了日": c.completion_date
-            }));
-            if (relCases.length) {
-                const ws3 = XLSX.utils.json_to_sheet(relCases);
-                XLSX.utils.book_append_sheet(wb, ws3, "関連案件");
-            }
+                const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+                const subHeaderFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SUB_HEADER } };
+                const labelFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LABEL_BG } };
+                const lightFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT_BG } };
+                const headerFont = { name: FONT_NAME, size: FONT_SIZE, bold: true, color: { argb: WHITE } };
+                const dataFont = { name: FONT_NAME, size: FONT_SIZE };
+                const labelFont = { name: FONT_NAME, size: FONT_SIZE, bold: true };
 
-            XLSX.writeFile(wb, `顧客台帳_${currentCustomer.customer_name}_${new Date().toISOString().split('T')[0]}.xlsx`);
+                // ===== カラム幅設定（A4縦に合わせて6列） =====
+                ws.columns = [
+                    { width: 14 }, // A: label
+                    { width: 22 }, // B: value
+                    { width: 14 }, // C: label
+                    { width: 22 }, // D: value
+                    { width: 14 }, // E: label
+                    { width: 22 }, // F: value
+                ];
+
+                // ===== ヘルパー関数 =====
+                const COLS = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+                function addSectionHeader(ws, row, title) {
+                    ws.mergeCells(`A${row}:F${row}`);
+                    const cell = ws.getCell(`A${row}`);
+                    cell.value = title;
+                    cell.font = { name: FONT_NAME, size: FONT_SIZE + 1, bold: true, color: { argb: WHITE } };
+                    cell.fill = headerFill;
+                    cell.alignment = { vertical: 'middle' };
+                    cell.border = thinBorder;
+                    COLS.forEach(c => { ws.getCell(`${c}${row}`).fill = headerFill; ws.getCell(`${c}${row}`).border = thinBorder; });
+                    ws.getRow(row).height = 26;
+                    return row + 1;
+                }
+
+                function addKeyValueRow(ws, row, pairs, isAlt) {
+                    const r = ws.getRow(row);
+                    r.height = 22;
+                    for (let i = 0; i < 3; i++) {
+                        const lCol = COLS[i * 2];     // A, C, E
+                        const vCol = COLS[i * 2 + 1]; // B, D, F
+                        const lCell = ws.getCell(`${lCol}${row}`);
+                        const vCell = ws.getCell(`${vCol}${row}`);
+                        lCell.value = pairs[i * 2] || '';
+                        lCell.font = labelFont;
+                        lCell.fill = labelFill;
+                        lCell.border = thinBorder;
+                        lCell.alignment = shrinkAlign;
+                        vCell.value = pairs[i * 2 + 1] || '';
+                        vCell.font = dataFont;
+                        vCell.border = thinBorder;
+                        vCell.alignment = shrinkAlign;
+                        if (isAlt) vCell.fill = lightFill;
+                    }
+                    return row + 1;
+                }
+
+                function addTableHeader(ws, row, headers, colGroups) {
+                    if (colGroups) {
+                        colGroups.forEach((cols, i) => {
+                            ws.mergeCells(`${cols[0]}${row}:${cols[1]}${row}`);
+                            const cell = ws.getCell(`${cols[0]}${row}`);
+                            cell.value = headers[i];
+                            cell.font = { ...headerFont, size: FONT_SIZE };
+                            cell.fill = subHeaderFill;
+                            cell.border = thinBorder;
+                            cell.alignment = { ...shrinkAlign, horizontal: 'center' };
+                            ws.getCell(`${cols[1]}${row}`).border = thinBorder;
+                            ws.getCell(`${cols[1]}${row}`).fill = subHeaderFill;
+                        });
+                    } else {
+                        headers.forEach((h, i) => {
+                            const cell = ws.getCell(`${COLS[i]}${row}`);
+                            cell.value = h;
+                            cell.font = { ...headerFont, size: FONT_SIZE };
+                            cell.fill = subHeaderFill;
+                            cell.border = thinBorder;
+                            cell.alignment = { ...shrinkAlign, horizontal: 'center' };
+                        });
+                    }
+                    ws.getRow(row).height = 22;
+                    return row + 1;
+                }
+
+                function addTableRow(ws, row, values, colGroups, isAlt) {
+                    if (colGroups) {
+                        colGroups.forEach((cols, i) => {
+                            ws.mergeCells(`${cols[0]}${row}:${cols[1]}${row}`);
+                            const cell = ws.getCell(`${cols[0]}${row}`);
+                            cell.value = values[i] || '-';
+                            cell.font = dataFont;
+                            cell.border = thinBorder;
+                            cell.alignment = shrinkAlign;
+                            if (isAlt) cell.fill = lightFill;
+                            ws.getCell(`${cols[1]}${row}`).border = thinBorder;
+                            if (isAlt) ws.getCell(`${cols[1]}${row}`).fill = lightFill;
+                        });
+                    } else {
+                        values.forEach((v, i) => {
+                            const cell = ws.getCell(`${COLS[i]}${row}`);
+                            cell.value = v || '-';
+                            cell.font = dataFont;
+                            cell.border = thinBorder;
+                            cell.alignment = shrinkAlign;
+                            if (isAlt) cell.fill = lightFill;
+                        });
+                    }
+                    ws.getRow(row).height = 20;
+                    return row + 1;
+                }
+
+                function addEmptyRow(ws, row, msg) {
+                    ws.mergeCells(`A${row}:F${row}`);
+                    const cell = ws.getCell(`A${row}`);
+                    cell.value = msg || 'なし';
+                    cell.font = { ...dataFont, italic: true, color: { argb: '999999' } };
+                    cell.border = thinBorder;
+                    cell.alignment = { ...shrinkAlign, horizontal: 'center' };
+                    ws.getRow(row).height = 20;
+                    return row + 1;
+                }
+
+                let row = 1;
+
+                // ===== タイトル =====
+                ws.mergeCells(`A${row}:F${row}`);
+                const titleCell = ws.getCell(`A${row}`);
+                titleCell.value = `顧客詳細：${currentCustomer.customer_name || ''}`;
+                titleCell.font = { name: FONT_NAME, size: 18, bold: true, color: { argb: NAVY } };
+                titleCell.alignment = shrinkAlign;
+                ws.getRow(row).height = 32;
+                row++;
+
+                // 出力日・顧客ID行
+                ws.mergeCells(`A${row}:C${row}`);
+                ws.getCell(`A${row}`).value = `顧客ID: ${currentCustomer.customer_id}`;
+                ws.getCell(`A${row}`).font = { name: FONT_NAME, size: 10, color: { argb: '666666' } };
+                ws.getCell(`A${row}`).alignment = shrinkAlign;
+                ws.mergeCells(`D${row}:F${row}`);
+                ws.getCell(`D${row}`).value = `出力日: ${new Date().toLocaleDateString('ja-JP')}`;
+                ws.getCell(`D${row}`).font = { name: FONT_NAME, size: 10, color: { argb: '666666' } };
+                ws.getCell(`D${row}`).alignment = { ...shrinkAlign, horizontal: 'right' };
+                ws.getRow(row).height = 18;
+                row += 2;
+
+                // ===== ■ 基本情報 =====
+                const staff = staffMembers.find(s => s.staff_id === currentCustomer.primary_staff_id);
+                row = addSectionHeader(ws, row, '■ 基本情報');
+                row = addKeyValueRow(ws, row, ['顧客名', currentCustomer.customer_name || '-', 'フリガナ', currentCustomer.customer_kana || '-', '顧客区分', currentCustomer.customer_type || '-'], false);
+                row = addKeyValueRow(ws, row, ['代表者名', currentCustomer.representative_name || '-', '外務担当', staff ? staff.staff_name : '-', '状態', currentCustomer.status || '-'], false);
+                row = addKeyValueRow(ws, row, ['法人番号', currentCustomer.corporate_number || '-', '決算期', `${currentCustomer.fiscal_year_end_month || '-'}月 ${currentCustomer.fiscal_year_end_day || '-'}日`, '', ''], false);
+                row++;
+
+                // ===== ■ 連絡先・住所 =====
+                row = addSectionHeader(ws, row, '■ 連絡先・住所');
+                // 住所行: D:F結合（住所値を広く表示）
+                const addrRow = row;
+                row = addKeyValueRow(ws, row, ['〒', currentCustomer.postal_code || '-', '住所', (currentCustomer.address || '') + (currentCustomer.building_name ? ' ' + currentCustomer.building_name : ''), '', ''], false);
+                // E,Fのラベル/値をクリアしてD:Fを結合
+                ws.getCell(`E${addrRow}`).value = '';
+                ws.getCell(`E${addrRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF' } };
+                ws.getCell(`F${addrRow}`).value = '';
+                ws.getCell(`F${addrRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF' } };
+                ws.mergeCells(`D${addrRow}:F${addrRow}`);
+                ws.getCell(`D${addrRow}`).border = thinBorder;
+                ws.getCell(`D${addrRow}`).alignment = shrinkAlign;
+
+                row = addKeyValueRow(ws, row, ['電話番号', currentCustomer.phone || '-', 'FAX', currentCustomer.fax || '-', 'メール', currentCustomer.email || '-'], false);
+                row = addKeyValueRow(ws, row, ['年賀状', currentCustomer.nenga || '-', '中元', currentCustomer.chugen || '-', 'FAX可否', currentCustomer.fax_ok || '-'], false);
+
+                // 備考行: B:F結合（備考値を広く表示）
+                const remarksRow = row;
+                row = addKeyValueRow(ws, row, ['備考', currentCustomer.remarks || '-', '', '', '', ''], false);
+                // C-Fのラベル/値をクリアしてB:Fを結合
+                ['C', 'D', 'E', 'F'].forEach(c => {
+                    ws.getCell(`${c}${remarksRow}`).value = '';
+                    ws.getCell(`${c}${remarksRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF' } };
+                });
+                ws.mergeCells(`B${remarksRow}:F${remarksRow}`);
+                ws.getCell(`B${remarksRow}`).value = currentCustomer.remarks || '-';
+                ws.getCell(`B${remarksRow}`).font = dataFont;
+                ws.getCell(`B${remarksRow}`).border = thinBorder;
+                ws.getCell(`B${remarksRow}`).alignment = shrinkAlign;
+                row++;
+
+                // ===== ■ 拠点一覧 =====
+                row = addSectionHeader(ws, row, '■ 拠点一覧');
+                const officeColGroups = [['A', 'B'], ['C', 'D'], ['E', 'F']];
+                row = addTableHeader(ws, row, ['拠点名', '住所', '電話番号'], officeColGroups);
+
+                const relatedOffices = offices.filter(o => Number(o.customer_id) === currentCustomer.customer_id);
+                if (relatedOffices.length === 0) {
+                    row = addEmptyRow(ws, row);
+                } else {
+                    relatedOffices.forEach((o, idx) => {
+                        row = addTableRow(ws, row, [o.office_name, o.address, o.phone], officeColGroups, idx % 2 === 1);
+                    });
+                }
+                row++;
+
+                // ===== ■ 有効な許認可 =====
+                row = addSectionHeader(ws, row, '■ 有効な許認可');
+                const licColGroups = [['A', 'B'], ['C', 'D'], ['E', 'F']];
+                row = addTableHeader(ws, row, ['許認可種別', '許可番号', '有効期限'], licColGroups);
+
+                const relatedLicenses = licenses.filter(l => l.customer_id === currentCustomer.customer_id && l.status === '有効');
+                if (relatedLicenses.length === 0) {
+                    row = addEmptyRow(ws, row);
+                } else {
+                    relatedLicenses.forEach((l, idx) => {
+                        const type = licenseTypes.find(lt => lt.license_type_id === l.license_type_id);
+                        const licNum = plainLicenseNumber(l) || '-';
+                        const expiry = plainDate(l.expiry_date) || '-';
+                        row = addTableRow(ws, row, [type ? type.license_type_name : '-', licNum, expiry], licColGroups, idx % 2 === 1);
+                    });
+                }
+                row++;
+
+                // ===== ■ 担当者一覧 =====
+                row = addSectionHeader(ws, row, '■ 担当者一覧');
+                row = addTableHeader(ws, row, ['氏名', '所属拠点', '役職', '電話番号'], [['A', 'A'], ['B', 'C'], ['D', 'D'], ['E', 'F']]);
+
+                const relatedContacts = contacts.filter(c => Number(c.customer_id) === currentCustomer.customer_id);
+                if (relatedContacts.length === 0) {
+                    row = addEmptyRow(ws, row);
+                } else {
+                    relatedContacts.forEach((c, idx) => {
+                        const officeName = offices.find(o => o.office_id === c.office_id && Number(o.customer_id) === currentCustomer.customer_id)?.office_name || '-';
+                        row = addTableRow(ws, row, [c.contact_name, officeName, c.title, c.phone], [['A', 'A'], ['B', 'C'], ['D', 'D'], ['E', 'F']], idx % 2 === 1);
+                    });
+                }
+                row++;
+
+                // ===== ■ 関連案件 =====
+                row = addSectionHeader(ws, row, '■ 関連案件');
+                row = addTableHeader(ws, row, ['ステータス', '業務内容', '受任日', '完了日'], [['A', 'A'], ['B', 'C'], ['D', 'D'], ['E', 'F']]);
+
+                const relatedCases = cases.filter(c => c.customer_id === currentCustomer.customer_id);
+                if (relatedCases.length === 0) {
+                    row = addEmptyRow(ws, row);
+                } else {
+                    relatedCases.forEach((c, idx) => {
+                        const contractDate = plainDate(c.contract_date) || '-';
+                        const completionDate = plainDate(c.completion_date) || '-';
+                        row = addTableRow(ws, row, [c.status, c.license_type, contractDate, completionDate], [['A', 'A'], ['B', 'C'], ['D', 'D'], ['E', 'F']], idx % 2 === 1);
+                    });
+                }
+
+                // ===== ファイル保存 =====
+                const buffer = await wb.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                saveAs(blob, `顧客詳細_${currentCustomer.customer_name}_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+            } catch (err) {
+                console.error('Excel export failed:', err);
+                alert('Excel出力に失敗しました: ' + err.message);
+            } finally {
+                btnExportExcel.disabled = false;
+                btnExportExcel.innerHTML = '<span>📊</span> Excel出力';
+            }
         });
     }
 

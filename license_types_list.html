@@ -17,9 +17,18 @@
         .filter-section {
             display: flex;
             gap: 12px;
-            margin-bottom: 24px;
+            margin-bottom: 0;
             flex-wrap: wrap;
-            align-items: center;
+            align-items: flex-end;
+        }
+
+        /* User requested 13pt for the Search Filter section */
+        .block-title,
+        .filter-item label,
+        .filter-item .form-select,
+        .filter-item .form-control,
+        .filter-item input[type="checkbox"]+label {
+            font-size: 13pt !important;
         }
     </style>
 </head>
@@ -51,7 +60,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="license_list.html" class="active">
+                    <a href="license_list.html">
                         <span class="nav-icon">📜</span>
                         <span class="nav-label">許認可管理</span>
                     </a>
@@ -88,6 +97,12 @@
                         <span class="nav-label">官公庁マスタ</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="license_types_list.html" class="active">
+                        <span class="nav-icon">📋</span>
+                        <span class="nav-label">許認可マスタ</span>
+                    </a>
+                </li>
             </ul>
         </nav>
         <!-- END Sidebar -->
@@ -99,11 +114,7 @@
                 <div class="header-left">
                     <button id="mobile-toggle"
                         style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted); display: none;">☰</button>
-                    <div class="header-breadcrumb">
-                        <a href="license_list.html" style="text-decoration: none; color: var(--text-muted);">許認可一覧</a>
-                        <span style="margin: 0 8px; color: var(--text-muted);">/</span>
-                        <span id="page-title">許認可種別マスタ</span>
-                    </div>
+                    <h1 class="page-title">許認可種別マスタ</h1>
                 </div>
                 <div class="header-right" id="header-right">
                     <!-- User Status injected here -->
@@ -116,50 +127,56 @@
 
                 <!-- Actions Bar -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">許認可種別一覧</h2>
+                    <div>
+                        <h2 id="page-title" style="margin: 0; font-size: 1.5rem; color: var(--text-main);">許認可種別マスタ</h2>
+                    </div>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-secondary"
-                            onclick="window.location.href='license_list.html'">
-                            <span>←</span> 許認可一覧へ
-                        </button>
                         <button type="button" class="btn btn-primary" id="btn-add-type">
                             <span>＋</span> 新規登録
                         </button>
                     </div>
                 </div>
 
+                <!-- 検索条件カード -->
                 <div class="block">
+                    <div class="block-header">
+                        <h3 class="block-title">検索フィルタ</h3>
+                        <div class="block-options"></div>
+                    </div>
                     <div class="block-content">
-                        <!-- Filters -->
-                        <!-- Filters -->
-                        <div class="filter-section" style="align-items: flex-end;">
+                        <div class="filter-bar">
                             <div class="filter-item">
-                                <label for="search-input" style="font-weight: bold; font-size: 0.85rem;">種別名</label>
-                                <input type="text" id="search-input" class="form-control" placeholder="種別名..."
-                                    style="width: 200px;">
+                                <label for="search-input">種別名</label>
+                                <input type="text" id="search-input" class="form-control" placeholder="種別名...">
                             </div>
                             <div class="filter-item">
-                                <label for="category-search" style="font-weight: bold; font-size: 0.85rem;">カテゴリ</label>
-                                <input type="text" id="category-search" class="form-control" placeholder="カテゴリ..."
-                                    style="width: 200px;">
+                                <label for="category-search">カテゴリ</label>
+                                <input type="text" id="category-search" class="form-control" placeholder="カテゴリ...">
                             </div>
                             <div class="filter-item">
-                                <label for="filter-status" style="font-weight: bold; font-size: 0.85rem;">状態</label>
-                                <select id="filter-status" class="form-select" style="width: 150px;">
+                                <label for="filter-status">状態</label>
+                                <select id="filter-status" class="form-select">
                                     <option value="">すべて</option>
                                     <option value="active">有効</option>
                                     <option value="inactive">無効</option>
                                 </select>
                             </div>
-                            <button id="btn-search" class="btn btn-primary" style="margin-left: auto;">
-                                <span>🔍</span> 検索
-                            </button>
-                            <button id="btn-reset" class="btn btn-secondary">
+                        </div>
+                        <!-- ボタンを下部に移動 -->
+                        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                            <button id="btn-reset" class="btn btn-sm btn-secondary" style="padding: 8px 16px;">
                                 <span>↺</span> リセット
                             </button>
+                            <button id="btn-search" class="btn btn-primary" style="padding: 8px 24px;">
+                                <span>🔍</span> 検索
+                            </button>
                         </div>
+                    </div>
+                </div>
 
-                        <!-- Table -->
+                <!-- 一覧テーブルカード -->
+                <div class="block">
+                    <div class="block-content" style="padding: 0;">
                         <div class="table-responsive">
                             <table class="table-modern" id="license-types-table">
                                 <thead>

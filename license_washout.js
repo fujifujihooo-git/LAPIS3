@@ -294,51 +294,143 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Excel出力
-    function exportExcel() {
+    // ============================================================
+    // Excel出力（ExcelJS + FileSaver.js）
+    // ============================================================
+
+    // --- 定数: Excel書式設定 ---
+    const EXCEL_FONT_NAME = 'BIZ UDゴシック';
+    const EXCEL_FONT_SIZE = 14;
+    const EXCEL_ROW_HEIGHT = 27;
+    const EXCEL_HEADER_BG = 'FFD3D3D3'; // 薄いグレー (ARGB)
+
+    // 列定義: [ヘッダー名, 列幅]
+    const EXCEL_COLUMNS = [
+        { header: '顧客名', width: 35 },
+        { header: '外務担当者', width: 15 },
+        { header: '決算期', width: 10 },
+        { header: '許認可種別', width: 35 },
+        { header: '許可番号', width: 40 },
+        { header: '満了日', width: 15 },
+        { header: '顧客備考', width: 40 },
+    ];
+
+    /**
+     * 格子罫線（Thin）を生成する
+     */
+    function createThinBorder() {
+        const thinStyle = { style: 'thin' };
+        return {
+            top: thinStyle,
+            left: thinStyle,
+            bottom: thinStyle,
+            right: thinStyle,
+        };
+    }
+
+    /**
+     * セルに共通書式（フォント・罫線・配置）を適用する
+     */
+    function applyBaseStyle(cell, isBold = false) {
+        // フォント: BIZ UDゴシック, サイズ 14
+        cell.font = {
+            name: EXCEL_FONT_NAME,
+            size: EXCEL_FONT_SIZE,
+            bold: isBold,
+        };
+        // 罫線: 格子（Thin）
+        cell.border = createThinBorder();
+        // 配置: 上下中央
+        cell.alignment = { vertical: 'middle' };
+    }
+
+    /**
+     * ヘッダー行に書式を適用する（背景色 + 上下左右中央揃え）
+     */
+    function applyHeaderStyle(cell) {
+        applyBaseStyle(cell, true);
+        // 背景色: 薄いグレー
+        cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: EXCEL_HEADER_BG },
+        };
+        // 配置: 上下左右中央揃え
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    }
+
+    /**
+     * ExcelJS を使用して書式付き .xlsx を生成・ダウンロードする
+     */
+    async function exportExcel() {
         if (filteredData.length === 0) {
             alert('出力するデータがありません。');
             return;
         }
 
-        const exportData = [
-            ["顧客名", "外務担当者", "決算期", "許認可種別", "許可番号", "満了日", "顧客備考"]
-        ];
+        // --- ワークブック & シート作成 ---
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('決算期別一覧');
 
+        // --- 列幅の設定 ---
+        worksheet.columns = EXCEL_COLUMNS.map(col => ({
+            header: col.header,
+            width: col.width,
+        }));
+
+        // --- ヘッダー行（1行目）の書式設定 ---
+        const headerRow = worksheet.getRow(1);
+        headerRow.height = EXCEL_ROW_HEIGHT;
+        headerRow.eachCell((cell) => {
+            applyHeaderStyle(cell);
+        });
+
+        // --- データ行の追加と書式設定 ---
         filteredData.forEach(item => {
             const fiscalText = (item.customer.fiscal_year_end_month && item.customer.fiscal_year_end_day)
                 ? `${item.customer.fiscal_year_end_month}/${item.customer.fiscal_year_end_day}`
                 : '-';
 
-            exportData.push([
+            const rowData = [
                 item.customer.customer_name,
-                item.staff ? item.staff.staff_name : "",
+                item.staff ? item.staff.staff_name : '',
                 fiscalText,
-                item.licenseType ? item.licenseType.license_type_name : "",
+                item.licenseType ? item.licenseType.license_type_name : '',
                 `[${item.officeName}] ${formatLicenseNumber(item.license)}`,
-                item.license.expiry_date || "",
-                item.customer.remarks || ""
-            ]);
+                item.license.expiry_date || '',
+                item.customer.remarks || '',
+            ];
+
+            const dataRow = worksheet.addRow(rowData);
+
+            // 行の高さ: 27
+            dataRow.height = EXCEL_ROW_HEIGHT;
+
+            // 各セルに書式を適用
+            dataRow.eachCell({ includeEmpty: true }, (cell) => {
+                applyBaseStyle(cell, false);
+            });
         });
 
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(exportData);
+        // --- 空セルにも罫線を適用（列数が足りない行への対応）---
+        const totalCols = EXCEL_COLUMNS.length;
+        worksheet.eachRow((row) => {
+            for (let col = 1; col <= totalCols; col++) {
+                const cell = row.getCell(col);
+                if (!cell.border) {
+                    applyBaseStyle(cell, row.number === 1);
+                    if (row.number === 1) applyHeaderStyle(cell);
+                }
+            }
+        });
 
-        // 列幅の調整
-        const wscols = [
-            { wch: 30 }, // 顧客名
-            { wch: 15 }, // 担当者
-            { wch: 10 }, // 決算
-            { wch: 20 }, // 許認可
-            { wch: 20 }, // 番号
-            { wch: 15 }, // 満了日
-            { wch: 40 }  // 備考
-        ];
-        ws['!cols'] = wscols;
-
-        XLSX.utils.book_append_sheet(wb, ws, "許認可洗い出し一覧");
+        // --- ファイル出力（FileSaver.js）---
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 10);
-        XLSX.writeFile(wb, `許認可洗い出し一覧_${timestamp}.xlsx`);
+        saveAs(blob, `決算期別一覧_${timestamp}.xlsx`);
     }
 
     // PDF出力

@@ -14,8 +14,24 @@
         rel="stylesheet">
     <style>
         /* Local overrides for detail pages */
+
+        /* ========================================
+         * 13pt フォントサイズ統一
+         * 対象: メインコンテンツエリア内の全テキスト要素
+         * 対象外: サイドバー、フッター
+         * ======================================== */
+        #page-content .form-group label,
+        #page-content .form-control,
+        #page-content .form-select,
+        #page-content textarea,
+        #page-content .form-section-title,
+        #page-content .btn,
+        #page-content select option {
+            font-size: 13pt !important;
+        }
+
         .form-section-title {
-            font-size: 1.1rem;
+            font-size: 13pt;
             font-weight: 600;
             margin-bottom: 20px;
             padding-bottom: 8px;
@@ -35,7 +51,7 @@
             margin-bottom: 8px;
             font-weight: 500;
             color: var(--text-main);
-            font-size: 0.9rem;
+            font-size: 13pt;
         }
 
         .required {
@@ -50,7 +66,7 @@
             padding: 10px 12px;
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            font-size: 0.95rem;
+            font-size: 13pt;
             transition: all 0.2s;
             background: #fff;
         }
@@ -129,6 +145,12 @@
                         <span class="nav-label">官公庁マスタ</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="license_types_list.html">
+                        <span class="nav-icon">📋</span>
+                        <span class="nav-label">許認可マスタ</span>
+                    </a>
+                </li>
             </ul>
         </nav>
         <!-- END Sidebar -->
@@ -177,62 +199,65 @@
                     </div>
                 </div>
 
-                <div class="block">
-                    <div class="block-content">
-                        <!-- Basic Info -->
-                        <h3 class="form-section-title">拠点情報</h3>
-                        <div class="form-grid">
-                            <div class="form-group" style="grid-column: span 2;">
-                                <label for="office_name">拠点名 <span class="required">*</span></label>
-                                <input type="text" id="office_name" class="form-control" placeholder="例: 本店、○○営業所">
-                            </div>
-                        </div>
-
-                        <!-- Address -->
-                        <h3 class="form-section-title" style="margin-top: 32px;">住所・連絡先</h3>
-                        <div class="form-grid" style="grid-template-columns: 150px 1fr;">
-                            <div class="form-group">
-                                <label for="postal_code">郵便番号</label>
-                                <div style="display: flex; gap: 8px;">
-                                    <input type="text" id="postal_code" class="form-control" maxlength="8">
-                                    <button type="button" class="btn btn-secondary btn-sm" id="btn-search-address"
-                                        style="white-space: nowrap;">検索</button>
+                <form id="office-form">
+                    <div class="block">
+                        <div class="block-content">
+                            <!-- Basic Info -->
+                            <h3 class="form-section-title">拠点情報</h3>
+                            <div class="form-grid">
+                                <div class="form-group" style="grid-column: span 2;">
+                                    <label for="office_name">拠点名 <span class="required">*</span></label>
+                                    <input type="text" id="office_name" class="form-control" placeholder="例: 本店、○○営業所">
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label for="address">住所 <span class="required">*</span></label>
-                                <input type="text" id="address" class="form-control">
-                            </div>
-                        </div>
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="building_name">建物名</label>
-                                <input type="text" id="building_name" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="phone">電話番号</label>
-                                <input type="tel" id="phone" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="fax">FAX番号</label>
-                                <input type="tel" id="fax" class="form-control">
-                            </div>
-                        </div>
 
-                        <div class="form-group" style="margin-top: 24px;">
-                            <label for="status">状態</label>
-                            <select id="status" class="form-select" style="max-width: 200px;">
-                                <option value="active">有効</option>
-                                <option value="inactive">無効</option>
-                            </select>
-                        </div>
+                            <!-- Address -->
+                            <h3 class="form-section-title" style="margin-top: 32px;">住所・連絡先</h3>
+                            <div class="form-grid" style="grid-template-columns: 220px 1fr;">
+                                <div class="form-group">
+                                    <label for="postal_code">郵便番号</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="text" id="postal_code" class="form-control" maxlength="8"
+                                            placeholder="123-4567" style="min-width: 140px; flex: 0 0 140px;">
+                                        <button type="button" class="btn btn-secondary btn-sm" id="btn-lookup-zip"
+                                            style="white-space: nowrap;">検索</button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="address">住所 <span class="required">*</span></label>
+                                    <input type="text" id="address" class="form-control">
+                                </div>
+                            </div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="building_name">建物名</label>
+                                    <input type="text" id="building_name" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="phone">電話番号</label>
+                                    <input type="tel" id="phone" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="fax">FAX番号</label>
+                                    <input type="tel" id="fax" class="form-control">
+                                </div>
+                            </div>
 
-                        <div class="form-group" style="margin-top: 24px;">
-                            <label for="remarks">備考</label>
-                            <textarea id="remarks" class="form-control" rows="4" placeholder="備考..."></textarea>
+                            <div class="form-group" style="margin-top: 24px;">
+                                <label for="status">状態</label>
+                                <select id="status" class="form-select" style="max-width: 200px;">
+                                    <option value="active">有効</option>
+                                    <option value="inactive">無効</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 24px;">
+                                <label for="remarks">備考</label>
+                                <textarea id="remarks" class="form-control" rows="4" placeholder="備考..."></textarea>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </form>
 
                 <footer style="margin-top: 60px; text-align: center; color: #aaa; font-size: 0.8rem;">
                     &copy; 2026 LAPIS2 Project
