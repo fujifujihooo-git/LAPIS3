@@ -16,6 +16,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
     <style>
         /* Local overrides for detail form */
@@ -249,8 +250,8 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <!-- Left: Back, Title, ID (官公庁詳細パターン準拠) -->
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <button type="button" class="btn btn-secondary" id="btn-back">
-                            <span>←</span> 一覧へ
+                        <button type="button" class="btn btn-back" id="btn-back">
+                            <i data-lucide="arrow-left"></i> 一覧へ
                         </button>
                         <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">顧客詳細</h2>
                         <span id="customer-id-display"
@@ -261,20 +262,18 @@
 
                     <!-- Right: Action Buttons -->
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-danger-outline" id="btn-delete">
-                            <span>🗑️</span> 削除
+                        <button type="button" class="btn btn-delete" id="btn-delete">
+                            <i data-lucide="trash-2"></i> 削除
                         </button>
-                        <button type="button" class="btn btn-secondary" id="btn-export-excel"
-                            style="background: #217346; color: white; border-color: #217346;">
-                            <span>📊</span> Excel出力
+                        <button type="button" class="btn btn-excel" id="btn-export-excel">
+                            <i data-lucide="file-spreadsheet"></i> Excel出力
                         </button>
-                        <button type="button" class="btn btn-secondary" id="btn-export-pdf"
-                            style="background: #d32f2f; color: white; border-color: #d32f2f;">
-                            <span>📄</span> PDF出力
+                        <button type="button" class="btn btn-pdf" id="btn-export-pdf">
+                            <i data-lucide="file-text"></i> PDF出力
                         </button>
-                        <button type="button" class="btn btn-primary"
+                        <button type="button" class="btn btn-save"
                             onclick="document.getElementById('customer-form').dispatchEvent(new Event('submit', {cancelable: true, bubbles: true}));">
-                            <span>💾</span> 保存
+                            <i data-lucide="save"></i> 保存
                         </button>
                     </div>
                 </div>
@@ -345,30 +344,36 @@
                                 </div>
                             </div>
 
-                            <!-- Tab Content: Contact Info -->
                             <div id="tab-contact" class="tab-content">
                                 <h3 class="form-section-title">連絡先情報</h3>
-                                <div class="form-grid" style="grid-template-columns: 220px 1fr;">
-                                    <div class="form-group">
+                                <!-- Row 1: Unified Linear Flow (Postal -> Search -> Address -> Building) -->
+                                <div
+                                    style="display: flex; gap: 16px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap;">
+                                    <!-- Postal Group: 140px + Button -->
+                                    <div class="form-group" style="margin-bottom: 0;">
                                         <label for="postal_code">郵便番号</label>
                                         <div style="display: flex; gap: 8px;">
                                             <input type="text" id="postal_code" class="form-control"
                                                 placeholder="123-4567" maxlength="8"
-                                                style="min-width: 140px; flex: 0 0 140px;">
+                                                style="width: 140px; flex: 0 0 140px;">
                                             <button type="button" class="btn btn-secondary btn-sm" id="btn-lookup-zip"
                                                 style="white-space: nowrap;">検索</button>
                                         </div>
                                     </div>
-                                    <div class="form-group">
+                                    <!-- Address: Expanded to fill space -->
+                                    <div class="form-group" style="flex: 1; min-width: 300px; margin-bottom: 0;">
                                         <label for="address">住所</label>
                                         <input type="text" id="address" class="form-control">
                                     </div>
-                                    <div class="form-group">
+                                    <!-- Building: Fixed width to match Phone below -->
+                                    <div class="form-group" style="width: 328px; flex: 0 0 328px; margin-bottom: 0;">
                                         <label for="building_name">建物名</label>
                                         <input type="text" id="building_name" class="form-control">
                                     </div>
                                 </div>
-                                <div class="form-grid">
+
+                                <!-- Row 2: Standard Contact Grid (FAX and Email use 1:2 ratio) -->
+                                <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr;">
                                     <div class="form-group">
                                         <label for="phone">電話番号</label>
                                         <input type="tel" id="phone" class="form-control">
