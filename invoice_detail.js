@@ -98,11 +98,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toISOString().split('T')[0];
 
         formState.invoice_date = today;
-        document.getElementById('invoice_date').value = formState.invoice_date;
-
         formState.invoice_number = '';
         document.getElementById('invoice_number').value = formState.invoice_number;
         document.getElementById('invoice_number').placeholder = '保存時に自動採番（または入力）';
+
+        const iDateEl = document.getElementById('invoice_date');
+        if (iDateEl) {
+            if (iDateEl._flatpickr) iDateEl._flatpickr.setDate(formState.invoice_date);
+            else iDateEl.value = formState.invoice_date;
+        }
 
         // Setup Autocomplete (Fetch all customers? Or use search?)
         // For scalability, simple search against 'customers' collection.
@@ -159,10 +163,22 @@ document.addEventListener('DOMContentLoaded', () => {
             formState.remarks = currentInvoice.remarks || '';
 
             document.getElementById('invoice_number').value = formState.invoice_number;
-            document.getElementById('invoice_date').value = formState.invoice_date;
-            document.getElementById('due_date').value = formState.due_date;
             document.getElementById('status').value = formState.status;
-            document.getElementById('remarks').value = formState.remarks;
+
+            const remarksEl = document.getElementById('remarks');
+            if (remarksEl) remarksEl.value = formState.remarks;
+
+            const iDateEl = document.getElementById('invoice_date');
+            if (iDateEl) {
+                if (iDateEl._flatpickr) iDateEl._flatpickr.setDate(formState.invoice_date);
+                else iDateEl.value = formState.invoice_date;
+            }
+
+            const dDateEl = document.getElementById('due_date');
+            if (dDateEl) {
+                if (dDateEl._flatpickr) dDateEl._flatpickr.setDate(formState.due_date);
+                else dDateEl.value = formState.due_date;
+            }
 
             createdDateSpan.innerHTML = formatDate(currentInvoice.created_date);
             lastUpdatedSpan.innerHTML = formatDate(currentInvoice.last_updated);
@@ -382,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function autoUpdateStatus() {
         const { total, payTotal, balance } = calculateTotals();
-        const dueDate = formState.due_date; // Use state for calculations
+        const dueDate = document.getElementById('due_date').value; // Read directly from DOM
         const statusEl = document.getElementById('status');
         const today = new Date().toISOString().split('T')[0];
 
@@ -405,6 +421,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleSave() {
         if (isSaving) return;
+
+        // Explicitly sync formState from current visible inputs right before validating and saving
+        formState.invoice_number = document.getElementById('invoice_number').value;
+        formState.invoice_date = document.getElementById('invoice_date').value;
+        formState.due_date = document.getElementById('due_date').value;
+        formState.status = document.getElementById('status').value;
+        const remarksEl = document.getElementById('remarks');
+        if (remarksEl) formState.remarks = remarksEl.value;
 
         const custId = Number(customerIdInput.value);
         if (!custId) {
