@@ -7,6 +7,7 @@
     <title>許認可種別マスタ - LAPIS2</title>
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -131,8 +132,8 @@
                         <h2 id="page-title" style="margin: 0; font-size: 1.5rem; color: var(--text-main);">許認可種別マスタ</h2>
                     </div>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-primary" id="btn-add-type">
-                            <span>＋</span> 新規登録
+                        <button type="button" class="btn btn-new" id="btn-add-type">
+                            <i data-lucide="plus"></i> 新規登録
                         </button>
                     </div>
                 </div>
@@ -164,11 +165,11 @@
                         </div>
                         <!-- ボタンを下部に移動 -->
                         <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
-                            <button id="btn-reset" class="btn btn-sm btn-secondary" style="padding: 8px 16px;">
-                                <span>↺</span> リセット
+                            <button id="btn-reset" class="btn btn-reset" style="padding: 8px 16px;">
+                                <i data-lucide="rotate-ccw"></i> リセット
                             </button>
-                            <button id="btn-search" class="btn btn-primary" style="padding: 8px 24px;">
-                                <span>🔍</span> 検索
+                            <button id="btn-search" class="btn btn-search" style="padding: 8px 24px;">
+                                <i data-lucide="search"></i> 検索
                             </button>
                         </div>
                     </div>
@@ -243,7 +244,7 @@
 
             <div class="modal-footer" style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 8px;">
                 <button type="button" class="btn btn-secondary" id="btn-cancel-modal">キャンセル</button>
-                <button type="button" class="btn btn-primary" id="btn-save-modal">保存</button>
+                <button type="button" class="btn btn-save" id="btn-save-modal"><i data-lucide="save"></i> 保存</button>
             </div>
         </div>
     </div>

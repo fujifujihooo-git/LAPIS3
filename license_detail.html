@@ -7,15 +7,20 @@
     <title>許認可詳細 - LAPIS2</title>
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=BIZ+UDGothic:wght@400;700&display=swap"
         rel="stylesheet">
+    <!-- Flatpickr (High Visibility Calendar) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
     <style>
         /* Local overrides for license detail */
         .form-section-title {
-            font-size: 1.1rem;
+            font-size: 13pt;
             font-weight: 600;
             margin-bottom: 20px;
             padding-bottom: 8px;
@@ -35,7 +40,7 @@
             margin-bottom: 8px;
             font-weight: 500;
             color: var(--text-main);
-            font-size: 0.9rem;
+            font-size: 13pt;
         }
 
         /* Highlight required asterisks */
@@ -51,7 +56,7 @@
             padding: 10px 12px;
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            font-size: 0.95rem;
+            font-size: 13pt;
             transition: all 0.2s;
             background: #fff;
         }
@@ -89,7 +94,7 @@
             padding: 10px;
             cursor: pointer;
             border-bottom: 1px solid #d4d4d4;
-            font-size: 0.9rem;
+            font-size: 13pt;
         }
 
         .autocomplete-items div:hover {
@@ -197,21 +202,21 @@
                 <!-- Actions Bar -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">許認可情報編集</h2>
+                        <h2 id="license-edit-title" style="margin: 0; font-size: 1.5rem; color: var(--text-main);">
+                            許認可情報編集</h2>
                     </div>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-secondary" id="btn-back">
-                            <span>←</span> 一覧へ
+                        <button type="button" class="btn btn-back" id="btn-back">
+                            <i data-lucide="arrow-left"></i> 一覧へ
                         </button>
-                        <button type="button" class="btn btn-secondary" id="btn-back-to-customer">
-                            顧客詳細へ
+                        <button type="button" class="btn btn-nav-customer" id="btn-back-to-customer">
+                            <i data-lucide="user-search"></i> 顧客詳細へ
                         </button>
-                        <button type="button" class="btn btn-danger-outline" id="btn-delete-header"
-                            style="display: none;">
-                            <span>🗑️</span> 削除
+                        <button type="button" class="btn btn-delete" id="btn-delete-header" style="display: none;">
+                            <i data-lucide="trash-2"></i> 削除
                         </button>
-                        <button type="button" class="btn btn-primary" id="btn-save">
-                            <span>💾</span> 保存
+                        <button type="button" class="btn btn-save" id="btn-save">
+                            <i data-lucide="save"></i> 保存
                         </button>
                     </div>
                 </div>
@@ -221,9 +226,10 @@
                         <!-- Basic Info -->
                         <h3 class="form-section-title">■ 基本情報</h3>
                         <!-- Customer info -->
-                        <div id="customer-info" style="margin-bottom: 20px;">
+                        <div id="customer-info" style="margin-bottom: 0;">
                             <!-- Customer Search (for new only) -->
-                            <div id="customer-search-group" class="form-group" style="display: none;">
+                            <div id="customer-search-group" class="form-group"
+                                style="display: none; margin-bottom: 20px;">
                                 <label for="customer-search">顧客検索 <span class="required">*</span></label>
                                 <div style="display: flex; gap: 8px;">
                                     <input type="text" id="customer-search" class="form-control"
@@ -234,14 +240,8 @@
                                     style="position: static; margin-top: 4px; border: 1px solid #ddd; max-height: 150px; overflow-y: auto; display: none;">
                                 </div>
                             </div>
-                            <!-- Customer Display (selected/fixed) -->
-                            <div id="customer-display-group" class="form-group" style="display: none;">
-                                <label>顧客</label>
-                                <div id="customer-selected-display"
-                                    style="padding: 10px 14px; background: #f1f5f9; border: 1px solid var(--border-color); border-radius: 6px; font-weight: 600;">
-                                    -</div>
-                                <input type="hidden" id="customer-id">
-                            </div>
+                            <!-- Hidden tracking fields (Display moved to Header) -->
+                            <input type="hidden" id="customer-id">
                         </div>
 
                         <div class="form-grid">
@@ -299,13 +299,13 @@
                         <div class="form-grid" style="background: #f8fafc; padding: 16px; border-radius: 8px;">
                             <div style="display: flex; gap: 8px; align-items: center;">
                                 <label
-                                    style="margin: 0; font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">残り日数:</label>
+                                    style="margin: 0; font-size: 13pt; color: var(--text-muted); font-weight: 600;">残り日数:</label>
                                 <span id="remaining-days"
                                     style="font-weight: 600; font-size: 1rem; color: var(--primary);">-</span>
                             </div>
                             <div style="display: flex; gap: 8px; align-items: center;">
                                 <label
-                                    style="margin: 0; font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">案内まで:</label>
+                                    style="margin: 0; font-size: 13pt; color: var(--text-muted); font-weight: 600;">案内まで:</label>
                                 <span id="notice-days"
                                     style="font-weight: 600; font-size: 1rem; color: var(--text-main);">-</span>
                             </div>
@@ -316,7 +316,7 @@
                         <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
                             <div class="form-grid" style="align-items: end; grid-template-columns: 1fr 1fr 2fr 100px;">
                                 <div class="form-group">
-                                    <label for="change-type" style="font-size: 0.85rem;">変更区分 <span
+                                    <label for="change-type" style="font-size: 13pt;">変更区分 <span
                                             class="required">*</span></label>
                                     <select id="change-type" class="form-select" required>
                                         <option value="新規">新規</option>
@@ -326,14 +326,14 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label for="changed-by" style="font-size: 0.85rem;">変更者 <span
+                                    <label for="changed-by" style="font-size: 13pt;">変更者 <span
                                             class="required">*</span></label>
                                     <select id="changed-by" class="form-select" required>
                                         <option value="">選択してください</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label for="comment" style="font-size: 0.85rem;">コメント</label>
+                                    <label for="comment" style="font-size: 13pt;">コメント</label>
                                     <input type="text" id="comment" class="form-control" placeholder="コメントを入力してください">
                                 </div>
                                 <div class="form-group">
@@ -350,7 +350,8 @@
                                         <th style="width: 20%;">日時</th>
                                         <th style="width: 15%;">変更区分</th>
                                         <th style="width: 15%;">変更者</th>
-                                        <th style="width: 50%;">コメント</th>
+                                        <th style="width: 45%;">コメント</th>
+                                        <th style="width: 5%; text-align: center;">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="history-body">
@@ -373,7 +374,8 @@
                 </div>
                 <!-- Separate Delete Button at bottom (hidden by default) -->
                 <div style="margin-top: 24px; text-align: right; display: none;">
-                    <button class="btn btn-danger-outline" id="btn-delete" style="font-size: 0.875rem;">🗑
+                    <button class="btn btn-delete" id="btn-delete" style="font-size: 0.875rem;"><i
+                            data-lucide="trash-2"></i>
                         許認可情報を削除する</button>
                 </div>
 

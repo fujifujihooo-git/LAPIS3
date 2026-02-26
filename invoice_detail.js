@@ -40,8 +40,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const importItemList = document.getElementById('import-item-list');
     const btnExecuteImport = document.getElementById('btn-execute-import');
     const importCheckAll = document.getElementById('import-check-all');
-
     // --- State ---
+    let isSaving = false;
+    let formState = {
+        invoice_number: '',
+        invoice_date: '',
+        due_date: '',
+        status: '下書き',
+        remarks: ''
+    };
+
     let currentInvoiceId = new URLSearchParams(window.location.search).get('id');
     let currentInvoice = null;
     let currentItems = []; // Work items in memory
@@ -56,22 +64,44 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Functions ---
 
     async function init() {
-        if (currentInvoiceId) {
-            currentInvoiceId = parseInt(currentInvoiceId);
+        console.log("=== init() START ===");
+        console.log("window.location.search: ", window.location.search);
+        console.log("currentInvoiceId parsed: ", currentInvoiceId);
+        bindBasicInfoEvents();
+        if (currentInvoiceId && currentInvoiceId !== 'new' && currentInvoiceId !== 'undefined' && currentInvoiceId !== 'null') {
+            console.log("Executing loadInvoice with docId: ", currentInvoiceId);
             await loadInvoice(currentInvoiceId);
         } else {
+            console.log("Executing initNewInvoice (Fallback)");
+            currentInvoiceId = null;
             await initNewInvoice();
         }
     }
 
+    function bindBasicInfoEvents() {
+        // ステートとUIを同期するonChangeハンドラを設定
+        const fields = ['invoice_number', 'invoice_date', 'due_date', 'status', 'remarks'];
+        fields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                const handler = (e) => {
+                    formState[id] = e.target.value;
+                };
+                el.addEventListener('change', handler);
+                el.addEventListener('input', handler);
+            }
+        });
+    }
+
     async function initNewInvoice() {
         pageTitle.textContent = '新規請求作成';
-        document.getElementById('invoice_date').value = new Date().toISOString().split('T')[0];
-        // Note: Invoice ID is generated on save for Firestore usually, 
-        // but if we want to show a tentative number, we can attempt to guess or just show "保存時に採番"
-        // Existing logic used `generateNextInvoiceNumber` from loaded invoices.
-        // We will show "新規" in display or leave blank.
-        document.getElementById('invoice_number').value = '';
+        const today = new Date().toISOString().split('T')[0];
+
+        formState.invoice_date = today;
+        document.getElementById('invoice_date').value = formState.invoice_date;
+
+        formState.invoice_number = '';
+        document.getElementById('invoice_number').value = formState.invoice_number;
         document.getElementById('invoice_number').placeholder = '保存時に自動採番（または入力）';
 
         // Setup Autocomplete (Fetch all customers? Or use search?)
@@ -79,27 +109,38 @@ document.addEventListener('DOMContentLoaded', () => {
         setupCustomerAutocomplete();
     }
 
-    async function loadInvoice(id) {
+    async function loadInvoice(docId) {
+        console.log("loadInvoice start. docId:", docId);
         try {
-            const [invSnap, itemsSnap, paysSnap] = await Promise.all([
-                db.collection('invoices').where('invoice_id', '==', id).limit(1).get(),
-                db.collection('invoice_items').where('invoice_id', '==', id).get(),
-                db.collection('payments').where('invoice_id', '==', id).get()
-            ]);
+            const invRef = db.collection('invoices').doc(docId);
+            const invDoc = await invRef.get();
+            console.log("invDoc.exists:", invDoc.exists);
 
-            if (invSnap.empty) {
+            if (!invDoc.exists) {
                 alert('請求データが見つかりません。');
                 window.location.href = 'invoice_list.html';
                 return;
             }
 
-            currentInvoice = invSnap.docs[0].data();
+            currentInvoice = invDoc.data();
+            const iId = currentInvoice.invoice_id === undefined ? null : currentInvoice.invoice_id; // Prevent Firebase throw
+
+            const [itemsSnap, paysSnap] = await Promise.all([
+                db.collection('invoice_items').where('invoice_id', '==', iId).get(),
+                db.collection('payments').where('invoice_id', '==', iId).get()
+            ]);
             currentItems = itemsSnap.docs.map(d => d.data()).sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
             currentPayments = paysSnap.docs.map(d => d.data());
 
             // Fetch Customer Name
-            const custSnap = await db.collection('customers').where('customer_id', '==', currentInvoice.customer_id).limit(1).get();
-            const customerName = custSnap.empty ? '不明' : custSnap.docs[0].data().customer_name;
+            let customerName = '不明';
+            const customerId = currentInvoice.customer_id === undefined ? null : currentInvoice.customer_id;
+            if (customerId !== null) {
+                const custSnap = await db.collection('customers').where('customer_id', '==', customerId).limit(1).get();
+                if (!custSnap.empty) {
+                    customerName = custSnap.docs[0].data().customer_name;
+                }
+            }
 
             // Populate UI
             customerIdInput.value = currentInvoice.customer_id;
@@ -110,11 +151,19 @@ document.addEventListener('DOMContentLoaded', () => {
             pageTitle.textContent = `請求詳細: ${customerName}`;
             btnDelete.style.display = 'flex';
 
-            document.getElementById('invoice_number').value = currentInvoice.invoice_number;
-            document.getElementById('invoice_date').value = currentInvoice.invoice_date;
-            document.getElementById('due_date').value = currentInvoice.due_date || '';
-            document.getElementById('status').value = currentInvoice.status;
-            document.getElementById('remarks').value = currentInvoice.remarks || '';
+            // Populate formState
+            formState.invoice_number = currentInvoice.invoice_number || '';
+            formState.invoice_date = currentInvoice.invoice_date || '';
+            formState.due_date = currentInvoice.due_date || '';
+            formState.status = currentInvoice.status || '下書き';
+            formState.remarks = currentInvoice.remarks || '';
+
+            document.getElementById('invoice_number').value = formState.invoice_number;
+            document.getElementById('invoice_date').value = formState.invoice_date;
+            document.getElementById('due_date').value = formState.due_date;
+            document.getElementById('status').value = formState.status;
+            document.getElementById('remarks').value = formState.remarks;
+
             createdDateSpan.innerHTML = formatDate(currentInvoice.created_date);
             lastUpdatedSpan.innerHTML = formatDate(currentInvoice.last_updated);
 
@@ -142,7 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (err) {
             console.error('Load Invoice Error:', err);
-            alert('データの読み込みに失敗しました');
+            alert('データの読み込みに失敗しました\n' + err.message);
+            window.location.href = 'invoice_list.html';
         }
     }
 
@@ -332,90 +382,99 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function autoUpdateStatus() {
         const { total, payTotal, balance } = calculateTotals();
-        const dueDate = document.getElementById('due_date').value;
+        const dueDate = formState.due_date; // Use state for calculations
         const statusEl = document.getElementById('status');
         const today = new Date().toISOString().split('T')[0];
 
         // Only auto-update if not manually changed to specific override? 
         // Usually safer to just suggest. But let's keep logic simple.
         if (payTotal >= total && total > 0) {
-            statusEl.value = '入金済';
+            formState.status = '入金済';
         } else if (payTotal > 0) {
-            statusEl.value = '一部入金';
+            formState.status = '一部入金';
         } else {
-            statusEl.value = '発行済'; // Default
+            formState.status = '発行済'; // Default
         }
 
         if (dueDate && dueDate < today && balance > 0) {
-            statusEl.value = '延滞';
+            formState.status = '延滞';
         }
+
+        statusEl.value = formState.status;
     }
 
-    async function saveInvoice() {
+    async function handleSave() {
+        if (isSaving) return;
+
         const custId = Number(customerIdInput.value);
         if (!custId) {
             alert('顧客を選択してください。');
             return;
         }
 
-        let invNum = document.getElementById('invoice_number').value;
-        const invDate = document.getElementById('invoice_date').value;
-        if (!invNumberWait && !invNum) {
-            // New invoice might not have number yet if auto-generated
-        }
-        if (!invDate) {
+        if (!formState.invoice_date) {
             alert('請求日を入力してください。');
+            return;
+        }
+
+        if (currentItems.length === 0) {
+            alert('請求明細を1件以上入力してください。');
             return;
         }
 
         const { taxable, tax, nontaxable, total } = calculateTotals();
 
+        isSaving = true;
+        btnSave.disabled = true;
+        const originalHtml = btnSave.innerHTML;
+        btnSave.innerHTML = '<i data-lucide="loader" class="spin"></i> 保存中...';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
         try {
             const batch = db.batch();
-
             let iId;
             let invRef;
+            const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp();
 
             if (currentInvoiceId) {
-                iId = currentInvoiceId;
-                const snap = await db.collection('invoices').where('invoice_id', '==', iId).limit(1).get();
-                if (snap.empty) throw new Error('Target invoice not found');
-                invRef = snap.docs[0].ref;
-
-                // For update, keep existing number if set
-                if (!invNum) invNum = currentInvoice.invoice_number;
-
+                invRef = db.collection('invoices').doc(currentInvoiceId);
+                const invDoc = await invRef.get();
+                if (!invDoc.exists) throw new Error('対象の請求データが見つかりません。');
+                iId = invDoc.data().invoice_id;
             } else {
                 iId = await getNextSequence('invoices');
-                // Generate Number if empty
-                if (!invNum) {
+                invRef = db.collection('invoices').doc(`inv_${iId}`);
+            }
+
+            let invNum = formState.invoice_number;
+            if (!invNum) {
+                if (currentInvoice && currentInvoice.invoice_number) {
+                    invNum = currentInvoice.invoice_number;
+                } else {
                     const year = new Date().getFullYear();
                     invNum = `${year}-${String(iId).padStart(3, '0')}`;
                 }
-
-                invRef = db.collection('invoices').doc(`inv_${iId}`);
             }
 
             const invoiceData = {
                 invoice_id: iId,
                 customer_id: custId,
                 invoice_number: invNum,
-                invoice_date: invDate,
-                due_date: document.getElementById('due_date').value,
+                invoice_date: formState.invoice_date,
+                due_date: formState.due_date || null,
                 subtotal_taxable: taxable,
                 tax_amount: tax,
                 subtotal_nontaxable: nontaxable,
                 total_amount: total,
-                status: document.getElementById('status').value,
-                remarks: document.getElementById('remarks').value,
-                last_updated: new Date().toISOString()
+                status: formState.status,
+                remarks: formState.remarks,
+                last_updated: serverTimestamp
             };
 
             if (!currentInvoiceId) {
-                invoiceData.created_date = new Date().toISOString();
+                invoiceData.created_date = serverTimestamp;
             }
 
-            // Save Invoice
             if (currentInvoiceId) {
                 batch.update(invRef, invoiceData);
 
@@ -443,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     amount: Number(item.amount),
                     is_taxable: item.is_taxable,
                     display_order: idx + 1,
-                    created_date: new Date().toISOString()
+                    created_date: serverTimestamp
                 });
             });
 
@@ -456,19 +515,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     amount: Number(p.amount),
                     payment_method: p.payment_method,
                     remarks: p.remarks || '',
-                    created_date: new Date().toISOString()
+                    created_date: serverTimestamp
                 });
             });
 
             await batch.commit();
-            showToast('請求データを保存しました', 'success');
+
+            if (typeof showToast === 'function') {
+                showToast('請求データを保存しました', 'success');
+            } else {
+                alert('請求データを保存しました');
+            }
+
             setTimeout(() => {
                 window.location.href = 'invoice_list.html';
             }, 1000);
 
         } catch (err) {
             console.error('Save failed:', err);
-            alert('保存に失敗しました: ' + err.message);
+            alert('保存に失敗しました。通信環境や権限をご確認ください。\n詳細: ' + err.message);
+        } finally {
+            isSaving = false;
+            btnSave.disabled = false;
+            btnSave.innerHTML = originalHtml;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
     }
 
@@ -478,19 +548,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const batch = db.batch();
-            const iId = currentInvoiceId;
+            const invRef = db.collection('invoices').doc(currentInvoiceId);
+            const invDoc = await invRef.get();
 
-            // Invoice
-            const snap = await db.collection('invoices').where('invoice_id', '==', iId).limit(1).get();
-            if (!snap.empty) batch.delete(snap.docs[0].ref);
+            if (invDoc.exists) {
+                const iId = invDoc.data().invoice_id;
+                batch.delete(invRef);
 
-            // Items
-            const itemsSnap = await db.collection('invoice_items').where('invoice_id', '==', iId).get();
-            itemsSnap.forEach(d => batch.delete(d.ref));
+                // Items
+                const itemsSnap = await db.collection('invoice_items').where('invoice_id', '==', iId).get();
+                itemsSnap.forEach(d => batch.delete(d.ref));
 
-            // Payments
-            const paySnap = await db.collection('payments').where('invoice_id', '==', iId).get();
-            paySnap.forEach(d => batch.delete(d.ref));
+                // Payments
+                const paySnap = await db.collection('payments').where('invoice_id', '==', iId).get();
+                paySnap.forEach(d => batch.delete(d.ref));
+            }
 
             await batch.commit();
             showToast('削除が完了しました', 'success');
@@ -742,7 +814,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Events ---
-    btnSave.addEventListener('click', saveInvoice);
+    btnSave.addEventListener('click', handleSave);
     btnDelete.addEventListener('click', deleteInvoice);
 
     // 顧客詳細に戻るボタン

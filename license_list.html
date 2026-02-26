@@ -7,13 +7,51 @@
     <title>許認可管理 - LAPIS2</title>
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=BIZ+UDGothic:wght@400;700&display=swap"
         rel="stylesheet">
     <style>
-        /* Local overrides */
+        /* UI Improve: Font size 13pt */
+        .block-content,
+        .filter-bar,
+        .table-modern,
+        .table-modern th {
+            font-size: 13pt !important;
+        }
+
+        .form-control,
+        .form-select,
+        .btn-search,
+        .filter-item label {
+            font-size: 13pt !important;
+        }
+
+        /* Number sub-text style */
+        .license-number-sub {
+            display: block;
+            font-size: 11pt;
+            color: #888888;
+            margin-top: 2px;
+            font-weight: normal;
+        }
+
+        /* Wareki display style */
+        .date-awareki {
+            display: block;
+            font-size: 11pt;
+            color: #888888;
+            margin-top: 2px;
+            font-weight: normal;
+        }
+
+        /* Ensure table cells align well with two lines */
+        .table-modern td {
+            vertical-align: middle;
+            line-height: 1.4;
+        }
     </style>
 </head>
 
@@ -111,10 +149,10 @@
 
                 <!-- Actions Bar -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">顧客の許認可情報を管理します。</p>
+                    <p style="color: var(--text-muted); margin: 0; font-size: 13pt;">顧客の許認可情報を管理します。</p>
                     <div class="d-flex gap-2">
-                        <button id="btn-new-license" class="btn btn-primary">
-                            <span>＋</span> 新規許認可登録
+                        <button id="btn-new-license" class="btn btn-new">
+                            <i data-lucide="plus"></i> 新規許認可登録
                         </button>
                     </div>
                 </div>
@@ -146,16 +184,23 @@
                                     <option value="取消">取消</option>
                                 </select>
                             </div>
-                            <div class="filter-item" style="padding-bottom: 2px;">
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                            <div class="filter-item" style="display: flex; align-items: center; padding-bottom: 2px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
                                     <input type="checkbox" id="filter-notice-due" style="width: 18px; height: 18px;">
                                     <label for="filter-notice-due"
                                         style="margin:0; cursor:pointer;">案内日が今日以前（対応要）</label>
                                 </div>
-                                <button id="btn-search-execute" class="btn btn-primary" style="width: 100%;">
-                                    <span>🔍</span> 検索を実行
-                                </button>
                             </div>
+                        </div>
+
+                        <!-- Button grouping aligned with Government Office Master -->
+                        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                            <button class="btn btn-reset" id="btn-reset">
+                                <i data-lucide="rotate-ccw"></i> リセット
+                            </button>
+                            <button id="btn-search-execute" class="btn btn-search">
+                                <i data-lucide="search"></i> 検索
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -168,8 +213,7 @@
                                 <thead>
                                     <tr>
                                         <th class="sortable" data-sort="customer_name">顧客名</th>
-                                        <th class="sortable" data-sort="license_type_name">許認可種別</th>
-                                        <th class="sortable" data-sort="license_number">番号</th>
+                                        <th class="sortable" data-sort="license_type_name">許認可種別 / 番号</th>
                                         <th class="sortable" data-sort="expiry_date">期限（満了日）</th>
                                         <th class="sortable" data-sort="remaining_days">残り日数</th>
                                         <th class="sortable" data-sort="notice_date">案内日</th>

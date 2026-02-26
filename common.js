@@ -43,13 +43,105 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    console.log('LAPIS2 Common JS Loaded - v1.1.0');
+    console.log('LAPIS2 Common JS Loaded - v1.2.0');
     // --- Data Initialization ---
     initStaffData();
 
     // --- Authentication Check ---
     checkAuth();
+
+    // --- Lucide Icons Initialization ---
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+
+    // --- High-Visibility DatePicker (Flatpickr) ---
+    initDatePicker();
 });
+
+function initDatePicker() {
+    if (typeof flatpickr === 'undefined') {
+        console.warn('Flatpickr is not loaded. Skipping initialization.');
+        return;
+    }
+
+    // Target all date inputs
+    const dateInputs = document.querySelectorAll('input[type="date"], .lapis-datepicker');
+
+    dateInputs.forEach(input => {
+        // --- Wareki Helper Setup ---
+        // Create helper element if it doesn't exist
+        let helper = input.parentNode.querySelector('.wareki-helper');
+        if (!helper) {
+            helper = document.createElement('div');
+            helper.className = 'wareki-helper';
+            // Insert after input (or after flatpickr's altInput later)
+            input.parentNode.appendChild(helper);
+        }
+
+        const fp = flatpickr(input, {
+            locale: "ja",
+            confirmIcon: "<i class='fa fa-check'></i>", // Not used but good to have
+            altInput: true,
+            altFormat: "Y/m/d",
+            dateFormat: "Y-m-d", // Keep internal value as YYYY-MM-DD for consistency
+            allowInput: true,
+            disableMobile: true,
+            animate: true,
+            onReady: (selectedDates, dateStr, instance) => {
+                updateWarekiHelper(helper, dateStr);
+                // Move helper after the newly created altInput
+                if (instance.altInput) {
+                    instance.altInput.parentNode.appendChild(helper);
+                }
+            },
+            onChange: (selectedDates, dateStr, instance) => {
+                updateWarekiHelper(helper, dateStr);
+            }
+        });
+    });
+}
+
+/**
+ * Update the text of a wareki helper element
+ */
+function updateWarekiHelper(helperElement, dateStr) {
+    if (!helperElement) return;
+    if (!dateStr) {
+        helperElement.textContent = '';
+        return;
+    }
+    const wareki = convertToWareki(dateStr);
+    helperElement.textContent = wareki ? `(${wareki})` : '';
+}
+
+/**
+ * Convert ISO date string (YYYY-MM-DD) to Japanese Era (Wareki)
+ * Example: 2026-02-25 -> 令和8年2月25日
+ */
+function convertToWareki(dateStr) {
+    if (!dateStr) return null;
+    try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return null;
+
+        // Use Intl.DateTimeFormat for accurate era calculation
+        const formatter = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', {
+            era: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        // The format produced is "令和8年2月25日"
+        return formatter.format(date);
+    } catch (e) {
+        console.error('Wareki conversion error:', e);
+        return null;
+    }
+}
+
+
 
 // --- Data Initialization Functions ---
 function initStaffData() {
@@ -143,15 +235,20 @@ function renderUserStatus(session) {
 
     userArea.innerHTML = `
         <div style="text-align: right; line-height: 1.2;">
-            <div style="font-size: 0.75rem; color: #a0a0a0;">Signed in as</div>
-            <div style="font-weight: 600; color: var(--text-main);">${session.staff_name}</div>
+            <div class="user-signed-in-label">Signed in as</div>
+            <div class="user-display-name">${session.staff_name}</div>
         </div>
-        <button type="button" class="btn btn-sm btn-secondary" onclick="logout()" style="margin-left: 8px;">
-            <span style="font-size: 14px">🚪</span>
+        <button type="button" class="btn-logout" onclick="logout()">
+            <i data-lucide="log-out"></i> ログアウト
         </button>
     `;
 
     targetContainer.appendChild(userArea);
+
+    // Re-initialize Lucide icons to render the new log-out icon
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
 }
 
 async function logout() {

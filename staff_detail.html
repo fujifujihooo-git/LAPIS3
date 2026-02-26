@@ -7,11 +7,16 @@
     <title>担当者詳細 - LAPIS2</title>
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=BIZ+UDGothic:wght@400;700&display=swap"
         rel="stylesheet">
+    <!-- Flatpickr (High Visibility Calendar) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
     <style>
         /* Local overrides for detail pages */
         .form-section-title {
@@ -165,18 +170,18 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <!-- Left: Back Button + Title -->
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <button type="button" class="btn btn-secondary" id="btn-back">
-                            <span>←</span> 一覧へ
+                        <button type="button" class="btn btn-back" id="btn-back">
+                            <i data-lucide="arrow-left"></i> 一覧へ
                         </button>
                         <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">担当者詳細</h2>
                     </div>
                     <!-- Right: Delete, Save Buttons -->
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-danger-outline" id="btn-delete" style="display: none;">
-                            <span>🗑️</span> 削除
+                        <button type="button" class="btn btn-delete" id="btn-delete" style="display: none;">
+                            <i data-lucide="trash-2"></i> 削除
                         </button>
-                        <button type="button" class="btn btn-primary" id="btn-save">
-                            <span>💾</span> 保存
+                        <button type="button" class="btn btn-save" id="btn-save">
+                            <i data-lucide="save"></i> 保存
                         </button>
                     </div>
                 </div>
@@ -229,22 +234,26 @@
                                 <input type="email" id="email" class="form-control">
                             </div>
                         </div>
-                        <div class="form-grid" style="grid-template-columns: 240px 1fr;">
-                            <div class="form-group">
+                        <!-- Unified Linear Flow (Postal -> Search -> Address -> Building) -->
+                        <div
+                            style="display: flex; gap: 16px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap;">
+                            <!-- Postal Group -->
+                            <div class="form-group" style="margin-bottom: 0;">
                                 <label for="postal_code">郵便番号</label>
                                 <div style="display: flex; gap: 8px;">
-                                    <input type="text" id="postal_code" class="form-control" maxlength="8">
+                                    <input type="text" id="postal_code" class="form-control" placeholder="123-4567"
+                                        maxlength="8" style="width: 140px; flex: 0 0 140px;">
                                     <button type="button" class="btn btn-secondary btn-sm" id="btn-search-address"
-                                        style="white-space: nowrap;" disabled>検索</button>
+                                        style="white-space: nowrap;">検索</button>
                                 </div>
                             </div>
-                            <div class="form-group">
+                            <!-- Address -->
+                            <div class="form-group" style="flex: 1; min-width: 300px; margin-bottom: 0;">
                                 <label for="address">住所</label>
-                                <input type="text" id="address" class="form-control">
+                                <input type="text" id="address" class="form-control" placeholder="東京都千代田区...">
                             </div>
-                        </div>
-                        <div class="form-grid">
-                            <div class="form-group">
+                            <!-- Building -->
+                            <div class="form-group" style="width: 328px; flex: 0 0 328px; margin-bottom: 0;">
                                 <label for="building_name">建物名</label>
                                 <input type="text" id="building_name" class="form-control">
                             </div>

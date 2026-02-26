@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const filterStatus = document.getElementById('filter-status');
     const filterNoticeDue = document.getElementById('filter-notice-due');
     const btnNewLicense = document.getElementById('btn-new-license');
+    const btnReset = document.getElementById('btn-reset');
+    const btnSearch = document.getElementById('btn-search-execute');
 
     // --- State ---
     let licenses = [];
@@ -84,19 +86,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Format Date to Japanese Era (Wareki)
+    function formatWareki(dateStr) {
+        if (!dateStr || dateStr === 'null' || !dateStr) return '';
+        try {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return '';
+            const formatter = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', {
+                era: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            return formatter.format(date);
+        } catch (e) {
+            return '';
+        }
+    }
+
     // Initialize Data from Firestore
     async function init() {
-        console.log('Fetching initial data for License List...');
+        console.log('Fetching master data for License List...');
         try {
             // Fetch Masters Only
             licenseTypes = await getAllFromFirestore('license_types');
 
-            // customers are NOT fetched initially to save quota
-
             // Populate license type filter
             if (filterLicenseType) {
                 filterLicenseType.innerHTML = '<option value="">すべて</option>';
-                licenseTypes.filter(lt => lt.status === '有効').sort((a, b) => (a.sort_order || 999) - (b.sort_order || 999)).forEach(lt => {
+                licenseTypes.filter(lt => lt.status === '有効' || lt.status === 'active').sort((a, b) => (a.sort_order || 999) - (b.sort_order || 999)).forEach(lt => {
                     const opt = document.createElement('option');
                     opt.value = lt.license_type_id;
                     opt.textContent = lt.license_type_name;
@@ -104,40 +122,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
 
-            // Initial Fetch: Recent 50 licenses (by expiry date ascending - most urgent)
-            const snapshot = await db.collection('customer_licenses')
-                .orderBy('expiry_date', 'asc')
-                .limit(50)
-                .get();
+            // Initial view: EMPTY (Save Quota)
+            licenseListBody.innerHTML = '<tr><td colspan="7" class="no-data-cell" style="padding: 40px 0; color: #888;">検索条件を入力して検索を実行してください。</td></tr>';
 
-            licenses = snapshot.docs.map(d => d.data());
-
-            // We need customer names for display. 
-            // Fetch distinct customer IDs from licenses and fetch customer names.
-            const custIds = [...new Set(licenses.map(l => l.customer_id))];
-            if (custIds.length > 0) {
-                // Batch/Promise.all fetch is heavy. 
-                // Maybe just show IDs if name not available? Or fetch individually effectively.
-                // Or use `where('customer_id', 'in', ...)` for chunks.
-                const custResolves = [];
-                // Chunk into 10
-                for (let i = 0; i < custIds.length; i += 10) {
-                    const chunk = custIds.slice(i, i + 10);
-                    if (chunk.length > 0) {
-                        custResolves.push(db.collection('customers').where('customer_id', 'in', chunk).get());
-                    }
-                }
-                const custSnaps = await Promise.all(custResolves);
-                custSnaps.forEach(snap => {
-                    snap.docs.forEach(d => customers.push(d.data()));
-                });
-            }
-
-            filteredData = licenses;
-            renderTable(licenses);
         } catch (err) {
             console.error('Init failed:', err);
-            showToast('データ読み込みエラー', 'error');
+            showToast('マスターデータの読み込みに失敗しました', 'error');
         }
     }
 
@@ -148,36 +138,51 @@ document.addEventListener('DOMContentLoaded', async () => {
         const statusVal = filterStatus.value;
         const noticeDue = filterNoticeDue.checked;
 
-        licenseListBody.innerHTML = '<tr><td colspan="8" style="text-align:center">検索中...</td></tr>';
+        licenseListBody.innerHTML = '<tr><td colspan="7" style="text-align:center">検索中...</td></tr>';
 
         try {
             let results = [];
 
+            // Quota optimization: Validation
+            if (!custName && !licType && !statusVal && !noticeDue) {
+                // If NO search conditions, ask for confirmation or return all with strict limit
+                const proceed = confirm('検索条件が指定されていません。最新の許認可情報を表示しますか？');
+                if (!proceed) {
+                    licenseListBody.innerHTML = '<tr><td colspan="7" class="no-data-cell">検索条件を入力してください。</td></tr>';
+                    return;
+                }
+            }
+
             // Strategy:
-            // 1. If Customer Name is provided, search customers first.
+            // 1. If Customer Name is provided, search customers with PARTIAL match (includes).
             if (custName) {
-                const cSnap = await db.collection('customers')
-                    .where('customer_name', '>=', custName)
-                    .where('customer_name', '<=', custName + '\uf8ff')
-                    .limit(10) // Limit to avoid querying too many licenses
-                    .get();
+                // Fetch all customers to perform partial match on client side.
+                // Note: Firestore doesn't support native partial match.
+                const cSnap = await db.collection('customers').get();
+                const allCustomers = cSnap.docs.map(d => d.data());
 
-                if (cSnap.empty) {
-                    licenseListBody.innerHTML = '<tr><td colspan="8" style="text-align:center">該当する顧客が見つかりません</td></tr>';
+                const searchLower = custName.toLowerCase();
+                const matchedCustomers = allCustomers.filter(c => {
+                    const nameLower = (c.customer_name || '').toLowerCase();
+                    const kanaLower = (c.customer_kana || '').toLowerCase();
+                    return nameLower.includes(searchLower) || kanaLower.includes(searchLower);
+                });
+
+                if (matchedCustomers.length === 0) {
+                    licenseListBody.innerHTML = '<tr><td colspan="7" style="text-align:center">該当する顧客が見つかりません</td></tr>';
                     return;
                 }
 
-                if (cSnap.size >= 10) {
-                    alert('該当する顧客が多すぎます。検索条件を詳しくしてください。');
-                    licenseListBody.innerHTML = '<tr><td colspan="8" style="text-align:center">検索条件を絞ってください</td></tr>';
-                    return;
+                if (matchedCustomers.length > 50) {
+                    alert('該当する顧客が多すぎます。検索条件を詳しくしてください。\n（最初の50件に関連する許認可を表示します）');
                 }
 
-                const targetCustIds = cSnap.docs.map(d => d.data().customer_id);
-                // Fetch customers to memory for display
-                cSnap.docs.forEach(d => {
-                    if (!customers.find(c => c.customer_id === d.data().customer_id)) {
-                        customers.push(d.data());
+                const targetCustIds = matchedCustomers.slice(0, 50).map(c => c.customer_id);
+
+                // Add to global customers cache for display
+                matchedCustomers.forEach(c => {
+                    if (!customers.find(existing => existing.customer_id === c.customer_id)) {
+                        customers.push(c);
                     }
                 });
 
@@ -185,7 +190,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const lSnap = await db.collection('customer_licenses')
                     .where('customer_id', 'in', targetCustIds)
                     .get();
-                results = lSnap.docs.map(d => d.data());
+                results = lSnap.docs.map(d => ({ ...d.data(), _docId: d.id }));
 
             } else {
                 // 2. If no customer name, use other filters as base query
@@ -193,6 +198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (licType) {
                     query = query.where('license_type_id', '==', parseInt(licType));
+                    if (statusVal) query = query.where('status', '==', statusVal);
                 } else if (statusVal) {
                     query = query.where('status', '==', statusVal);
                 } else if (noticeDue) {
@@ -202,16 +208,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     query = query.where('notice_date', '<=', today);
                 } else {
                     // No specific high selectivity filter
-                    query = query.orderBy('expiry_date', 'asc').limit(50);
+                    query = query.orderBy('expiry_date', 'asc');
                 }
 
-                // If using licType or statusVal, maybe add limit
-                if (licType || statusVal || noticeDue) {
-                    query = query.limit(100);
-                }
+                // Global limit for read optimization
+                query = query.limit(100);
 
                 const snap = await query.get();
-                results = snap.docs.map(d => d.data());
+                results = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
 
                 // We need customer names. Fetch associated customers.
                 const neededCids = [...new Set(results.map(r => r.customer_id))];
@@ -254,7 +258,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 alert('検索エラー');
             }
-            licenseListBody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:red">エラーが発生しました</td></tr>';
+            licenseListBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red">エラーが発生しました</td></tr>';
         }
     }
 
@@ -266,7 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!num1 && !num2) return 'ー';
         if (!num1) return num2;
         if (!num2) return num1;
-        return `${num1} - ${num2}`;
+        return `${num1} _ ${num2}`;
     }
 
     // Render Table
@@ -275,7 +279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         licenseListBody.innerHTML = '';
 
         if (data.length === 0) {
-            licenseListBody.innerHTML = `<tr><td colspan="8" class="no-data-cell">該当するデータがありません</td></tr>`;
+            licenseListBody.innerHTML = `<tr><td colspan="7" class="no-data-cell">該当するデータがありません</td></tr>`;
             return;
         }
 
@@ -289,16 +293,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             const row = document.createElement('tr');
             row.style.cursor = 'pointer';
             row.addEventListener('click', () => {
-                window.location.href = `license_detail.html?id=${item.license_id}`;
+                window.location.href = `license_detail.html?docId=${item._docId}&id=${item.license_id}`;
             });
 
             row.innerHTML = `
                 <td><strong>${formatDisplayValue(customer ? customer.customer_name : null)}</strong></td>
-                <td>${formatDisplayValue(licenseType ? licenseType.license_type_name : null)}</td>
-                <td>${formatLicenseNumber(item)}</td>
-                <td>${formatDate(item.expiry_date)}</td>
+                <td>
+                    ${formatDisplayValue(licenseType ? licenseType.license_type_name : null)}
+                    <span class="license-number-sub">${formatLicenseNumber(item)}</span>
+                </td>
+                <td>
+                    ${formatDate(item.expiry_date)}
+                    <span class="date-awareki">${formatWareki(item.expiry_date)}</span>
+                </td>
                 <td><span class="${getRemainingDaysClass(remainingDays)}">${formatRemainingDays(remainingDays)}</span></td>
-                <td>${formatDate(item.notice_date)}</td>
+                <td>
+                    ${formatDate(item.notice_date)}
+                    <span class="date-awareki">${formatWareki(item.notice_date)}</span>
+                </td>
                 <td><span class="${getNoticeDaysClass(noticeDays)}">${formatDaysUntilNotice(noticeDays)}</span></td>
                 <td><span class="badge ${getStatusClass(item.status)}">${item.status}</span></td>
             `;
@@ -308,54 +320,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Filter Logic
     function handleFilter() {
-        const customerVal = filterCustomer.value.toLowerCase();
-        const licenseTypeVal = filterLicenseType.value;
-        const statusVal = filterStatus.value;
-        const isNoticeDue = filterNoticeDue.checked;
+        // ... (This function is used for simple front-end filtering after initial fetch)
+        // ...
+    }
 
-        const filtered = licenses.filter(item => {
-            const customer = customers.find(c => c.customer_id === item.customer_id);
-            const matchCustomer = !customerVal || (customer && customer.customer_name.toLowerCase().includes(customerVal));
-            const matchLicenseType = !licenseTypeVal || String(item.license_type_id) === licenseTypeVal;
-            const matchStatus = !statusVal || item.status === statusVal;
+    // Reset Logic
+    async function handleReset() {
+        filterCustomer.value = '';
+        filterLicenseType.value = '';
+        filterStatus.value = '有効';
+        filterNoticeDue.checked = false;
 
-            let matchNoticeDue = true;
-            if (isNoticeDue) {
-                const noticeDays = calculateDaysUntilNotice(item.notice_date);
-                matchNoticeDue = noticeDays !== null && noticeDays <= 0;
-            }
-
-            return matchCustomer && matchLicenseType && matchStatus && matchNoticeDue;
-        });
-
-        // Current Sort Apply
-        const mappedData = filtered.map(item => {
-            const cust = customers.find(c => c.customer_id === item.customer_id);
-            const type = licenseTypes.find(lt => lt.license_type_id === item.license_type_id);
-            return {
-                ...item,
-                customer_name: cust ? cust.customer_name : '',
-                license_type_name: type ? type.license_type_name : '',
-                license_number: formatLicenseNumber(item),
-                remaining_days: calculateRemainingDays(item.expiry_date) || 9999,
-                notice_remaining: calculateDaysUntilNotice(item.notice_date) || 9999
-            };
-        });
-
-        const sortedMapped = handleSort('license-table', mappedData, currentSort.column, 'string', currentSort.direction);
-        filteredData = sortedMapped.map(sm => {
-            const { customer_name, license_type_name, license_number, remaining_days, notice_remaining, ...original } = sm;
-            return original;
-        });
-
-        updateSortIndicators('license-table', currentSort.column, currentSort.direction);
-        renderTable(filteredData);
+        // Return to initial display (Recent 50)
+        await init();
+        showToast('検索条件をリセットしました');
     }
 
     // --- Listeners ---
     // Removed direct change listeners
-    const btnSearch = document.getElementById('btn-search-execute');
     if (btnSearch) btnSearch.addEventListener('click', executeSearch);
+    if (btnReset) btnReset.addEventListener('click', handleReset);
 
     if (filterCustomer) {
         filterCustomer.addEventListener('keypress', (e) => {

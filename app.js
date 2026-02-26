@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!filterLicense) return;
         filterLicense.innerHTML = '<option value="">すべて</option>';
         const licenseTypes = await getAllFromFirestore('license_types');
-        const activeTypes = licenseTypes.filter(lt => lt.status === '有効');
+        const activeTypes = licenseTypes.filter(lt => lt.status === '有効' || lt.status === 'active');
 
         activeTypes.sort((a, b) => {
             const orderA = a.sort_order !== undefined ? a.sort_order : 999;

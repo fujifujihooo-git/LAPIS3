@@ -5,17 +5,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>請求詳細 - LAPIS2</title>
+    <script>
+        window.onerror = function (msg, url, lineNo, columnNo, error) {
+            console.error("GLOBAL INIT ERROR:", msg, lineNo, columnNo, error);
+            alert("システムエラーが発生しました。\n行: " + lineNo + "\n" + msg);
+            return false;
+        };
+        window.addEventListener('unhandledrejection', function (event) {
+            console.error("UNHANDLED PROMISE ERROR:", event.reason);
+        });
+    </script>
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=BIZ+UDGothic:wght@400;700&display=swap"
         rel="stylesheet">
+    <!-- Flatpickr (High Visibility Calendar) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
     <style>
         /* Local overrides for invoice detail */
+        /* Strict 13pt enforcement */
         .form-section-title {
-            font-size: 1.1rem;
+            font-size: 13pt;
+            /* Strict 13pt */
             font-weight: 600;
             margin-bottom: 20px;
             padding-bottom: 8px;
@@ -35,7 +52,8 @@
             margin-bottom: 8px;
             font-weight: 500;
             color: var(--text-main);
-            font-size: 0.9rem;
+            font-size: 13pt;
+            /* Strict 13pt */
         }
 
         .form-control,
@@ -45,9 +63,12 @@
             padding: 10px 12px;
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            font-size: 0.95rem;
+            font-size: 13pt;
+            /* Strict 13pt */
             transition: all 0.2s;
             background: #fff;
+            min-height: 44px;
+            /* Ensure sufficient touch target / input box height for 13pt */
         }
 
         .form-control:focus,
@@ -77,7 +98,8 @@
             display: flex;
             justify-content: space-between;
             margin-bottom: 12px;
-            font-size: 0.95rem;
+            font-size: 13pt;
+            /* Strict 13pt */
             color: var(--text-main);
         }
 
@@ -85,11 +107,13 @@
             border-top: 2px solid var(--border-color);
             margin-top: 16px;
             padding-top: 16px;
-            font-size: 1.25rem;
+            font-size: 13pt;
+            /* Strict 13pt, using bold instead of size to differentiate */
             font-weight: 700;
             color: var(--primary);
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
 
         .balance-info {
@@ -97,6 +121,11 @@
             padding-top: 16px;
             border-top: 1px dashed var(--border-color);
             text-align: right;
+        }
+
+        .balance-info div {
+            font-size: 13pt !important;
+            /* Strict 13pt overrides */
         }
 
         /* Autocomplete */
@@ -124,7 +153,8 @@
             padding: 10px;
             cursor: pointer;
             border-bottom: 1px solid #d4d4d4;
-            font-size: 0.9rem;
+            font-size: 13pt;
+            /* Strict 13pt */
         }
 
         .autocomplete-items div:hover {
@@ -134,6 +164,27 @@
         .autocomplete-active {
             background-color: var(--primary) !important;
             color: #ffffff;
+        }
+
+        /* Table cells explicit 13pt */
+        .table-modern th,
+        .table-modern td {
+            font-size: 13pt !important;
+        }
+
+        /* Buttons explicit 13pt */
+        .btn {
+            font-size: 13pt !important;
+            min-height: 44px;
+            /* Adequate touch target */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-sm {
+            min-height: 36px;
+            /* slightly smaller but still readable */
         }
 
         /* Modal Overrides for this page if needed */
@@ -290,19 +341,17 @@
                         <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">請求書編集</h2>
                     </div>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-secondary"
-                            onclick="window.location.href='invoice_list.html'">
-                            <span>←</span> 一覧へ
+                        <button type="button" class="btn btn-back" onclick="window.location.href='invoice_list.html'">
+                            <i data-lucide="arrow-left"></i> 一覧へ
                         </button>
-                        <button type="button" class="btn btn-secondary" id="btn-back-to-customer">
-                            顧客詳細へ
+                        <button type="button" class="btn btn-nav-customer" id="btn-back-to-customer">
+                            <i data-lucide="user-search"></i> 顧客詳細へ
                         </button>
-                        <button type="button" class="btn btn-danger-outline" id="btn-delete-invoice"
-                            style="display: none;">
-                            <span>🗑️</span> 削除
+                        <button type="button" class="btn btn-delete" id="btn-delete-invoice" style="display: none;">
+                            <i data-lucide="trash-2"></i> 削除
                         </button>
-                        <button type="button" class="btn btn-primary" id="btn-save-invoice">
-                            <span>💾</span> 保存
+                        <button type="button" class="btn btn-save" id="btn-save-invoice">
+                            <i data-lucide="save"></i> 保存
                         </button>
                     </div>
                 </div>
@@ -323,7 +372,7 @@
                             <div class="form-group" id="customer-display-group" style="display: none;">
                                 <label>顧客名</label>
                                 <div id="customer-name-display"
-                                    style="padding: 10px; font-weight: 600; font-size: 1.1rem;"></div>
+                                    style="padding: 10px; font-weight: 600; font-size: 13pt;"><!-- Strict 13pt --></div>
                             </div>
                         </div>
 
@@ -427,9 +476,9 @@
                         </div>
 
                         <div class="balance-info">
-                            <div style="font-size: 0.9rem; color: #64748b; margin-bottom: 4px;">入金合計: <span
-                                    id="display-payment-total" style="font-weight: 600;">¥0</span></div>
-                            <div style="font-size: 1.1rem; font-weight: 700;">残高: <span id="display-balance"
+                            <div style="color: #64748b; margin-bottom: 4px;">入金合計: <span id="display-payment-total"
+                                    style="font-weight: 600;">¥0</span></div>
+                            <div style="font-weight: 700;">残高: <span id="display-balance"
                                     style="color: var(--primary);">¥0</span></div>
                         </div>
 
@@ -501,8 +550,8 @@
             </div>
             <div class="modal-footer" style="margin-top: 24px; display: flex; justify-content: space-between;">
                 <div>
-                    <button type="button" class="btn btn-danger-outline" id="btn-modal-delete-item"
-                        style="display: none;">削除</button>
+                    <button type="button" class="btn btn-delete" id="btn-modal-delete-item" style="display: none;"><i
+                            data-lucide="trash-2"></i> 削除</button>
                 </div>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('item-modal')">キャンセル</button>
@@ -594,7 +643,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
-    <script src="invoice_detail.js"></script>
+    <script src="invoice_detail.js?v=20260226"></script>
 
     <script>
         document.getElementById('mobile-toggle')?.addEventListener('click', function () {

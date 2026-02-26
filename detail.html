@@ -7,11 +7,16 @@
     <title>案件詳細 - LAPIS2</title>
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=BIZ+UDGothic:wght@400;700&display=swap"
         rel="stylesheet">
+    <!-- Flatpickr (High Visibility Calendar) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
     <style>
         /* Local overrides */
     </style>
@@ -101,7 +106,7 @@
                     <div id="detail-title-area">
                         <h1 class="page-title" id="page-title">案件詳細</h1>
                         <span id="case-id-display"
-                            style="font-size: 0.8rem; color: var(--text-muted); font-weight: 400; margin-left: 8px;">Case
+                            style="font-size: 11pt; color: var(--text-muted); font-weight: 400; margin-left: 8px;">Case
                             ID: -</span>
                     </div>
                 </div>
@@ -119,13 +124,16 @@
                     <div class="block-content d-flex justify-content-between align-items-center"
                         style="padding: 16px 20px;">
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-secondary" id="btn-back">← 一覧に戻る</button>
-                            <button type="button" class="btn btn-secondary" id="btn-back-to-customer">顧客詳細に戻る</button>
+                            <button type="button" class="btn btn-back" id="btn-back"><i data-lucide="arrow-left"></i>
+                                一覧に戻る</button>
+                            <button type="button" class="btn btn-nav-customer" id="btn-back-to-customer"><i
+                                    data-lucide="user-search"></i> 顧客詳細に戻る</button>
                         </div>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-danger" id="btn-delete">削除</button>
-                            <button type="submit" form="case-form" class="btn btn-primary"
-                                style="min-width: 120px;">保存</button>
+                            <button type="button" class="btn btn-delete" id="btn-delete"><i data-lucide="trash-2"></i>
+                                削除</button>
+                            <button type="submit" form="case-form" class="btn btn-save" style="min-width: 120px;"><i
+                                    data-lucide="save"></i> 保存</button>
                         </div>
                     </div>
                 </div>
@@ -289,24 +297,24 @@
                             <div
                                 style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                                 <span
-                                    style="font-size: 0.875rem; font-weight: 600; color: #0369a1; margin-bottom: 8px;">請求合計
+                                    style="font-size: 13pt; font-weight: 600; color: #0369a1; margin-bottom: 8px;">請求合計
                                     (本件分)</span>
                                 <span id="disp_billing_total"
-                                    style="font-size: 1.75rem; font-weight: 800; color: #0369a1;">¥0</span>
+                                    style="font-size: 22pt; font-weight: 800; color: #0369a1;">¥0</span>
                             </div>
                             <div
                                 style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                                 <span
-                                    style="font-size: 0.875rem; font-weight: 600; color: #166534; margin-bottom: 8px;">入金合計</span>
+                                    style="font-size: 13pt; font-weight: 600; color: #166534; margin-bottom: 8px;">入金合計</span>
                                 <span id="disp_billing_paid"
-                                    style="font-size: 1.75rem; font-weight: 800; color: #166534;">¥0</span>
+                                    style="font-size: 22pt; font-weight: 800; color: #166534;">¥0</span>
                             </div>
                             <div
                                 style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                                 <span id="label_billing_balance"
-                                    style="font-size: 0.875rem; font-weight: 600; color: #9f1239; margin-bottom: 8px;">未回収合計</span>
+                                    style="font-size: 13pt; font-weight: 600; color: #9f1239; margin-bottom: 8px;">未回収合計</span>
                                 <span id="disp_billing_balance"
-                                    style="font-size: 1.75rem; font-weight: 800; color: #9f1239;">¥0</span>
+                                    style="font-size: 22pt; font-weight: 800; color: #9f1239;">¥0</span>
                             </div>
                         </div>
                         <div class="table-responsive">
@@ -326,7 +334,7 @@
                                 </tbody>
                             </table>
                         </div>
-                        <p style="font-size: 0.8rem; color: #64748b; margin-top: 8px;">
+                        <p style="font-size: 11pt; color: #64748b; margin-top: 8px;">
                             ※一つの請求書に複数の案件が含まれる場合、本案件に関連する明細の合計額を表示します。</p>
                     </section>
 
@@ -392,11 +400,11 @@
                     </section>
 
                     <p class="footer-info text-center"
-                        style="color: var(--text-muted); font-size: 0.85rem; margin-top: 24px;">最終更新日時: <span
+                        style="color: var(--text-muted); font-size: 11pt; margin-top: 24px;">最終更新日時: <span
                             id="last-updated-display">-</span></p>
                 </form>
 
-                <footer style="margin-top: 60px; text-align: center; color: #aaa; font-size: 0.8rem;">
+                <footer style="margin-top: 60px; text-align: center; color: #aaa; font-size: 11pt;">
                     &copy; 2026 LAPIS2 Project
                 </footer>
             </main>
@@ -445,12 +453,13 @@
 
             <div class="modal-footer">
                 <div class="modal-footer-left">
-                    <button type="button" class="btn btn-danger" id="btn-modal-delete-item"
-                        style="display: none;">削除</button>
+                    <button type="button" class="btn btn-delete" id="btn-modal-delete-item" style="display: none;"><i
+                            data-lucide="trash-2"></i> 削除</button>
                 </div>
                 <div class="modal-footer-right">
                     <button type="button" class="btn btn-secondary" id="btn-cancel-modal">キャンセル</button>
-                    <button type="button" class="btn btn-primary" id="btn-modal-save-item">保存</button>
+                    <button type="button" class="btn btn-save" id="btn-modal-save-item"><i data-lucide="save"></i>
+                        保存</button>
                 </div>
             </div>
         </div>

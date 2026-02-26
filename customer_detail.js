@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 cases = casesSnap.docs.map(d => d.data());
                 offices = officesSnap.docs.map(d => d.data());
                 contacts = contactsSnap.docs.map(d => d.data());
-                licenses = licensesSnap.docs.map(d => d.data());
+                licenses = licensesSnap.docs.map(d => ({ ...d.data(), _docId: d.id }));
 
                 initAdditionalDropdowns();
 
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const staffSel = document.getElementById('primary_staff_id');
         if (staffSel) {
             const activeStaff = staffMembers
-                .filter(s => s.status === '有効')
+                .filter(s => s.status === '在籍')
                 .sort((a, b) => (a.staff_id || 0) - (b.staff_id || 0));
             activeStaff.forEach(s => {
                 const opt = document.createElement('option');
@@ -309,7 +309,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
             tr.style.cursor = 'pointer';
             tr.addEventListener('click', () => {
-                window.location.href = `license_detail.html?customer_id=${customerId}&id=${l.license_id}`;
+                window.location.href = `license_detail.html?docId=${l._docId}&customer_id=${customerId}&id=${l.license_id}`;
             });
             licensesListBody.appendChild(tr);
         });

@@ -210,11 +210,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             staffMembers = allStaff;
             governmentOffices = allOffices;
-            // allLicenseTypes is local scope here, passed to loop below
+            console.log(`Loaded: Staff=${allStaff.length}, Offices=${allOffices.length}, LicenseTypes=${allLicenseTypes.length}`);
 
             // Populate Staff Selects
             const sFields = [document.getElementById('field_staff_id'), document.getElementById('document_staff_id'), document.getElementById('status_changed_by')];
-            const activeStaff = staffMembers.filter(s => s.status === '在籍').sort((a, b) => a.staff_name.localeCompare(b.staff_name, 'ja'));
+            const activeStaff = staffMembers.filter(s => s.status === '在籍').sort((a, b) => {
+                const nameA = a.staff_name || '';
+                const nameB = b.staff_name || '';
+                return nameA.localeCompare(nameB, 'ja');
+            });
+            console.log(`Active Staff for binding: ${activeStaff.length}`);
             sFields.forEach(select => {
                 if (!select) return;
                 select.innerHTML = '<option value="">未設定</option>';
@@ -229,13 +234,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Populate License Type Select
             const ltSelect = document.getElementById('license_type');
             if (ltSelect) {
+                console.log('Populating License Type dropdown...');
                 ltSelect.innerHTML = '<option value="">選択してください</option>';
-                allLicenseTypes.filter(lt => lt.status === '有効').sort((a, b) => (a.sort_order || 999) - (b.sort_order || 999)).forEach(lt => {
+                const filteredLT = allLicenseTypes.filter(lt => lt.status === '有効' || lt.status === 'active');
+                console.log(`Filtered License Types count: ${filteredLT.length}`);
+
+                filteredLT.sort((a, b) => (a.sort_order || 999) - (b.sort_order || 999)).forEach(lt => {
                     const opt = document.createElement('option');
                     opt.value = lt.license_type_name;
                     opt.textContent = lt.license_type_name;
                     ltSelect.appendChild(opt);
                 });
+                console.log('License Type dropdown population finished.');
             }
 
             initAutocomplete();
@@ -447,7 +457,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     form.addEventListener('submit', handleSave);
     if (statusSelect) statusSelect.addEventListener('change', () => updateStatusPreview(statusSelect.value));
-    [btnBack, btnBackTop].forEach(btn => btn.addEventListener('click', () => { if (confirm('一覧に戻りますか？')) window.location.href = 'index.html'; }));
+    [btnBack, btnBackTop].forEach(btn => {
+        if (btn) {
+            btn.addEventListener('click', () => { if (confirm('一覧に戻りますか？')) window.location.href = 'index.html'; });
+        }
+    });
 
     const btnDelete = document.getElementById('btn-delete');
     if (caseId === 'new') { if (btnDelete) btnDelete.style.display = 'none'; }

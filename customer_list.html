@@ -7,6 +7,7 @@
     <title>顧客管理 - LAPIS2</title>
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -126,8 +127,8 @@
                 <!-- Actions Bar -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <p class="description-text">顧客情報の検索・登録・編集を行います。</p>
-                    <button id="btn-new-customer" class="btn btn-primary">
-                        <span>＋</span> 新規顧客登録
+                    <button id="btn-new-customer" class="btn btn-new">
+                        <i data-lucide="plus"></i> 新規顧客登録
                     </button>
                 </div>
 
@@ -157,10 +158,10 @@
                         </div>
                         <!-- ボタンを下部に分離 -->
                         <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
-                            <button id="btn-reset-filters" class="btn btn-sm btn-secondary"
-                                style="padding: 8px 16px;">リセット</button>
-                            <button id="btn-search-execute" class="btn btn-primary" style="padding: 8px 24px;">
-                                <span>🔍</span> 検索
+                            <button id="btn-reset-filters" class="btn btn-reset" style="padding: 8px 16px;"><i
+                                    data-lucide="rotate-ccw"></i> リセット</button>
+                            <button id="btn-search-execute" class="btn btn-search" style="padding: 8px 24px;">
+                                <i data-lucide="search"></i> 検索
                             </button>
                         </div>
                     </div>

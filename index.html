@@ -8,6 +8,7 @@
     <meta name="description" content="NAS上で動作する次世代Webアプリケーション LAPIS2">
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -161,7 +162,8 @@
                     <div class="block-header">
                         <h3 class="block-title">検索フィルタ</h3>
                         <div class="block-options">
-                            <button class="btn btn-sm btn-secondary" id="btn-reset-filters">リセット</button>
+                            <button class="btn btn-reset" id="btn-reset-filters"><i data-lucide="rotate-ccw"></i>
+                                リセット</button>
                         </div>
                     </div>
                     <div class="block-content">
@@ -202,8 +204,8 @@
                                     <input type="checkbox" id="filter-deadline-near" style="width: 18px; height: 18px;">
                                     <label for="filter-deadline-near" style="margin:0; cursor:pointer;">申請期限が近い</label>
                                 </div>
-                                <button id="btn-search-execute" class="btn btn-primary" style="width: 100%;">
-                                    <span>🔍</span> 検索を実行
+                                <button id="btn-search-execute" class="btn btn-search" style="width: 100%;">
+                                    <i data-lucide="search"></i> 検索を実行
                                 </button>
                             </div>
                         </div>

@@ -8,7 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const includePaid = document.getElementById('include-paid');
     const allPeriods = document.getElementById('all-periods');
     const countDisplay = document.getElementById('count-display');
+    const countDisplayArea = document.getElementById('count-display-area');
+    const initialMessage = document.getElementById('initial-message');
+    const tableWrapper = document.getElementById('table-wrapper');
     const btnResetFilters = document.getElementById('btn-reset-filters');
+    const btnSearchExecute = document.getElementById('btn-search-execute');
     const btnNewInvoice = document.getElementById('btn-new-invoice');
 
     // --- State ---
@@ -35,8 +39,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Initialize with default search
-        searchData();
+        // Enter key support 
+        filterCustomer.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchData();
+        });
+
+        // Delete "searchData();" to enforce Lazy-Loading as requested
     }
 
     function setDefaultFilters() {
@@ -50,21 +58,26 @@ document.addEventListener('DOMContentLoaded', () => {
         filterDateEnd.value = today.toISOString().split('T')[0];
 
         // 「入金済を含む」はデフォルトOFF
-        includePaid.checked = false;
+        if (includePaid) includePaid.checked = false;
         // 「すべての期間」はデフォルトOFF
-        allPeriods.checked = false;
+        if (allPeriods) allPeriods.checked = false;
     }
 
     async function searchData() {
+        // Toggle view containers
+        initialMessage.style.display = 'none';
+        tableWrapper.style.display = 'block';
+        countDisplayArea.style.display = 'flex';
+
         // Show loading state
         invoiceListBody.innerHTML = '<tr><td colspan="7" class="no-data-cell">データを読み込み中...</td></tr>';
-        countDisplay.textContent = '読み込み中...';
+        countDisplay.textContent = '表示件数：読み込み中...';
 
         const sVal = filterStatus.value;
         const dStart = filterDateStart.value;
         const dEnd = filterDateEnd.value;
-        const isIncludePaid = includePaid.checked;
-        const isAllPeriods = allPeriods.checked;
+        const isIncludePaid = includePaid ? includePaid.checked : false;
+        const isAllPeriods = allPeriods ? allPeriods.checked : false;
 
         try {
             let query = db.collection('invoices');
@@ -84,7 +97,10 @@ document.addEventListener('DOMContentLoaded', () => {
             query = query.orderBy('invoice_date', 'desc');
 
             const snapshot = await query.get();
-            invoices = snapshot.docs.map(doc => doc.data());
+            invoices = snapshot.docs.map(doc => ({
+                ...doc.data(),
+                doc_id: doc.id
+            }));
 
             // 3. Client-side Status Filtering (for "exclude Paid" when no specific status selected)
             if (!sVal && !isIncludePaid) {
@@ -187,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = document.createElement('tr');
             row.style.cursor = 'pointer';
             row.addEventListener('click', () => {
-                window.location.href = `invoice_detail.html?id=${inv.invoice_id}`;
+                window.location.href = `invoice_detail.html?id=${inv.doc_id}`;
             });
 
             const balanceColor = inv.balance > 0 ? '#dc2626' : '#64748b';
@@ -209,18 +225,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Event Listeners ---
-    [filterDateStart, filterDateEnd, filterStatus, includePaid, allPeriods].forEach(el => {
-        el.addEventListener('change', searchData);
-    });
-
-    // Customer Name Filter is Client-side, so input event triggers re-render
-    filterCustomer.addEventListener('input', renderTable);
+    if (btnSearchExecute) {
+        btnSearchExecute.addEventListener('click', searchData);
+    }
 
     btnResetFilters.addEventListener('click', () => {
         filterCustomer.value = '';
         filterStatus.value = '';
         setDefaultFilters();
-        searchData();
+
+        // Return to initial state
+        initialMessage.style.display = 'block';
+        tableWrapper.style.display = 'none';
+        countDisplayArea.style.display = 'none';
+        invoices = [];
+        fetchedData = [];
+        invoiceListBody.innerHTML = '';
     });
 
     btnNewInvoice.addEventListener('click', () => {

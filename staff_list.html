@@ -7,6 +7,7 @@
     <title>担当者管理 - LAPIS2</title>
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -120,9 +121,8 @@
                 <!-- Actions Bar -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <p class="description-text" style="color: var(--text-muted); margin: 0;">自社の担当者情報を管理します。</p>
-                    <button id="btn-new-staff" class="btn btn-primary">
-                        <!-- Changed ID to match old file: btn-new-staff -->
-                        <span>＋</span> 新規担当者登録
+                    <button id="btn-new-staff" class="btn btn-new">
+                        <i data-lucide="plus"></i> 新規担当者登録
                     </button>
                 </div>
 
@@ -160,11 +160,10 @@
 
                         <!-- Moved Buttons to new line, right aligned -->
                         <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
-                            <button class="btn btn-sm btn-secondary" id="btn-reset"
-                                style="padding: 8px 16px; font-size: 0.95rem;">リセット</button>
-                            <button id="btn-search" class="btn btn-primary"
-                                style="padding: 8px 24px; font-size: 0.95rem;">
-                                <span>🔍</span> 検索
+                            <button class="btn btn-reset" id="btn-reset" style="padding: 8px 16px;"><i
+                                    data-lucide="rotate-ccw"></i> リセット</button>
+                            <button id="btn-search" class="btn btn-search" style="padding: 8px 24px;">
+                                <i data-lucide="search"></i> 検索
                             </button>
                         </div>
                     </div>

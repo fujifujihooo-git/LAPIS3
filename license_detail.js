@@ -3,13 +3,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Selectors ---
     const pageTitle = document.getElementById('page-title');
+    const licenseEditTitle = document.getElementById('license-edit-title');
     // const customerNameDisplay = document.getElementById('customer-name-display'); // Missing in HTML
     const customerSearchGroup = document.getElementById('customer-search-group');
-    const customerDisplayGroup = document.getElementById('customer-display-group');
     const customerSearch = document.getElementById('customer-search');
     const btnSearchCustomer = document.getElementById('btn-search-customer');
     const customerSearchResults = document.getElementById('customer-search-results');
-    const customerSelectedDisplay = document.getElementById('customer-selected-display');
     const customerId = document.getElementById('customer-id');
     const licenseTypeId = document.getElementById('license-type-id');
     const licenseNumber1 = document.getElementById('license-number-1');
@@ -46,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let licenseHistory = [];
     let governmentOffices = [];
     let currentLicense = null;
+    let fromCustomerId = null; // 顧客詳細画面から遷移した場合の顧客ID
 
     // --- Functions ---
     function getUrlParameter(name) {
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Populate License Types
             licenseTypeId.innerHTML = '<option value="">選択してください</option>';
-            licenseTypes.filter(lt => lt.status === '有効').sort((a, b) => (a.sort_order || 999) - (b.sort_order || 999)).forEach(lt => {
+            licenseTypes.sort((a, b) => (a.sort_order || 999) - (b.sort_order || 999)).forEach(lt => {
                 const opt = document.createElement('option'); opt.value = lt.license_type_id; opt.textContent = lt.license_type_name;
                 licenseTypeId.appendChild(opt);
             });
@@ -104,33 +104,61 @@ document.addEventListener('DOMContentLoaded', async () => {
                 pageTitle.textContent = '新規許認可登録';
                 const cIdParam = getUrlParameter('customer_id');
                 if (cIdParam) {
+                    fromCustomerId = cIdParam; // 遷移元の顧客IDを保持
                     // Fetch specific customer
                     const cDoc = await db.collection('customers').doc(`cust_${cIdParam}`).get();
                     if (cDoc.exists) {
                         selectCustomer(cDoc.data());
+                        // 顧客詳細画面からの遷移時は顧客変更を不可にする
+                        if (btnSearchCustomer) btnSearchCustomer.disabled = true;
+                        if (customerSearch) customerSearch.disabled = true;
                     } else {
                         alert('指定された顧客が見つかりません');
+                        fromCustomerId = null;
                     }
                 } else {
                     customerSearchGroup.style.display = 'block';
                 }
             } else {
-                // Fetch License by ID (Query by field to support mixed doc ID formats)
-                // const lDoc = await db.collection('customer_licenses').doc(`lic_${currentId}`).get();
-                const lSnap = await db.collection('customer_licenses').where('license_id', '==', parseInt(currentId)).get();
+                // 既存許認可の編集: URLの customer_id パラメータも保持
+                const cIdParam = getUrlParameter('customer_id');
+                if (cIdParam) fromCustomerId = cIdParam;
 
-                if (!lSnap.empty) {
-                    const lDoc = lSnap.docs[0];
+                // ドキュメントIDで直接フェッチ（license_id重複対策）
+                const docIdParam = getUrlParameter('docId');
+                let lDoc = null;
+
+                if (docIdParam) {
+                    // docIdパラメータがある場合: ドキュメントID直接参照（確実）
+                    const directDoc = await db.collection('customer_licenses').doc(docIdParam).get();
+                    if (directDoc.exists) {
+                        lDoc = directDoc;
+                    }
+                }
+
+                if (!lDoc) {
+                    // フォールバック: license_idフィールドでクエリ
+                    const lSnap = await db.collection('customer_licenses').where('license_id', '==', parseInt(currentId)).get();
+                    if (!lSnap.empty) {
+                        lDoc = lSnap.docs[0];
+                    }
+                }
+
+                if (lDoc) {
                     currentLicense = lDoc.data();
                     // Store doc ID for updates
                     currentLicense._docId = lDoc.id;
 
                     // Fetch related history
-                    const hSnap = await db.collection('license_history').where('license_id', '==', parseInt(currentId)).get();
-                    licenseHistory = hSnap.docs.map(d => d.data());
+                    const licenseIdNum = currentLicense.license_id || parseInt(currentId);
+                    const hSnap = await db.collection('license_history').where('license_id', '==', licenseIdNum).get();
+                    licenseHistory = hSnap.docs.map(d => ({
+                        ...d.data(),
+                        _docId: d.id
+                    }));
 
                     loadData(currentLicense);
-                    loadHistory(currentLicense.license_id);
+                    loadHistory(licenseIdNum);
                     if (btnDelete) btnDelete.style.display = 'inline-block';
 
                     // Fetch associated customer
@@ -150,6 +178,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const val = customerSearch.value.trim();
         if (!val) { alert('検索キーワードを入力してください'); return; }
 
+        customerSearchResults.style.display = 'block';
         customerSearchResults.innerHTML = '検索中...';
         try {
             // Prefix search: name >= val and name <= val + '\uf8ff'
@@ -168,26 +197,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             snapshot.forEach(doc => {
                 const c = doc.data();
                 const div = document.createElement('div');
-                div.className = 'search-result-item'; // Add styling in CSS if needed
+                div.className = 'search-result-item';
                 div.style.padding = '8px';
                 div.style.borderBottom = '1px solid #eee';
                 div.style.cursor = 'pointer';
                 div.textContent = `${c.customer_name} (${c.customer_id})`;
-                div.onclick = () => { selectCustomer(c); customerSearchResults.innerHTML = ''; };
+                div.onclick = () => {
+                    selectCustomer(c);
+                    customerSearchResults.innerHTML = '';
+                    customerSearchResults.style.display = 'none';
+                };
                 customerSearchResults.appendChild(div);
             });
         } catch (err) {
             console.error(err);
-            customerSearchResults.textContent = '検索エラー occurred';
+            customerSearchResults.textContent = '検索エラーが発生しました';
         }
     }
 
     function selectCustomer(cust) {
         customerId.value = cust.customer_id;
-        customerSelectedDisplay.textContent = cust.customer_name;
-        // customerNameDisplay.textContent = cust.customer_name; // Removed due to missing element
+        if (licenseEditTitle) {
+            licenseEditTitle.textContent = `${cust.customer_id} ${cust.customer_name}`;
+        }
         customerSearchGroup.style.display = 'none';
-        customerDisplayGroup.style.display = 'block';
     }
 
     function loadData(l) {
@@ -210,15 +243,51 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateDisplay();
     }
 
+    async function deleteHistoryRecord(docId) {
+        if (!confirm('この履歴を削除してもよろしいですか？')) return;
+        try {
+            await deleteFromFirestore('license_history', docId);
+            // Update local state to avoid refetching
+            licenseHistory = licenseHistory.filter(h => h._docId !== docId);
+            const lId = parseInt(currentId) || (currentLicense && currentLicense.license_id);
+            if (lId) loadHistory(lId);
+            showToast('履歴を削除しました', 'success');
+        } catch (err) {
+            console.error('履歴削除エラー:', err);
+            alert('履歴の削除に失敗しました: ' + err.message);
+        }
+    }
+
     function loadHistory(lId) {
         const hist = licenseHistory.filter(h => h.license_id === lId).sort((a, b) => new Date(b.change_date) - new Date(a.change_date));
-        historyBody.innerHTML = hist.length ? '' : '<tr><td colspan="4" style="text-align:center">履歴なし</td></tr>';
+        historyBody.innerHTML = hist.length ? '' : '<tr><td colspan="5" style="text-align:center">履歴なし</td></tr>';
         hist.forEach(h => {
             const s = staffMembers.find(st => st.staff_id === h.changed_by);
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${formatDate(h.change_date)}</td><td>${h.change_type}</td><td>${s ? s.staff_name : '不明'}</td><td>${h.comment || '-'}</td>`;
+            tr.innerHTML = `
+                <td>${formatDate(h.change_date)}</td>
+                <td>${h.change_type}</td>
+                <td>${s ? s.staff_name : '不明'}</td>
+                <td>${h.comment || '-'}</td>
+                <td style="text-align:center;">
+                    <button type="button" class="btn-icon btn-delete-history" data-id="${h._docId}" style="color:var(--danger, #ef4444); background:none; border:none; cursor:pointer; padding:4px;" title="履歴削除">
+                        <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
+                    </button>
+                </td>
+            `;
+            const deleteBtn = tr.querySelector('.btn-delete-history');
+            if (deleteBtn && h._docId) {
+                deleteBtn.addEventListener('click', () => deleteHistoryRecord(h._docId));
+            }
             historyBody.appendChild(tr);
         });
+
+        // Re-initialize lucide icons for the newly added buttons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons({
+                root: historyBody
+            });
+        }
     }
 
     function initAutocomplete() {
@@ -235,10 +304,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function handleSave() {
-        if (!customerId.value || !licenseTypeId.value) { alert('顧客と種別を選択してください'); return; }
+        // バリデーション強化: 顧客IDと種別の必須チェック
+        const customerIdVal = parseInt(customerId.value);
+        if (!customerId.value || isNaN(customerIdVal) || customerIdVal <= 0) {
+            alert('有効な顧客を選択してください'); return;
+        }
+        if (!licenseTypeId.value) {
+            alert('許認可種別を選択してください'); return;
+        }
+
+        // 顧客詳細画面から遷移した場合、URLパラメータのIDと一致するか検証
+        if (fromCustomerId && customerIdVal !== parseInt(fromCustomerId)) {
+            alert('顧客IDが不整合です。画面を再読込してください。'); return;
+        }
+
         const now = new Date().toISOString();
         const data = {
-            customer_id: parseInt(customerId.value),
+            customer_id: customerIdVal,
             license_type_id: parseInt(licenseTypeId.value),
             government_office_id: parseInt(governmentOfficeId.value) || null,
             government_office: governmentOfficeSearch.value.trim(),
@@ -279,8 +361,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await saveToFirestore('customer_licenses', docIdToSave, data);
             }
             showToast('保存しました', 'success');
-            setTimeout(() => window.location.href = 'license_list.html', 1000);
-        } catch (err) { alert('保存失敗'); }
+
+            // 顧客詳細画面から遷移した場合は元の顧客画面に戻る
+            const returnUrl = fromCustomerId
+                ? `customer_detail.html?id=${fromCustomerId}`
+                : 'license_list.html';
+            setTimeout(() => window.location.href = returnUrl, 1000);
+        } catch (err) {
+            console.error('保存失敗:', err);
+            alert('保存失敗: ' + err.message);
+        }
     }
 
     async function handleDelete() {
@@ -298,16 +388,61 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!changedBy.value) { alert('変更者を選択してください'); return; }
         const hId = Date.now();
         try {
-            await saveToFirestore('license_history', `hist_${hId}`, { history_id: hId, license_id: parseInt(currentId), change_date: new Date().toISOString(), change_type: changeType.value, changed_by: parseInt(changedBy.value), comment: comment.value.trim() });
-            alert('履歴追加完了'); loadHistory(parseInt(currentId));
-        } catch (e) { alert('履歴追加失敗'); }
+            const docId = `hist_${hId}`;
+            const newHistoryData = {
+                history_id: hId,
+                license_id: parseInt(currentId),
+                change_date: new Date().toISOString(),
+                change_type: changeType.value,
+                changed_by: parseInt(changedBy.value),
+                comment: comment.value.trim()
+            };
+
+            await saveToFirestore('license_history', docId, newHistoryData);
+
+            // Add to local state
+            newHistoryData._docId = docId;
+            licenseHistory.push(newHistoryData);
+
+            // Clear inputs
+            comment.value = '';
+
+            showToast('履歴を追加しました', 'success');
+            loadHistory(parseInt(currentId));
+        } catch (e) {
+            console.error('履歴追加エラー:', e);
+            alert('履歴追加失敗: ' + e.message);
+        }
     }
 
     btnSave.addEventListener('click', handleSave);
     if (btnSearchCustomer) btnSearchCustomer.addEventListener('click', searchCustomer);
     if (btnDelete) btnDelete.addEventListener('click', handleDelete);
     if (btnAddHistory) btnAddHistory.addEventListener('click', addHistory);
-    [btnBack].forEach(btn => btn?.addEventListener('click', () => { if (confirm('戻りますか？')) window.location.href = 'license_list.html'; }));
+
+    // 戻るボタン: 顧客詳細画面経由なら顧客画面に戻る
+    [btnBack].forEach(btn => btn?.addEventListener('click', () => {
+        if (confirm('戻りますか？')) {
+            const returnUrl = fromCustomerId
+                ? `customer_detail.html?id=${fromCustomerId}`
+                : 'license_list.html';
+            window.location.href = returnUrl;
+        }
+    }));
+
+    // 「顧客詳細へ」ボタンの動的リンク設定
+    const btnBackToCustomer = document.getElementById('btn-back-to-customer');
+    if (btnBackToCustomer) {
+        btnBackToCustomer.addEventListener('click', () => {
+            const cId = customerId.value || fromCustomerId;
+            if (cId) {
+                window.location.href = `customer_detail.html?id=${cId}`;
+            } else {
+                alert('顧客が選択されていません');
+            }
+        });
+    }
+
     expiryDate.addEventListener('change', updateDisplay);
     noticeDate.addEventListener('change', updateDisplay);
 
