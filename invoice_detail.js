@@ -58,6 +58,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cache for Customers/Cases (fetched on demand)
     let customersCache = [];
     let casesCache = []; // Cases for current customer
+    let currentCustomerSnapshot = null; // Holds the snapshot data
+
+    // Preview DOM Elements
+    const btnChangeCustomer = document.getElementById('btn-change-customer');
+    const previewZip = document.getElementById('preview-zip');
+    const previewAddress = document.getElementById('preview-address');
+    const previewBuilding = document.getElementById('preview-building');
+    const previewName = document.getElementById('preview-name');
+    const previewTitle = document.getElementById('preview-title');
+    const btnCustomerSearch = document.getElementById('btn-customer-search');
 
     let editingItemIndex = -1; // Edit mode state
 
@@ -136,13 +146,27 @@ document.addEventListener('DOMContentLoaded', () => {
             currentItems = itemsSnap.docs.map(d => d.data()).sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
             currentPayments = paysSnap.docs.map(d => d.data());
 
-            // Fetch Customer Name
+            // Fetch Customer Name and Snapshot
             let customerName = '不明';
             const customerId = currentInvoice.customer_id === undefined ? null : currentInvoice.customer_id;
-            if (customerId !== null) {
+
+            if (currentInvoice.customer_name_snapshot) {
+                // We have a snapshot!
+                currentCustomerSnapshot = {
+                    customer_name: currentInvoice.customer_name_snapshot,
+                    postal_code: currentInvoice.customer_postal_code_snapshot || '',
+                    address: currentInvoice.customer_address_snapshot || '',
+                    building_name: currentInvoice.customer_building_snapshot || '',
+                    title: currentInvoice.customer_title_snapshot || '御中'
+                };
+                customerName = currentCustomerSnapshot.customer_name;
+            } else if (customerId !== null) {
+                // Fallback to legacy master fetch
                 const custSnap = await db.collection('customers').where('customer_id', '==', customerId).limit(1).get();
                 if (!custSnap.empty) {
-                    customerName = custSnap.docs[0].data().customer_name;
+                    const data = custSnap.docs[0].data();
+                    customerName = data.customer_name;
+                    currentCustomerSnapshot = data; // Cache master data as snapshot for subsequent saves
                 }
             }
 
@@ -150,7 +174,9 @@ document.addEventListener('DOMContentLoaded', () => {
             customerIdInput.value = currentInvoice.customer_id;
             customerSelectGroup.style.display = 'none';
             customerDisplayGroup.style.display = 'block';
-            customerNameDisplay.textContent = customerName;
+            if (currentCustomerSnapshot) {
+                renderCustomerPreview(currentCustomerSnapshot);
+            }
 
             pageTitle.textContent = `請求詳細: ${customerName}`;
             btnDelete.style.display = 'flex';
@@ -212,17 +238,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function renderCustomerPreview(data) {
+        previewZip.textContent = data.postal_code ? `〒${data.postal_code}` : '';
+        previewAddress.textContent = data.address || '';
+        previewBuilding.textContent = data.building_name || '';
+        previewName.textContent = data.customer_name || '';
+        previewTitle.textContent = data.title || (data.customer_type === '法人' ? '御中' : '様');
+    }
+
     function setupCustomerAutocomplete() {
-        customerInput.addEventListener('input', async function () {
-            const val = this.value;
+        if (btnChangeCustomer) {
+            btnChangeCustomer.addEventListener('click', () => {
+                customerDisplayGroup.style.display = 'none';
+                customerSelectGroup.style.display = 'block';
+                customerInput.value = '';
+                customerIdInput.value = '';
+                currentCustomerSnapshot = null;
+            });
+        }
+
+        const handleSearch = async () => {
+            const val = customerInput.value;
             autocompleteList.innerHTML = '';
             if (!val) return;
-
-            // Simple prefix search or fetch all? 
-            // Firestore doesn't support substring search well. 
-            // For now, let's fetch all customers (if < 1000) or use `startAt`.
-            // Assuming small dataset, fetching active customers is okay-ish, or just rely on exact match? 
-            // Let's try `startAt` strategy for name? Or `orderBy('customer_name').startAt(val).endAt(val + '\uf8ff')`
 
             try {
                 const snap = await db.collection('customers')
@@ -232,8 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     .limit(5)
                     .get();
 
-                // Also check Kana? Firestore requires separate query. Skipping for simplicity.
-
                 snap.forEach(doc => {
                     const m = doc.data();
                     const div = document.createElement('div');
@@ -242,6 +278,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         customerInput.value = m.customer_name;
                         customerIdInput.value = m.customer_id;
                         autocompleteList.innerHTML = '';
+                        currentCustomerSnapshot = m;
+                        renderCustomerPreview(m);
+                        customerSelectGroup.style.display = 'none';
+                        customerDisplayGroup.style.display = 'block';
                         await loadCasesForSelect(m.customer_id);
                     });
                     autocompleteList.appendChild(div);
@@ -249,10 +289,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) {
                 console.error('Autocomplete Error:', e);
             }
-        });
+        };
+
+        customerInput.addEventListener('input', handleSearch);
+        if (btnCustomerSearch) btnCustomerSearch.addEventListener('click', handleSearch);
 
         document.addEventListener('click', (e) => {
-            if (e.target !== customerInput) autocompleteList.innerHTML = '';
+            if (e.target !== customerInput && e.target !== btnCustomerSearch) {
+                autocompleteList.innerHTML = '';
+            }
         });
     }
 
@@ -483,6 +528,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const invoiceData = {
                 invoice_id: iId,
                 customer_id: custId,
+                customer_name_snapshot: currentCustomerSnapshot ? (currentCustomerSnapshot.customer_name || '') : '',
+                customer_postal_code_snapshot: currentCustomerSnapshot ? (currentCustomerSnapshot.postal_code || '') : '',
+                customer_address_snapshot: currentCustomerSnapshot ? (currentCustomerSnapshot.address || '') : '',
+                customer_building_snapshot: currentCustomerSnapshot ? (currentCustomerSnapshot.building_name || '') : '',
+                customer_title_snapshot: currentCustomerSnapshot ? (currentCustomerSnapshot.title || '') : '',
                 invoice_number: invNum,
                 invoice_date: formState.invoice_date,
                 due_date: formState.due_date || null,

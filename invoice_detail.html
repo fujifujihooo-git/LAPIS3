@@ -362,17 +362,39 @@
                         <h3 class="form-section-title">基本情報</h3>
                         <div class="form-grid">
                             <div class="form-group autocomplete-wrapper" id="customer-select-group">
-                                <label for="input-customer-search">顧客名 <span class="required">*</span></label>
-                                <input type="text" id="input-customer-search" class="form-control"
-                                    placeholder="顧客を検索して選択..." autocomplete="off">
+                                <label for="input-customer-search">顧客検索 <span class="required">*</span></label>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="text" id="input-customer-search" class="form-control"
+                                        placeholder="顧客名を入力して検索..." autocomplete="off">
+                                    <button type="button" class="btn btn-secondary" id="btn-customer-search"
+                                        style="flex-shrink: 0; padding: 0 16px;">
+                                        <i data-lucide="search" style="width: 16px; height: 16px;"></i> 検索
+                                    </button>
+                                </div>
                                 <input type="hidden" id="customer_id">
                                 <div id="autocomplete-list" class="autocomplete-items"></div>
                             </div>
-                            <!-- Display mode for customer name -->
-                            <div class="form-group" id="customer-display-group" style="display: none;">
-                                <label>顧客名</label>
-                                <div id="customer-name-display"
-                                    style="padding: 10px; font-weight: 600; font-size: 13pt;"><!-- Strict 13pt --></div>
+
+                            <!-- Display mode for customer snapshot preview -->
+                            <div class="form-group" id="customer-display-group"
+                                style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                                    <label style="margin: 0; color: #475569; font-weight: 600;">請求先（確定情報）</label>
+                                    <button type="button" class="btn btn-secondary btn-sm" id="btn-change-customer"
+                                        style="padding: 4px 12px;">
+                                        <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i> 変更
+                                    </button>
+                                </div>
+                                <div id="customer-snapshot-preview"
+                                    style="font-size: 13pt; line-height: 1.6; color: #1e293b;">
+                                    <div id="preview-zip"></div>
+                                    <div id="preview-address"></div>
+                                    <div id="preview-building"></div>
+                                    <div style="margin-top: 12px; font-weight: 600; font-size: 14pt;">
+                                        <span id="preview-name"></span> <span id="preview-title"></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
