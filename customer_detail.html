@@ -229,7 +229,7 @@
             <header id="header">
                 <div class="header-left">
                     <button id="mobile-toggle"
-                        style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted); display: none;">☰</button>
+                        style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted);">☰</button>
                     <div class="header-breadcrumb">
                         <a href="customer_list.html" style="text-decoration: none; color: var(--text-muted);">顧客一覧</a>
                         <span style="margin: 0 8px; color: var(--text-muted);">/</span>
@@ -567,55 +567,43 @@
     <script src="common.js"></script>
     <script src="customer_detail.js"></script>
 
-    <script>
-        document.getElementById('mobile-toggle')?.addEventListener('click', function () {
-            document.body.classList.toggle('sidebar-open');
-        });
+    const btnTop = document.getElementById('back-to-top');
+    window.addEventListener('scroll', () => {
+    if (window.scrollY > 300) {
+    btnTop.style.opacity = '1';
+    btnTop.style.pointerEvents = 'auto';
+    } else {
+    btnTop.style.opacity = '0';
+    btnTop.style.pointerEvents = 'none';
+    }
+    });
+    btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-        const btnTop = document.getElementById('back-to-top');
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 300) {
-                btnTop.style.opacity = '1';
-                btnTop.style.pointerEvents = 'auto';
-            } else {
-                btnTop.style.opacity = '0';
-                btnTop.style.pointerEvents = 'none';
+    // Tab Switching Logic
+    document.querySelectorAll('.tab-btn').forEach(button => {
+    button.addEventListener('click', () => {
+    // Remove active class from all buttons and content
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+    // Add active class to clicked button and corresponding content
+    button.classList.add('active');
+    const tabId = button.getAttribute('data-tab');
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+    });
+    });
+
+    // Close dropdown when clicking outside
+    window.onclick = function (event) {
+    if (!event.target.matches('.btn-secondary') && !event.target.matches('.btn-secondary *')) {
+    var dropdowns = document.getElementsByClassName("dropdown-content");
+    for (var i = 0; i < dropdowns.length; i++) { var openDropdown=dropdowns[i]; if
+        (openDropdown.classList.contains('show')) { openDropdown.classList.remove('show'); } } } } </script>
+        <style>
+            .dropdown-content.show {
+                display: block !important;
             }
-        });
-        btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-
-        // Tab Switching Logic
-        document.querySelectorAll('.tab-btn').forEach(button => {
-            button.addEventListener('click', () => {
-                // Remove active class from all buttons and content
-                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-                // Add active class to clicked button and corresponding content
-                button.classList.add('active');
-                const tabId = button.getAttribute('data-tab');
-                document.getElementById(`tab-${tabId}`).classList.add('active');
-            });
-        });
-
-        // Close dropdown when clicking outside
-        window.onclick = function (event) {
-            if (!event.target.matches('.btn-secondary') && !event.target.matches('.btn-secondary *')) {
-                var dropdowns = document.getElementsByClassName("dropdown-content");
-                for (var i = 0; i < dropdowns.length; i++) {
-                    var openDropdown = dropdowns[i];
-                    if (openDropdown.classList.contains('show')) {
-                        openDropdown.classList.remove('show');
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        .dropdown-content.show {
-            display: block !important;
-        }
-    </style>
+        </style>
 </body>
 
 </html>

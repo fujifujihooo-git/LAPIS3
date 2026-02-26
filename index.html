@@ -99,7 +99,7 @@
             <header id="header">
                 <div class="header-left">
                     <button id="mobile-toggle"
-                        style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted); display: none;">☰</button>
+                        style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted);">☰</button>
                     <h1 class="page-title">案件管理ダッシュボード</h1>
                 </div>
                 <div class="header-right" id="header-right">
@@ -288,24 +288,18 @@
     <script src="common.js"></script>
     <script src="app.js"></script>
 
-    <script>
-        // Mobile Toggle Logic
-        document.getElementById('mobile-toggle').addEventListener('click', function () {
-            document.body.classList.toggle('sidebar-open');
-        });
-
-        // Back to top Logic (Simple inline override or relies on common.js)
-        const btnTop = document.getElementById('back-to-top');
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 300) {
-                btnTop.style.opacity = '1';
-                btnTop.style.pointerEvents = 'auto';
-            } else {
-                btnTop.style.opacity = '0';
-                btnTop.style.pointerEvents = 'none';
-            }
-        });
-        btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    // Back to top Logic (Simple inline override or relies on common.js)
+    const btnTop = document.getElementById('back-to-top');
+    window.addEventListener('scroll', () => {
+    if (window.scrollY > 300) {
+    btnTop.style.opacity = '1';
+    btnTop.style.pointerEvents = 'auto';
+    } else {
+    btnTop.style.opacity = '0';
+    btnTop.style.pointerEvents = 'none';
+    }
+    });
+    btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     </script>
 </body>
 

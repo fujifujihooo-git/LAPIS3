@@ -106,7 +106,7 @@
             <header id="header">
                 <div class="header-left">
                     <button id="mobile-toggle"
-                        style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted); display: none;">☰</button>
+                        style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted);">☰</button>
                     <h1 class="page-title">担当者管理</h1>
                 </div>
                 <div class="header-right" id="header-right">
@@ -224,12 +224,6 @@
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
     <script src="staff_list.js"></script>
-
-    <script>
-        document.getElementById('mobile-toggle')?.addEventListener('click', function () {
-            document.body.classList.toggle('sidebar-open');
-        });
-    </script>
 </body>
 
 </html>

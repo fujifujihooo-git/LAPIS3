@@ -112,7 +112,7 @@
             <header id="header">
                 <div class="header-left">
                     <button id="mobile-toggle"
-                        style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted); display: none;">☰</button>
+                        style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted);">☰</button>
                     <h1 class="page-title">決算期別一覧</h1>
                 </div>
                 <div class="header-right" id="header-right">
@@ -247,22 +247,17 @@
     <script src="common.js"></script>
     <script src="license_washout.js"></script>
 
-    <script>
-        document.getElementById('mobile-toggle')?.addEventListener('click', function () {
-            document.body.classList.toggle('sidebar-open');
-        });
-
-        const btnTop = document.getElementById('back-to-top');
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 300) {
-                btnTop.style.opacity = '1';
-                btnTop.style.pointerEvents = 'auto';
-            } else {
-                btnTop.style.opacity = '0';
-                btnTop.style.pointerEvents = 'none';
-            }
-        });
-        btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    const btnTop = document.getElementById('back-to-top');
+    window.addEventListener('scroll', () => {
+    if (window.scrollY > 300) {
+    btnTop.style.opacity = '1';
+    btnTop.style.pointerEvents = 'auto';
+    } else {
+    btnTop.style.opacity = '0';
+    btnTop.style.pointerEvents = 'none';
+    }
+    });
+    btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     </script>
 </body>
 

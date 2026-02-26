@@ -50,6 +50,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Authentication Check ---
     checkAuth();
 
+    // --- Mobile Sidebar Toggle ---
+    const mobileToggle = document.getElementById('mobile-toggle');
+    const sidebarOverlay = document.querySelector('.sidebar-overlay');
+
+    if (mobileToggle) {
+        mobileToggle.addEventListener('click', () => {
+            document.body.classList.toggle('sidebar-open');
+        });
+    }
+
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', () => {
+            document.body.classList.remove('sidebar-open');
+        });
+    }
+
     // --- Lucide Icons Initialization ---
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();

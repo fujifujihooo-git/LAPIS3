@@ -756,7 +756,8 @@ body {
     }
 
     #mobile-toggle {
-        display: block;
+        display: block !important;
+        -webkit-tap-highlight-color: transparent;
     }
 }
 
