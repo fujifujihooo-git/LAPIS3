@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // Join Data
-            fetchedData = invoices.map(inv => {
+            let mappedData = invoices.map(inv => {
                 const customer = customersMap[inv.customer_id];
                 const invPayments = paymentsMap[inv.invoice_id] || [];
                 const paidAmount = invPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
@@ -172,11 +172,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             });
 
+            // 5. Client-side Balance Filtering
+            // "入金済みを含む" がOFF かつ 検索ステータスが "入金済" ではない場合のみ、残高0を除外する。
+            // （ステータスを意図的に「入金済」で検索した場合は、チェックOFFでも残高0を表示する）
+            if (!isIncludePaid && sVal !== '入金済') {
+                mappedData = mappedData.filter(inv => inv.balance > 0);
+            }
+
+            fetchedData = mappedData;
+
             renderTable();
 
         } catch (error) {
             console.error('Search failed:', error);
-            invoiceListBody.innerHTML = `<tr><td colspan="7" class="no-data-cell error">データの取得に失敗しました: ${error.message}</td></tr>`;
+
+            // Extract Firebase Index URL if available
+            let errorMsg = `データの取得に失敗しました: ${error.message}`;
+            if (error.message.includes('The query requires an index')) {
+                const urlMatch = error.message.match(/https:\/\/console\.firebase\.google\.com[^\s]*/);
+                if (urlMatch) {
+                    errorMsg = `検索速度を上げるためのインデックス作成が必要です。<br><br><a href="${urlMatch[0]}" target="_blank" style="color: var(--primary); text-decoration: underline; font-weight: bold;">ここをクリックしてFirebaseコンソールでインデックスを作成してください。</a><br><br><span style="font-size: 0.9em; color: var(--text-muted);">※作成後、有効になるまで数分かかります。</span>`;
+                }
+            }
+
+            invoiceListBody.innerHTML = `<tr><td colspan="7" class="no-data-cell error" style="padding: 20px;">${errorMsg}</td></tr>`;
         }
     }
 
@@ -210,11 +229,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const balanceWeight = inv.balance > 0 ? '600' : 'normal';
 
             row.innerHTML = `
-                <td><strong>${inv.invoice_number}</strong></td>
+                <td><strong>${inv.invoice_number || '-'}</strong></td>
                 <td>${formatDisplayValue(inv.customer_name)}</td>
                 <td>${formatDate(inv.invoice_date)}</td>
                 <td style="font-weight: 600;">${formatCurrency(inv.total_amount)}</td>
-                <td><span class="badge ${getInvoiceStatusClass(inv.status)}">${inv.status}</span></td>
+                <td><span class="badge ${getInvoiceStatusClass(inv.status)}">${inv.status || '-'}</span></td>
                 <td style="color: #059669;">${formatCurrency(inv.paid_amount)}</td>
                 <td style="color: ${balanceColor}; font-weight: ${balanceWeight};">${formatCurrency(inv.balance)}</td>
             `;
@@ -230,9 +249,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     btnResetFilters.addEventListener('click', () => {
+        // 全ての検索条件を明示的にクリアする
         filterCustomer.value = '';
         filterStatus.value = '';
-        setDefaultFilters();
+
+        // 日付入力は UI(Flatpickr) が上書きしているため専用のクリアメソッドを呼ぶ
+        if (filterDateStart._flatpickr) {
+            filterDateStart._flatpickr.clear();
+        } else {
+            filterDateStart.value = '';
+        }
+
+        if (filterDateEnd._flatpickr) {
+            filterDateEnd._flatpickr.clear();
+        } else {
+            filterDateEnd.value = '';
+        }
+
+        if (includePaid) includePaid.checked = false;
+        if (allPeriods) allPeriods.checked = false;
 
         // Return to initial state
         initialMessage.style.display = 'block';
