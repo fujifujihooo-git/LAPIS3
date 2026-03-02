@@ -24,6 +24,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentCustomer = null;
     let customerIdParam = null;
 
+    // Sorting state for Related Cases
+    let currentRelatedSort = { key: null, order: null };
+
     // --- Functions ---
     function getCustomerIdFromUrl() {
         return new URLSearchParams(window.location.search).get('id');
@@ -53,6 +56,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const nextId = await getNextSequence('customers');
                 customerIdInput.value = nextId;
                 document.getElementById('page-title').textContent = '新規顧客登録';
+                const headerTitle = document.getElementById('header-title');
+                if (headerTitle) headerTitle.textContent = '顧客詳細：';
                 if (btnDelete) btnDelete.style.display = 'none';
                 hideListSections();
 
@@ -86,10 +91,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 initAdditionalDropdowns();
 
                 populateForm(currentCustomer);
+                const headerTitle = document.getElementById('header-title');
+                if (headerTitle) headerTitle.textContent = `顧客詳細：${currentCustomer.customer_name || ''}`;
                 renderRelatedCases(cId);
                 renderOffices(cId);
                 renderContacts(cId);
                 renderLicenses(cId);
+
+                // Setup Sorting Headers for Related Cases
+                initSortHeaders('#related-cases-table', currentRelatedSort, () => {
+                    if (currentCustomer && currentCustomer.customer_id) {
+                        renderRelatedCases(Number(currentCustomer.customer_id));
+                    }
+                });
+            }
+
+            // --- 顧客名の入力に連動してヘッダータイトルを動的に更新 ---
+            const nameInput = document.getElementById('customer_name');
+            const headerTitle = document.getElementById('header-title');
+            if (nameInput && headerTitle) {
+                nameInput.addEventListener('input', (e) => {
+                    headerTitle.textContent = `顧客詳細：${e.target.value.trim()}`;
+                });
             }
         } catch (err) {
             console.error('Init failed:', err);
@@ -178,52 +201,51 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderRelatedCases(customerId) {
         if (!relatedCasesBody) return;
-        const related = cases.filter(c => Number(c.customer_id) === customerId);
-        relatedCasesBody.innerHTML = '';
+        try {
+            const related = cases.filter(c => Number(c?.customer_id) === customerId);
+            relatedCasesBody.innerHTML = '';
 
-        if (related.length === 0) {
-            relatedCasesBody.innerHTML = '<tr><td colspan="6" class="no-data-cell">関連する案件はありません</td></tr>';
-            return;
-        }
+            if (related.length === 0) {
+                relatedCasesBody.innerHTML = '<tr><td colspan="6" class="no-data-cell">関連する案件はありません</td></tr>';
+                return;
+            }
 
-        related.sort((a, b) => {
-            const daysA = calculateRemainingDays(a.application_scheduled_date);
-            const daysB = calculateRemainingDays(b.application_scheduled_date);
-            if (daysA !== null && daysB !== null) return daysA - daysB;
-            if (daysA !== null) return -1;
-            if (daysB !== null) return 1;
-            return new Date(b.acceptance_date) - new Date(a.acceptance_date);
-        });
+            const sortedRelated = sortCasesCommon(related, currentRelatedSort);
 
-        related.forEach(c => {
-            const tr = document.createElement('tr');
-            const days = calculateRemainingDays(c.application_scheduled_date);
-            const daysClass = getRemainingDaysClass(days);
-            const fieldStaff = staffMembers.find(s => s.staff_id === Number(c.field_staff_id))?.staff_name || '-';
-            const docStaff = staffMembers.find(s => s.staff_id === Number(c.document_staff_id))?.staff_name || '-';
+            sortedRelated.forEach(c => {
+                if (!c) return; // 安全対策
+                const tr = document.createElement('tr');
+                const days = calculateRemainingDays(c?.application_scheduled_date);
+                const daysClass = getRemainingDaysClass(days, c?.status);
+                const fieldStaff = staffMembers.find(s => s.staff_id === Number(c?.field_staff_id))?.staff_name || '-';
+                const docStaff = staffMembers.find(s => s.staff_id === Number(c?.document_staff_id))?.staff_name || '-';
 
-            tr.innerHTML = `
-                <td><span class="badge status-${getStatusKey(c.status)}">${c.status || '-'}</span></td>
-                <td>${c.acceptance_date || '-'}</td>
-                <td>
-                    <div style="font-weight: 600;">${c.license_type || '-'}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">${c.procedure_name || '-'}</div>
-                </td>
-                <td>${c.application_scheduled_date || '-'}</td>
-                <td>
-                    <span class="days-badge ${daysClass}">${formatRemainingDays(days)}</span>
-                </td>
-                <td>
-                    <div>${fieldStaff}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">${docStaff}</div>
-                </td>
-            `;
-            tr.style.cursor = 'pointer';
-            tr.addEventListener('click', () => {
-                window.location.href = `detail.html?id=${c.case_id}`;
+                tr.innerHTML = `
+                    <td><span class="badge status-${getStatusKey(c?.status)}">${c?.status || '-'}</span></td>
+                    <td>${c?.acceptance_date || '-'}</td>
+                    <td>
+                        <div style="font-weight: 600;">${c?.license_type || '-'}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">${c?.procedure_name || '-'}</div>
+                    </td>
+                    <td>${c?.application_scheduled_date || '-'}</td>
+                    <td>
+                        <span class="days-badge ${daysClass}">${formatRemainingDays(days, c?.status)}</span>
+                    </td>
+                    <td>
+                        <div>${fieldStaff}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">${docStaff}</div>
+                    </td>
+                `;
+                tr.style.cursor = 'pointer';
+                tr.addEventListener('click', () => {
+                    if (c?.case_id) window.location.href = `detail.html?id=${c.case_id}`;
+                });
+                relatedCasesBody.appendChild(tr);
             });
-            relatedCasesBody.appendChild(tr);
-        });
+        } catch (error) {
+            console.error('Error rendering related cases:', error);
+            relatedCasesBody.innerHTML = '<tr><td colspan="6" class="no-data-cell" style="color: red;">データの表示中にエラーが発生しました</td></tr>';
+        }
     }
 
     function renderOffices(customerId) {

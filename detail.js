@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let invoices = [];
     let invoiceItems = [];
     let payments = [];
+    let autoUpdatedDatesTracker = [];
 
     // --- Selectors (Estimate Modal) ---
     const estimateItemTableBody = document.getElementById('estimate-item-list-body');
@@ -35,6 +36,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnModalSaveItem = document.getElementById('btn-modal-save-item');
     const btnModalDeleteItem = document.getElementById('btn-modal-delete-item');
     const modalTitle = document.querySelector('#estimate-item-modal .modal-header h3');
+
+    // --- Selectors (History Modal) ---
+    const historyModal = document.getElementById('history-edit-modal');
+    const btnCloseHistoryModal = document.getElementById('btn-close-history-modal');
+    const btnCancelHistoryModal = document.getElementById('btn-cancel-history-modal');
+    const btnSaveHistory = document.getElementById('btn-save-history');
 
     // --- Functions ---
 
@@ -336,7 +343,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const fields = ['license_type', 'procedure_name', 'field_staff_id', 'document_staff_id', 'status', 'acceptance_date', 'contract_date', 'application_scheduled_date', 'application_date', 'completion_date', 'return_date', 'application_method', 'application_number', 'remarks'];
         fields.forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.value = data[id] || '';
+            if (el) {
+                if (el._flatpickr) {
+                    el._flatpickr.setDate(data[id] || '', true); // trueでonChangeイベントを発火
+                } else {
+                    el.value = data[id] || '';
+                }
+            }
         });
         const corr = document.getElementById('correction_flag');
         if (corr) corr.checked = !!data.correction_flag;
@@ -363,13 +376,139 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!body) return;
         body.innerHTML = '';
         const history = statusHistory.filter(h => h.case_id === cId).sort((a, b) => new Date(b.changed_date) - new Date(a.changed_date));
-        if (history.length === 0) { body.innerHTML = '<tr><td colspan="4">履歴なし</td></tr>'; return; }
-        history.forEach(h => {
+        if (history.length === 0) { body.innerHTML = '<tr><td colspan="5">履歴なし</td></tr>'; return; }
+        history.forEach((h, index) => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${formatDate(h.changed_date)}</td><td>${h.old_status} → ${h.new_status}</td><td>${h.changed_by}</td><td>${h.comment || ''}</td>`;
+            const isLatest = index === 0;
+            tr.innerHTML = `
+                <td>${formatDate(h.changed_date)}</td>
+                <td>${h.old_status} → ${h.new_status}</td>
+                <td>${h.changed_by}</td>
+                <td>${h.comment || ''}</td>
+                <td>
+                    <button type="button" class="secondary-btn" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 4px;" onclick="handleEditHistory('${h.history_id}', ${isLatest})">編集</button>
+                    <button type="button" class="btn-delete" style="padding: 4px 8px; font-size: 0.8rem; background: #fee2e2; color: #ef4444; border: 1px solid #fca5a5;" onclick="handleDeleteHistory('${h.history_id}')">削除</button>
+                </td>
+            `;
             body.appendChild(tr);
         });
     }
+
+    // --- History Modal Functions ---
+    window.handleEditHistory = function (hId, isLatest) {
+        const hist = statusHistory.find(h => h.history_id.toString() === hId.toString());
+        if (!hist) return;
+        document.getElementById('modal-history-id').value = hist.history_id;
+        const dateObj = new Date(hist.changed_date);
+        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(dateObj - tzoffset)).toISOString().slice(0, 16);
+        document.getElementById('modal-history-date').value = localISOTime;
+        document.getElementById('modal-history-status').value = hist.new_status;
+        document.getElementById('modal-history-comment').value = hist.comment || '';
+        document.getElementById('modal-history-link-flag').checked = isLatest;
+        if (historyModal) historyModal.style.display = 'block';
+    };
+
+    window.closeHistoryModal = function () {
+        if (historyModal) historyModal.style.display = 'none';
+    };
+
+    if (btnCloseHistoryModal) btnCloseHistoryModal.addEventListener('click', closeHistoryModal);
+    if (btnCancelHistoryModal) btnCancelHistoryModal.addEventListener('click', closeHistoryModal);
+
+    if (btnSaveHistory) {
+        btnSaveHistory.addEventListener('click', async () => {
+            const hId = document.getElementById('modal-history-id').value;
+            const hist = statusHistory.find(h => h.history_id.toString() === hId.toString());
+            if (!hist) return;
+
+            const newDateStr = document.getElementById('modal-history-date').value;
+            const newDateIso = new Date(newDateStr).toISOString();
+            const newStatus = document.getElementById('modal-history-status').value;
+            const newComment = document.getElementById('modal-history-comment').value;
+            const doLink = document.getElementById('modal-history-link-flag').checked;
+
+            try {
+                const batch = db.batch();
+                const histRef = db.collection('case_status_history').doc(`hist_${hist.history_id}`);
+
+                const updatedHist = { ...hist, changed_date: newDateIso, new_status: newStatus, comment: newComment };
+                batch.set(histRef, updatedHist, { merge: true });
+
+                if (doLink) {
+                    const caseRef = db.collection('cases').doc(`case_${caseId}`);
+                    const caseUpdates = { status: newStatus };
+                    const dateVal = newDateIso.split('T')[0];
+                    if (newStatus === '受任') caseUpdates.contract_date = dateVal;
+                    else if (newStatus === '受付（受理）') caseUpdates.acceptance_date = dateVal;
+                    else if (newStatus === '完了') caseUpdates.completion_date = dateVal;
+                    batch.update(caseRef, caseUpdates);
+                }
+
+                await batch.commit();
+
+                const idx = statusHistory.findIndex(h => h.history_id.toString() === hId.toString());
+                if (idx !== -1) statusHistory[idx] = updatedHist;
+
+                if (doLink) {
+                    currentCase.status = newStatus;
+                    statusSelect.value = newStatus;
+                    updateStatusPreview(newStatus);
+                    const dateVal = newDateIso.split('T')[0];
+                    if (newStatus === '受任') document.getElementById('contract_date').value = dateVal;
+                    else if (newStatus === '受付（受理）') document.getElementById('acceptance_date').value = dateVal;
+                    else if (newStatus === '完了') document.getElementById('completion_date').value = dateVal;
+                }
+
+                renderHistory(caseId);
+                closeHistoryModal();
+                showToast('履歴を更新しました', 'success');
+            } catch (err) {
+                console.error('History update failed', err);
+                alert('履歴の更新に失敗しました');
+            }
+        });
+    }
+
+    window.handleDeleteHistory = async function (hId) {
+        if (!confirm('この履歴を削除しますか？\n(最新履歴を削除する場合、案件のステータスは一つ前の状態に戻ります)')) return;
+
+        try {
+            const historyList = statusHistory.filter(h => h.case_id === caseId).sort((a, b) => new Date(b.changed_date) - new Date(a.changed_date));
+            const histToDelete = historyList.find(h => h.history_id.toString() === hId.toString());
+            if (!histToDelete) return;
+
+            const isLatest = (historyList[0].history_id.toString() === hId.toString());
+            const batch = db.batch();
+
+            const histRef = db.collection('case_status_history').doc(`hist_${histToDelete.history_id}`);
+            batch.delete(histRef);
+
+            let rollbackStatus = null;
+            if (isLatest && historyList.length > 1) {
+                rollbackStatus = historyList[1].new_status;
+                const caseRef = db.collection('cases').doc(`case_${caseId}`);
+                batch.update(caseRef, { status: rollbackStatus });
+            }
+
+            await batch.commit();
+
+            statusHistory = statusHistory.filter(h => h.history_id.toString() !== hId.toString());
+            renderHistory(caseId);
+
+            if (rollbackStatus) {
+                currentCase.status = rollbackStatus;
+                statusSelect.value = rollbackStatus;
+                updateStatusPreview(rollbackStatus);
+                showToast(`履歴を削除し、ステータスを「${rollbackStatus}」に戻しました`, 'success');
+            } else {
+                showToast('履歴を削除しました', 'success');
+            }
+        } catch (err) {
+            console.error('History delete failed', err);
+            alert('履歴の削除に失敗しました');
+        }
+    };
 
     // Billing Section (Simplified copy for now)
     function renderBillingSection(cId) {
@@ -387,60 +526,91 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function handleSave(e) {
-        e.preventDefault();
-        const customerId = parseInt(document.getElementById('customer_id').value);
-        if (isNaN(customerId)) { alert('顧客を選択してください'); return; }
-
-        const updatedData = {
-            customer_id: customerId,
-            customer_name: customers.find(c => c.customer_id === customerId)?.customer_name || '',
-            license_type: document.getElementById('license_type').value,
-            procedure_name: document.getElementById('procedure_name').value,
-            government_office_id: parseInt(governmentOfficeId.value) || null,
-            government_office: governmentOfficeSearch.value,
-            field_staff_id: parseInt(document.getElementById('field_staff_id').value) || null,
-            document_staff_id: parseInt(document.getElementById('document_staff_id').value) || null,
-            status: statusSelect.value,
-            contract_date: document.getElementById('contract_date').value,
-            application_scheduled_date: document.getElementById('application_scheduled_date').value,
-            acceptance_date: document.getElementById('acceptance_date').value,
-            completion_date: document.getElementById('completion_date').value,
-            application_method: document.getElementById('application_method').value,
-            application_number: document.getElementById('application_number').value,
-            correction_flag: document.getElementById('correction_flag').checked,
-            remarks: document.getElementById('remarks').value,
-            return_date: document.getElementById('return_date').value,
-            last_updated: new Date().toISOString(),
-            estimate_items: estimateItems
-        };
+        if (e) e.preventDefault();
+        console.log("Save button clicked! function handleSave started.");
 
         try {
+            const customerEl = document.getElementById('customer_id');
+            if (!customerEl) {
+                console.error("Element not found: customer_id");
+                alert("エラー: 顧客情報欄が見つかりません。");
+                return;
+            }
+            const customerId = parseInt(customerEl?.value);
+            if (isNaN(customerId)) { alert('顧客を選択してください'); return; }
+
+            const updatedData = {
+                customer_id: customerId,
+                customer_name: customers.find(c => c.customer_id === customerId)?.customer_name || '',
+                license_type: document.getElementById('license_type')?.value || '',
+                procedure_name: document.getElementById('procedure_name')?.value || '',
+                government_office_id: parseInt(governmentOfficeId?.value) || null,
+                government_office: governmentOfficeSearch?.value || '',
+                field_staff_id: parseInt(document.getElementById('field_staff_id')?.value) || null,
+                document_staff_id: parseInt(document.getElementById('document_staff_id')?.value) || null,
+                status: statusSelect?.value || '相談',
+                contract_date: document.getElementById('contract_date')?.value || '',
+                application_scheduled_date: document.getElementById('application_scheduled_date')?.value || '',
+                acceptance_date: document.getElementById('acceptance_date')?.value || '',
+                completion_date: document.getElementById('completion_date')?.value || '',
+                application_method: document.getElementById('application_method')?.value || '',
+                application_number: document.getElementById('application_number')?.value || '',
+                correction_flag: document.getElementById('correction_flag')?.checked || false,
+                remarks: document.getElementById('remarks')?.value || '',
+                return_date: document.getElementById('return_date')?.value || '',
+                last_updated: new Date().toISOString(),
+                estimate_items: estimateItems
+            };
+
+            const batch = db.batch();
+
             if (caseId === 'new') {
-                // Optimize: use server-side sequence
-                // const nextId = cases.length > 0 ? Math.max(...cases.map(c => c.case_id)) + 1 : 1;
                 const nextId = await getNextSequence('cases');
                 updatedData.case_id = nextId;
                 updatedData.created_date = new Date().toISOString();
                 currentCase = updatedData; // Set so subsequent saves work
                 caseId = nextId; // Update global ID
-                await saveToFirestore('cases', `case_${nextId}`, updatedData);
+                const caseRef = db.collection('cases').doc(`case_${nextId}`);
+                batch.set(caseRef, updatedData);
             } else {
-                // Status History Check
+                updatedData.case_id = caseId;
+                const caseRef = db.collection('cases').doc(`case_${caseId}`);
+                // [条件の緩和] ステータス変更の有無に関わらず、まず本体データを更新する
+                batch.set(caseRef, { ...currentCase, ...updatedData }, { merge: true });
+
+                // ステータスに変更があった場合のみ、履歴を追加する
                 if (currentCase.status !== updatedData.status) {
-                    const changedById = parseInt(document.getElementById('status_changed_by').value);
+                    const changedById = parseInt(document.getElementById('status_changed_by')?.value);
                     const changedByName = staffMembers.find(s => s.staff_id === changedById)?.staff_name || '不明';
                     const hId = Date.now();
-                    const historyObj = { history_id: hId, case_id: caseId, old_status: currentCase.status, new_status: updatedData.status, changed_date: new Date().toISOString(), changed_by: changedByName, comment: document.getElementById('status_change_comment').value };
-                    await saveToFirestore('case_status_history', `hist_${hId}`, historyObj);
+
+                    let comment = document.getElementById('status_change_comment')?.value || '';
+                    if (autoUpdatedDatesTracker && autoUpdatedDatesTracker.length > 0) {
+                        const autoMsg = `[日付自動設定: ${autoUpdatedDatesTracker.join(', ')}]`;
+                        comment = comment ? `${comment} ${autoMsg}` : autoMsg;
+                    }
+
+                    const historyObj = { history_id: hId, case_id: caseId, old_status: currentCase.status, new_status: updatedData.status, changed_date: new Date().toISOString(), changed_by: changedByName, comment: comment };
+                    const histRef = db.collection('case_status_history').doc(`hist_${hId}`);
+                    batch.set(histRef, historyObj);
                 }
-                updatedData.case_id = caseId;
-                await saveToFirestore('cases', `case_${caseId}`, { ...currentCase, ...updatedData });
             }
+
+            console.log("Committing batch to Firestore...");
+            await batch.commit();
+            console.log("Batch commit successful.");
+
+            // 更新されたデータを現在のState（currentCase）に即時反映
+            currentCase = { ...currentCase, ...updatedData };
+
             showToast('保存しました', 'success');
-            setTimeout(() => { window.location.href = 'index.html'; }, 1000);
-        } catch (err) {
-            console.error('Save failed:', err);
-            alert('保存に失敗しました');
+
+            // ユーザーに保存完了を視覚的に伝えるため、1.5秒後に一覧へ遷移
+            setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+            renderHistory(caseId); // 履歴がある場合は再描画
+        } catch (error) {
+            console.error('Save failed:', error);
+            alert('保存中にエラーが発生しました: ' + (error.message || '不明なエラー'));
         }
     }
 
@@ -455,8 +625,70 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    form.addEventListener('submit', handleSave);
-    if (statusSelect) statusSelect.addEventListener('change', () => updateStatusPreview(statusSelect.value));
+    if (form) {
+        form.addEventListener('submit', handleSave);
+    }
+
+    // イベントがform.submitを経由しない場合のための直接のリスナー
+    const saveBtn = document.querySelector('button[type="submit"].btn-save');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', (e) => {
+            console.log("Event listener directly attached to Save button triggered.");
+            if (form && typeof form.reportValidity === 'function') {
+                if (!form.reportValidity()) {
+                    console.log("Form validation failed.");
+                    e.preventDefault(); // submitを停止
+                    return;
+                }
+            }
+            // 呼び出し
+            handleSave(e);
+        });
+        console.log("Direct event listener attached to .btn-save.");
+    } else {
+        console.error("Save button not found in DOM.");
+    }
+    if (statusSelect) {
+        statusSelect.addEventListener('change', (e) => {
+            const newStatus = e.target.value;
+            updateStatusPreview(newStatus);
+
+            const today = new Date().toISOString().split('T')[0];
+            let updatedField = null;
+            let fieldLabel = '';
+
+            if (newStatus === '受任') {
+                const el = document.getElementById('contract_date');
+                if (el && !el.value) {
+                    if (el._flatpickr) el._flatpickr.setDate(today, true);
+                    else el.value = today;
+                    updatedField = 'contract_date'; fieldLabel = '受任日';
+                }
+            } else if (newStatus === '受付（受理）') {
+                const el = document.getElementById('acceptance_date');
+                if (el && !el.value) {
+                    if (el._flatpickr) el._flatpickr.setDate(today, true);
+                    else el.value = today;
+                    updatedField = 'acceptance_date'; fieldLabel = '受付日';
+                }
+            } else if (newStatus === '完了') {
+                const el = document.getElementById('completion_date');
+                if (el && !el.value) {
+                    if (el._flatpickr) el._flatpickr.setDate(today, true);
+                    else el.value = today;
+                    updatedField = 'completion_date'; fieldLabel = '完了日';
+                }
+            }
+
+            if (updatedField) {
+                showToast(`【自動入力】${newStatus}への変更に伴い、${fieldLabel}に本日日付を設定しました`, 'success');
+                if (!autoUpdatedDatesTracker.includes(fieldLabel)) {
+                    autoUpdatedDatesTracker.push(fieldLabel);
+                }
+            }
+        });
+    }
+
     [btnBack, btnBackTop].forEach(btn => {
         if (btn) {
             btn.addEventListener('click', () => { if (confirm('一覧に戻りますか？')) window.location.href = 'index.html'; });

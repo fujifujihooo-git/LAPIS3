@@ -45,7 +45,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Format Remaining Days
-    function formatRemainingDays(days) {
+    function formatRemainingDays(days, status) {
+        const terminalStatuses = ['完了', '返却済', '取下げ', '失効', '取消'];
+        if (status && terminalStatuses.includes(status)) {
+            return 'ー';
+        }
         if (days === null) return 'ー';
         if (days < 0) return `${Math.abs(days)}日超過`;
         return `${days}日`;
@@ -59,7 +63,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Get Remaining Days Class
-    function getRemainingDaysClass(days) {
+    function getRemainingDaysClass(days, status) {
+        const terminalStatuses = ['完了', '返却済', '取下げ', '失効', '取消'];
+        if (status && terminalStatuses.includes(status)) {
+            return 'days-none';
+        }
         if (days === null) return 'days-none';
         if (days >= 90) return 'days-safe';
         if (days >= 30) return 'days-warning';
@@ -306,7 +314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ${formatDate(item.expiry_date)}
                     <span class="date-awareki">${formatWareki(item.expiry_date)}</span>
                 </td>
-                <td><span class="${getRemainingDaysClass(remainingDays)}">${formatRemainingDays(remainingDays)}</span></td>
+                <td><span class="${getRemainingDaysClass(remainingDays, item.status)}">${formatRemainingDays(remainingDays, item.status)}</span></td>
                 <td>
                     ${formatDate(item.notice_date)}
                     <span class="date-awareki">${formatWareki(item.notice_date)}</span>

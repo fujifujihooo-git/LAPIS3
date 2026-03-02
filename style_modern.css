@@ -110,6 +110,62 @@ body {
     width: 100%;
 }
 
+/* --- Toast Notifications --- */
+#toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.toast {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 12px 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #334155;
+    animation: slideInRight 0.3s ease-out forwards;
+    border-left: 4px solid var(--primary);
+}
+
+.toast-success {
+    border-left-color: #10b981;
+}
+
+.toast-success span:first-child {
+    color: #10b981;
+    font-size: 18px;
+}
+
+.toast-error {
+    border-left-color: #ef4444;
+}
+
+.toast-error span:first-child {
+    color: #ef4444;
+    font-size: 18px;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
 /* --- Sidebar Components --- */
 .sidebar-header {
     height: var(--header-height);
@@ -425,7 +481,34 @@ body {
     color: var(--text-muted);
     font-size: 13pt;
     text-transform: uppercase;
+    transition: background-color 0.2s;
 }
+
+/* --- Table Sorting UI --- */
+.table-modern th.sortable {
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+}
+
+.table-modern th.sortable:hover {
+    background-color: #eef2f6;
+    color: var(--text-main);
+}
+
+.table-modern th.sort-active {
+    color: var(--primary);
+    font-weight: 700;
+    background-color: #e6f0ff;
+}
+
+.sort-icon {
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 0.85em;
+    vertical-align: middle;
+}
+
 
 .table-modern td {
     padding: 14px 16px;

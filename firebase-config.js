@@ -17,7 +17,7 @@ const db = firebase.firestore();
 // --- Emulator Connections ---
 // IMPORTANT: Must be called BEFORE enablePersistence() or any other Firestore method
 // Automatically connect to emulators when running on localhost
-const useEmulator = false; // window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const useEmulator = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 if (useEmulator) {
     console.log("Using Firebase Emulators...");
 

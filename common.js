@@ -1,20 +1,23 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const backToTopBtn = document.getElementById('back-to-top');
+    // --- Back to Top Logic ---
+    const btnTop = document.getElementById('back-to-top');
 
-    if (backToTopBtn) {
+    // 要素が存在しないページでのエラーを防ぐガード節
+    if (btnTop) {
         window.addEventListener('scroll', () => {
-            if (window.pageYOffset > 200) {
-                backToTopBtn.classList.add('show');
+            // 300px以上スクロールで表示
+            if (window.scrollY > 300) {
+                btnTop.style.opacity = '1';
+                btnTop.style.pointerEvents = 'auto';
             } else {
-                backToTopBtn.classList.remove('show');
+                btnTop.style.opacity = '0';
+                btnTop.style.pointerEvents = 'none';
             }
         });
 
-        backToTopBtn.addEventListener('click', () => {
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
+        // クリックで最上部へスムーススクロール
+        btnTop.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     }
 
@@ -505,6 +508,125 @@ function sortTable(table, column, asc = true) {
 }
 
 // --- Data Sorting for List Screens ---
+/**
+ * クライアントサイドでの配列ソート処理を行う共通関数
+ * @param {Array} casesArray - ソート対象の配列
+ * @param {Object} currentSort - ソート状態 { key: 'status'|'acceptance_date'|'remaining_days'|null, order: 'asc'|'desc'|null }
+ * @returns {Array} ソート済みの新しい配列
+ */
+function sortCasesCommon(casesArray, currentSort) {
+    if (!currentSort.key || !currentSort.order) {
+        // デフォルト: 期限が近い順 > 受付日順
+        return [...casesArray].sort((a, b) => {
+            const daysA = typeof calculateRemainingDays === 'function' ? calculateRemainingDays(a.application_scheduled_date) : null;
+            const daysB = typeof calculateRemainingDays === 'function' ? calculateRemainingDays(b.application_scheduled_date) : null;
+            if (daysA !== null && daysB !== null) return daysA - daysB;
+            if (daysA !== null) return -1;
+            if (daysB !== null) return 1;
+            return new Date(b.acceptance_date || 0) - new Date(a.acceptance_date || 0);
+        });
+    }
+
+    const statusPriority = {
+        '相談': 1, '受任': 2, '作成中': 3, '申請準備完了': 4,
+        '受付（受理）': 5, '補正対応中': 6, '完了': 7, '返却済': 8, '取下げ': 9
+    };
+    const terminalStatuses = ['完了', '返却済', '取下げ', '失効', '取消'];
+
+    return [...casesArray].sort((a, b) => {
+        const orderMultiplier = currentSort.order === 'asc' ? 1 : -1;
+
+        // 終結ステータスの特殊処理（昇順・降順に関わらず常にリストの最下部へ）
+        const isTerminalA = terminalStatuses.includes(a.status);
+        const isTerminalB = terminalStatuses.includes(b.status);
+
+        if (isTerminalA && !isTerminalB) return 1; // Aが終結なら常に後
+        if (!isTerminalA && isTerminalB) return -1; // Bが終結なら常に後
+        if (isTerminalA && isTerminalB) return 0;   // 共に終結ならそのまま
+
+        switch (currentSort.key) {
+            case 'status':
+                const priorityA = statusPriority[a.status] || 99;
+                const priorityB = statusPriority[b.status] || 99;
+                if (priorityA !== priorityB) {
+                    return (priorityA - priorityB) * orderMultiplier;
+                }
+                break;
+            case 'acceptance_date':
+                const dateA = a.acceptance_date || '';
+                const dateB = b.acceptance_date || '';
+                if (dateA !== dateB) {
+                    return dateA.localeCompare(dateB) * orderMultiplier;
+                }
+                break;
+            case 'remaining_days':
+                if (typeof calculateRemainingDays === 'function') {
+                    const daysA = calculateRemainingDays(a.application_scheduled_date);
+                    const daysB = calculateRemainingDays(b.application_scheduled_date);
+                    // 期日が未定（null）のものも一番下に回す
+                    const valA = daysA === null ? Infinity : daysA;
+                    const valB = daysB === null ? Infinity : daysB;
+
+                    if (valA > valB) return 1 * orderMultiplier;
+                    if (valA < valB) return -1 * orderMultiplier;
+                }
+                return 0;
+        }
+        return new Date(b.created_date || 0) - new Date(a.created_date || 0);
+    });
+}
+
+/**
+ * 汎用ソートヘッダー初期化関数
+ * @param {string} containerSelector - テーブル等のコンテナ要素（例: '#case-table'）
+ * @param {Object} sortStateObj - ソート状態を保持するオブジェクト（参照渡し）
+ * @param {Function} onSortChanged - ソート状態変更時に呼ばれるコールバック（レンダリング処理等）
+ */
+function initSortHeaders(containerSelector, sortStateObj, onSortChanged) {
+    const container = document.querySelector(containerSelector);
+    if (!container) return;
+
+    const headers = container.querySelectorAll('th.sortable');
+    headers.forEach(header => {
+        header.addEventListener('click', () => {
+            const sortKey = header.getAttribute('data-sort');
+
+            if (sortStateObj.key === sortKey) {
+                if (sortStateObj.order === 'asc') sortStateObj.order = 'desc';
+                else { sortStateObj.order = null; sortStateObj.key = null; }
+            } else {
+                sortStateObj.key = sortKey;
+                sortStateObj.order = 'asc';
+            }
+
+            updateSortUI(container, sortStateObj);
+            if (onSortChanged) onSortChanged();
+        });
+    });
+    // 初期状態の反映
+    updateSortUI(container, sortStateObj);
+}
+
+function updateSortUI(container, sortStateObj) {
+    const headers = container.querySelectorAll('th.sortable');
+    headers.forEach(header => {
+        const iconSpan = header.querySelector('.sort-icon');
+        const key = header.getAttribute('data-sort');
+
+        header.classList.remove('sort-active');
+        if (iconSpan) iconSpan.innerHTML = '<span style="color:#ccc; margin-left:4px; font-size:0.8em;">↕</span>';
+
+        if (sortStateObj.key === key) {
+            header.classList.add('sort-active');
+            if (iconSpan) {
+                iconSpan.innerHTML = sortStateObj.order === 'asc'
+                    ? '<span style="color:var(--primary); margin-left:4px;">▲</span>'
+                    : '<span style="color:var(--primary); margin-left:4px;">▼</span>';
+            }
+        }
+    });
+}
+
 function handleSort(tableId, data, column, type, direction) {
     if (!data || data.length === 0) return [];
 
@@ -556,14 +678,25 @@ function calculateRemainingDays(scheduledDate) {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
-function formatRemainingDays(days) {
+function formatRemainingDays(days, status) {
+    // 完了済みのステータスは「ー」を表示
+    const terminalStatuses = ['完了', '返却済', '取下げ'];
+    if (status && terminalStatuses.includes(status)) {
+        return '<span class="empty-placeholder">ー</span>';
+    }
+
     if (days === null) return formatDisplayValue(null);
     if (days === 0) return '今日';
     if (days > 0) return `${days}日後`;
     return `${Math.abs(days)}日超過`;
 }
 
-function getRemainingDaysClass(days) {
+function getRemainingDaysClass(days, status) {
+    const terminalStatuses = ['完了', '返却済', '取下げ'];
+    if (status && terminalStatuses.includes(status)) {
+        return 'days-none';
+    }
+
     if (days === null) return 'days-none';
     if (days >= 14) return 'days-safe';
     if (days >= 7) return 'days-warning';

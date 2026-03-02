@@ -377,11 +377,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${item.item_type}</td>
                 <td>${getCaseName(item.case_id)}</td>
                 <td>${item.description}</td>
-                <td>${formatCurrency(item.unit_price)}</td>
-                <td>${item.quantity}</td>
-                <td>${formatCurrency(item.amount)}</td>
-                <td>${item.is_taxable ? '○' : '×'}</td>
-                <td><button class="secondary-btn" style="padding: 4px 8px; font-size: 0.8rem;" onclick="editLocalItem(${index})">編集</button></td>
+                <td style="text-align: right;">${formatCurrency(item.unit_price)}</td>
+                <td style="text-align: right;">${item.quantity}</td>
+                <td style="text-align: right;">${formatCurrency(item.amount)}</td>
+                <td style="text-align: center;">${item.is_taxable ? '○' : '×'}</td>
+                <td style="text-align: center;"><button class="secondary-btn" style="padding: 4px 8px; font-size: 0.8rem;" onclick="editLocalItem(${index})">編集</button></td>
             `;
             itemListBody.appendChild(row);
         });

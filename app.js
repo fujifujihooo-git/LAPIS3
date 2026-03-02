@@ -32,6 +32,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     let customers = [];
     let staffMembers = [];
 
+    /**
+     * @typedef {'asc' | 'desc' | null} SortOrder
+     * @typedef {Object} SortState
+     * @property {'status' | 'acceptance_date' | 'remaining_days' | null} key
+     * @property {SortOrder} order
+     */
+    let currentSort = { key: null, order: null };
+
     // --- Functions ---
 
     // Initialize Data from Firestore
@@ -236,17 +244,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!caseListBody) return;
         caseListBody.innerHTML = '';
 
-        // Sorting: 期限が近い順、または受付日順
-        const sorted = data.sort((a, b) => {
-            const daysA = calculateRemainingDays(a.application_scheduled_date);
-            const daysB = calculateRemainingDays(b.application_scheduled_date);
-
-            if (daysA !== null && daysB !== null) return daysA - daysB;
-            if (daysA !== null) return -1;
-            if (daysB !== null) return 1;
-
-            return new Date(b.acceptance_date) - new Date(a.acceptance_date);
-        });
+        // Sorting
+        const sorted = sortCasesCommon(data, currentSort);
 
         if (sorted.length === 0) {
             caseListBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-muted);">該当する案件が見つかりません</td></tr>';
@@ -256,7 +255,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         sorted.forEach(c => {
             const tr = document.createElement('tr');
             const days = calculateRemainingDays(c.application_scheduled_date);
-            const daysClass = getRemainingDaysClass(days);
+            const daysClass = getRemainingDaysClass(days, c.status);
 
             const fieldStaff = staffMembers.find(s => s.staff_id === Number(c.field_staff_id))?.staff_name || '-';
             const docStaff = staffMembers.find(s => s.staff_id === Number(c.document_staff_id))?.staff_name || '-';
@@ -272,7 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div style="font-size: 0.8rem; color: var(--text-muted);">${c.procedure_name || '-'}</div>
                 </td>
                 <td>
-                    <span class="days-badge ${daysClass}">${formatRemainingDays(days)}</span>
+                    <span class="days-badge ${daysClass}">${formatRemainingDays(days, c.status)}</span>
                     <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">${c.application_scheduled_date || '-'}</div>
                 </td>
                 <td>
@@ -529,6 +528,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         reader.readAsText(file);
     }
 
+    // ==========================================
+    // Sorting Logic
+    // ==========================================
+
+
+
+
     // --- Listeners ---
     // Removed direct change listeners to prevent quota overuse
     const btnSearch = document.getElementById('btn-search-execute');
@@ -575,6 +581,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnExportBottom) btnExportBottom.addEventListener('click', exportData);
     if (btnImportTriggerBottom) btnImportTriggerBottom.addEventListener('click', () => inputImportBottom.click());
     if (inputImportBottom) inputImportBottom.addEventListener('change', importData);
+
+    // Setup headers using common.js logic
+    initSortHeaders('#case-table', currentSort, () => renderTable(cases));
 
     // Initial Start
     await init();

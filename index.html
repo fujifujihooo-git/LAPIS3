@@ -230,11 +230,14 @@
                             <table class="table-modern" id="case-table">
                                 <thead>
                                     <tr>
-                                        <th>ステータス</th>
-                                        <th>受任日</th>
+                                        <th class="sortable" data-sort="status">ステータス <span class="sort-icon"></span>
+                                        </th>
+                                        <th class="sortable" data-sort="acceptance_date">受任日 <span
+                                                class="sort-icon"></span></th>
                                         <th>顧客名</th>
                                         <th>業務内容</th>
-                                        <th>残り日数</th>
+                                        <th class="sortable" data-sort="remaining_days">残り日数 <span
+                                                class="sort-icon"></span></th>
                                         <th>担当者</th>
                                     </tr>
                                 </thead>
@@ -288,19 +291,7 @@
     <script src="common.js"></script>
     <script src="app.js"></script>
 
-    // Back to top Logic (Simple inline override or relies on common.js)
-    const btnTop = document.getElementById('back-to-top');
-    window.addEventListener('scroll', () => {
-    if (window.scrollY > 300) {
-    btnTop.style.opacity = '1';
-    btnTop.style.pointerEvents = 'auto';
-    } else {
-    btnTop.style.opacity = '0';
-    btnTop.style.pointerEvents = 'none';
-    }
-    });
-    btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-    </script>
+
 </body>
 
 </html>

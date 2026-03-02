@@ -215,25 +215,58 @@
                                 </select>
                             </div>
                         </div>
+
+                        <h3
+                            style="margin-top: 24px; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+                            日付管理</h3>
+                        <div class="form-grid date-row grid-3-col" style="margin-top: 16px;">
+                            <div class="form-group">
+                                <label for="contract_date">受任日</label>
+                                <input type="date" id="contract_date" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="application_scheduled_date">申請予定日</label>
+                                <input type="date" id="application_scheduled_date" class="form-control">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="acceptance_date">受付日</label>
+                                <input type="date" id="acceptance_date" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="completion_date">完了日</label>
+                                <input type="date" id="completion_date" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="return_date">返却日</label>
+                                <input type="date" id="return_date" class="form-control">
+                            </div>
+                        </div>
                     </section>
 
-                    <!-- ■ ステータス変更履歴 -->
+                    <!-- ■ 申請情報 -->
                     <section class="form-section">
-                        <h2>ステータス変更履歴</h2>
-                        <div class="table-responsive">
-                            <table class="table-modern">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 20%;">日時</th>
-                                        <th style="width: 30%;">変更内容</th>
-                                        <th style="width: 20%;">変更者</th>
-                                        <th style="width: 30%;">コメント</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="status-history-body">
-                                    <!-- JSで動的に追加 -->
-                                </tbody>
-                            </table>
+                        <h2>申請情報</h2>
+                        <div class="form-grid grid-3-col">
+                            <div class="form-group">
+                                <label for="application_method">申請方法</label>
+                                <select id="application_method" class="form-select">
+                                    <option value="">選択してください</option>
+                                    <option value="窓口提出">窓口提出</option>
+                                    <option value="郵送">郵送</option>
+                                    <option value="電子申請">電子申請</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="application_number">申請番号</label>
+                                <input type="text" id="application_number" class="form-control">
+                            </div>
+                            <div class="form-group checkbox-group"
+                                style="display: flex; align-items: center; margin-top: 30px;">
+                                <input type="checkbox" id="correction_flag"
+                                    style="width:18px; height:18px; margin-right:8px;">
+                                <label for="correction_flag" style="margin:0;">補正有無（ありの場合チェック）</label>
+                            </div>
                         </div>
                     </section>
 
@@ -338,64 +371,32 @@
                             ※一つの請求書に複数の案件が含まれる場合、本案件に関連する明細の合計額を表示します。</p>
                     </section>
 
-                    <section class="form-section">
-                        <h2>日付管理</h2>
-                        <div class="form-grid date-row grid-3-col"> <!-- Added grid class -->
-                            <div class="form-group">
-                                <label for="contract_date">受任日</label>
-                                <input type="date" id="contract_date" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="application_scheduled_date">申請予定日</label>
-                                <input type="date" id="application_scheduled_date" class="form-control">
-                            </div>
-
-                            <div class="form-group">
-                                <label for="acceptance_date">受付日</label>
-                                <input type="date" id="acceptance_date" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="completion_date">完了日</label>
-                                <input type="date" id="completion_date" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="return_date">返却日</label>
-                                <input type="date" id="return_date" class="form-control">
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- ■ 申請情報 -->
-                    <section class="form-section">
-                        <h2>申請情報</h2>
-                        <div class="form-grid grid-3-col">
-                            <div class="form-group">
-                                <label for="application_method">申請方法</label>
-                                <select id="application_method" class="form-select">
-                                    <option value="">選択してください</option>
-                                    <option value="窓口提出">窓口提出</option>
-                                    <option value="郵送">郵送</option>
-                                    <option value="電子申請">電子申請</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="application_number">申請番号</label>
-                                <input type="text" id="application_number" class="form-control">
-                            </div>
-                            <div class="form-group checkbox-group"
-                                style="display: flex; align-items: center; margin-top: 30px;">
-                                <input type="checkbox" id="correction_flag"
-                                    style="width:18px; height:18px; margin-right:8px;">
-                                <label for="correction_flag" style="margin:0;">補正有無（ありの場合チェック）</label>
-                            </div>
-                        </div>
-                    </section>
-
                     <!-- ■ 備考 -->
                     <section class="form-section">
                         <h2>備考</h2>
                         <div class="form-group full-width">
                             <textarea id="remarks" class="form-control" placeholder="案件に関する特記事項を入力してください。"></textarea>
+                        </div>
+                    </section>
+
+                    <!-- ■ ステータス変更履歴 -->
+                    <section class="form-section">
+                        <h2>ステータス変更履歴</h2>
+                        <div class="table-responsive">
+                            <table class="table-modern">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 20%;">日時</th>
+                                        <th style="width: 25%;">変更内容</th>
+                                        <th style="width: 15%;">変更者</th>
+                                        <th style="width: 30%;">コメント</th>
+                                        <th style="width: 10%;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="status-history-body">
+                                    <!-- JSで動的に追加 -->
+                                </tbody>
+                            </table>
                         </div>
                     </section>
 
@@ -465,6 +466,60 @@
         </div>
     </div>
 
+    <!-- History Edit Modal -->
+    <div id="history-edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>履歴編集</h3>
+                <span style="cursor: pointer; font-size: 1.5rem;" id="btn-close-history-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="modal-history-id">
+                <div class="form-group">
+                    <label>変更日時 <span class="required">*</span></label>
+                    <input type="datetime-local" id="modal-history-date" class="form-control" required>
+                </div>
+                <div class="form-group" style="margin-top: 12px;">
+                    <label>登録ステータス <span class="required">*</span></label>
+                    <select id="modal-history-status" class="form-select" required>
+                        <option value="相談">相談</option>
+                        <option value="受任">受任</option>
+                        <option value="作成中">作成中</option>
+                        <option value="申請準備完了">申請準備完了</option>
+                        <option value="受付（受理）">受付（受理）</option>
+                        <option value="補正対応中">補正対応中</option>
+                        <option value="完了">完了</option>
+                        <option value="返却済">返却済</option>
+                        <option value="取下げ">取下げ</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-top: 12px;">
+                    <label>コメント</label>
+                    <textarea id="modal-history-comment" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-group checkbox-group"
+                    style="margin-top: 16px; display: flex; align-items: flex-start; background-color: #f0fdf4; padding: 12px; border-radius: 8px; border: 1px solid #bbf7d0;">
+                    <input type="checkbox" id="modal-history-link-flag"
+                        style="width:20px; height:20px; margin-right:8px; margin-top:2px;" checked>
+                    <label for="modal-history-link-flag"
+                        style="margin:0; color: #166534; font-size: 0.9rem; line-height: 1.4;">
+                        <strong>この変更を案件データ本体に反映する</strong><br>
+                        チェックを入れると、案件の「現在のステータス」および関連する「日付」が同時に更新されます。（最新の履歴を編集する場合推奨）
+                    </label>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <div class="modal-footer-left"></div>
+                <div class="modal-footer-right">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-history-modal">キャンセル</button>
+                    <button type="button" class="btn btn-save" id="btn-save-history"><i data-lucide="save"></i>
+                        変更を保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Back to top -->
     <button id="back-to-top" class="back-to-top" style="
         position: fixed; right: 20px; bottom: 20px; 
@@ -481,17 +536,20 @@
     <script src="common.js"></script>
     <script src="detail.js?v=8"></script>
 
-    const btnTop = document.getElementById('back-to-top');
-    window.addEventListener('scroll', () => {
-    if (window.scrollY > 300) {
-    btnTop.style.opacity = '1';
-    btnTop.style.pointerEvents = 'auto';
-    } else {
-    btnTop.style.opacity = '0';
-    btnTop.style.pointerEvents = 'none';
-    }
-    });
-    btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    <script>
+        const btnTop = document.getElementById('back-to-top');
+        if (btnTop) {
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 300) {
+                    btnTop.style.opacity = '1';
+                    btnTop.style.pointerEvents = 'auto';
+                } else {
+                    btnTop.style.opacity = '0';
+                    btnTop.style.pointerEvents = 'none';
+                }
+            });
+            btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        }
     </script>
 </body>
 
