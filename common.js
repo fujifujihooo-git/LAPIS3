@@ -74,51 +74,33 @@ document.addEventListener('DOMContentLoaded', () => {
         lucide.createIcons();
     }
 
-    // --- High-Visibility DatePicker (Flatpickr) ---
+    // --- DatePicker & MonthPicker ---
     initDatePicker();
+    if (typeof initUnifiedMonthPicker === 'function') { initUnifiedMonthPicker(); }
 });
 
 function initDatePicker() {
-    if (typeof flatpickr === 'undefined') {
-        console.warn('Flatpickr is not loaded. Skipping initialization.');
+    // Use UnifiedDatePicker if available (preferred)
+    if (typeof initUnifiedDatePicker === 'function') {
+        initUnifiedDatePicker();
+        console.log('UnifiedDatePicker initialized.');
         return;
     }
 
-    // Target all date inputs
-    const dateInputs = document.querySelectorAll('input[type="date"], .lapis-datepicker');
-
-    dateInputs.forEach(input => {
-        // --- Wareki Helper Setup ---
-        // Create helper element if it doesn't exist
-        let helper = input.parentNode.querySelector('.wareki-helper');
-        if (!helper) {
-            helper = document.createElement('div');
-            helper.className = 'wareki-helper';
-            // Insert after input (or after flatpickr's altInput later)
-            input.parentNode.appendChild(helper);
-        }
-
-        const fp = flatpickr(input, {
-            locale: "ja",
-            confirmIcon: "<i class='fa fa-check'></i>", // Not used but good to have
-            altInput: true,
-            altFormat: "Y/m/d",
-            dateFormat: "Y-m-d", // Keep internal value as YYYY-MM-DD for consistency
-            allowInput: true,
-            disableMobile: true,
-            animate: true,
-            onReady: (selectedDates, dateStr, instance) => {
-                updateWarekiHelper(helper, dateStr);
-                // Move helper after the newly created altInput
-                if (instance.altInput) {
-                    instance.altInput.parentNode.appendChild(helper);
-                }
-            },
-            onChange: (selectedDates, dateStr, instance) => {
-                updateWarekiHelper(helper, dateStr);
-            }
+    // Fallback: Flatpickr
+    if (typeof flatpickr !== 'undefined') {
+        const dateInputs = document.querySelectorAll('input[type="date"], .lapis-datepicker');
+        dateInputs.forEach(input => {
+            flatpickr(input, {
+                locale: "ja", altInput: true, altFormat: "Y/m/d",
+                dateFormat: "Y-m-d", allowInput: true, disableMobile: true,
+                monthSelectorType: "dropdown"
+            });
         });
-    });
+        return;
+    }
+
+    console.warn('No date picker library found.');
 }
 
 /**
@@ -672,7 +654,16 @@ function calculateRemainingDays(scheduledDate) {
     if (!scheduledDate) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const targetDate = new Date(scheduledDate);
+
+    let targetDate;
+    if (typeof scheduledDate.toDate === 'function') {
+        targetDate = scheduledDate.toDate();
+    } else {
+        targetDate = new Date(scheduledDate);
+    }
+
+    if (isNaN(targetDate.getTime())) return null;
+
     targetDate.setHours(0, 0, 0, 0);
     const diffTime = targetDate - today;
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));

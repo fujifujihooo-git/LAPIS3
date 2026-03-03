@@ -8,10 +8,8 @@
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <!-- Flatpickr (High Visibility Calendar) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
+    <!-- UnifiedDatePicker -->
+    <script src="unified_datepicker.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -81,6 +79,26 @@
         .filter-date-range .range-separator {
             color: var(--text-muted);
             font-weight: 500;
+        }
+
+        /* Sortable table header */
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            transition: background-color 0.15s;
+        }
+        th.sortable:hover {
+            background-color: rgba(99, 102, 241, 0.08);
+        }
+        .sort-indicator {
+            font-size: 10pt;
+            color: #94a3b8;
+            margin-left: 4px;
+        }
+        .sort-indicator.active {
+            color: var(--primary, #6366f1);
+            font-weight: 700;
         }
     </style>
 </head>
@@ -268,12 +286,12 @@
                                 <thead>
                                     <tr>
                                         <th class="sortable" data-sort="customer_name">顧客名</th>
-                                        <th class="sortable" data-sort="license_type_name">許認可種別 / 番号</th>
+                                        <th data-sort="license_type_name">許認可種別 / 番号</th>
                                         <th class="sortable" data-sort="expiry_date">期限（満了日）</th>
-                                        <th class="sortable" data-sort="remaining_days">残り日数</th>
+                                        <th data-sort="remaining_days">残り日数</th>
                                         <th class="sortable" data-sort="notice_date">案内日</th>
-                                        <th class="sortable" data-sort="notice_remaining">案内まで</th>
-                                        <th class="sortable" data-sort="status">状態</th>
+                                        <th data-sort="notice_remaining">案内まで</th>
+                                        <th data-sort="status">状態</th>
                                     </tr>
                                 </thead>
                                 <tbody id="license-list-body">

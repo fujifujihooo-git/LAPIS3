@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let licenseTypes = [];
     let staffMembers = [];
     let filteredData = [];
-    let currentSort = { column: 'notice_remaining', direction: 'asc' };
+    let currentSort = { column: 'expiry_date', direction: 'asc' };
 
     // --- Functions ---
 
@@ -118,10 +118,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Resolve staff name from customer's field_staff_id
+    // Resolve staff name from customer's primary_staff_id
     function getFieldStaffName(customer) {
-        if (!customer || !customer.field_staff_id) return '';
-        const staff = staffMembers.find(s => s.staff_id === Number(customer.field_staff_id));
+        if (!customer || !customer.primary_staff_id) return '';
+        const staff = staffMembers.find(s => s.staff_id === Number(customer.primary_staff_id));
         return staff ? staff.staff_name : '';
     }
 
@@ -151,16 +151,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Populate field staff filter
             if (filterFieldStaff) {
                 filterFieldStaff.innerHTML = '<option value="">すべて</option>';
-                staffMembers.filter(s => s.status === '在籍').sort((a, b) => {
-                    const nameA = a.staff_name || '';
-                    const nameB = b.staff_name || '';
-                    return nameA.localeCompare(nameB, 'ja');
-                }).forEach(s => {
-                    const opt = document.createElement('option');
-                    opt.value = s.staff_id;
-                    opt.textContent = s.staff_name;
-                    filterFieldStaff.appendChild(opt);
-                });
+                staffMembers.filter(s => s.status === '在籍')
+                    .sort((a, b) => (a.staff_id || 0) - (b.staff_id || 0))
+                    .forEach(s => {
+                        const opt = document.createElement('option');
+                        opt.value = s.staff_id;
+                        opt.textContent = s.staff_name;
+                        filterFieldStaff.appendChild(opt);
+                    });
             }
 
             // Initial view: EMPTY (Save Quota)
@@ -237,8 +235,48 @@ document.addEventListener('DOMContentLoaded', async () => {
                     .get();
                 results = lSnap.docs.map(d => ({ ...d.data(), _docId: d.id }));
 
+            } else if (fieldStaffVal) {
+                // 2a. Field Staff filter: pre-load customers with matching primary_staff_id
+                const staffId = parseInt(fieldStaffVal);
+                const custSnap = await db.collection('customers')
+                    .where('primary_staff_id', '==', staffId)
+                    .get();
+                const matchedCusts = custSnap.docs.map(d => d.data());
+
+                // Also try string match (some data stores primary_staff_id as string)
+                if (matchedCusts.length === 0) {
+                    const custSnap2 = await db.collection('customers')
+                        .where('primary_staff_id', '==', String(fieldStaffVal))
+                        .get();
+                    custSnap2.docs.forEach(d => matchedCusts.push(d.data()));
+                }
+
+                // Cache customers
+                matchedCusts.forEach(c => {
+                    if (!customers.find(existing => existing.customer_id === c.customer_id)) {
+                        customers.push(c);
+                    }
+                });
+
+                if (matchedCusts.length === 0) {
+                    licenseListBody.innerHTML = '<tr><td colspan="7" class="no-data-cell">該当する外務担当者の顧客が見つかりません</td></tr>';
+                    return;
+                }
+
+                const targetCustIds = matchedCusts.map(c => c.customer_id);
+
+                // Fetch licenses for these customers (batched for Firestore 'in' limit of 10)
+                const licResolves = [];
+                for (let i = 0; i < targetCustIds.length; i += 10) {
+                    const chunk = targetCustIds.slice(i, i + 10);
+                    if (chunk.length > 0)
+                        licResolves.push(db.collection('customer_licenses').where('customer_id', 'in', chunk).get());
+                }
+                const licSnaps = await Promise.all(licResolves);
+                licSnaps.forEach(snap => snap.docs.forEach(d => results.push({ ...d.data(), _docId: d.id })));
+
             } else {
-                // 2. If no customer name, use other filters as base query
+                // 2b. No customer name and no field staff — use other filters
                 let query = db.collection('customer_licenses');
 
                 if (licType) {
@@ -262,7 +300,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // We need customer names. Fetch associated customers.
                 const neededCids = [...new Set(results.map(r => r.customer_id))];
-                // Filter out already loaded customers
                 const missingCids = neededCids.filter(id => !customers.find(c => c.customer_id === id));
 
                 if (missingCids.length > 0) {
@@ -305,16 +342,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Field Staff filter (via customer join)
             if (fieldStaffVal) {
                 const staffId = parseInt(fieldStaffVal);
-                // Find customer IDs that have this field_staff_id
+                // Find customer IDs that have this primary_staff_id
                 const matchingCustIds = customers
-                    .filter(c => Number(c.field_staff_id) === staffId)
+                    .filter(c => Number(c.primary_staff_id) === staffId)
                     .map(c => c.customer_id);
                 results = results.filter(l => matchingCustIds.includes(l.customer_id));
             }
 
             licenses = results;
             filteredData = results;
-            renderTable(filteredData);
+            sortData(currentSort.column, currentSort.direction);
 
         } catch (err) {
             console.error(err);
@@ -336,6 +373,53 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!num1) return num2;
         if (!num2) return num1;
         return `${num1} _ ${num2}`;
+    }
+
+    // --- Sort Logic ---
+    function sortData(column, direction) {
+        currentSort = { column, direction };
+        const dir = direction === 'asc' ? 1 : -1;
+
+        filteredData.sort((a, b) => {
+            let valA, valB;
+
+            if (column === 'customer_name') {
+                const custA = customers.find(c => c.customer_id === a.customer_id);
+                const custB = customers.find(c => c.customer_id === b.customer_id);
+                valA = custA ? custA.customer_name : '';
+                valB = custB ? custB.customer_name : '';
+                if (!valA && !valB) return 0;
+                if (!valA) return 1;
+                if (!valB) return -1;
+                return dir * valA.localeCompare(valB, 'ja');
+            }
+
+            // 日付系 (expiry_date, notice_date)
+            valA = a[column] || '';
+            valB = b[column] || '';
+            if (!valA && !valB) return 0;
+            if (!valA) return 1;
+            if (!valB) return -1;
+            return dir * valA.localeCompare(valB);
+        });
+
+        renderTable(filteredData);
+        updateSortIndicators();
+    }
+
+    function updateSortIndicators() {
+        document.querySelectorAll('#license-table thead th.sortable').forEach(th => {
+            const key = th.dataset.sort;
+            const existing = th.querySelector('.sort-indicator');
+            if (existing) existing.remove();
+
+            if (key === currentSort.column) {
+                const indicator = document.createElement('span');
+                indicator.className = 'sort-indicator active';
+                indicator.textContent = currentSort.direction === 'asc' ? ' ▲' : ' ▼';
+                th.appendChild(indicator);
+            }
+        });
     }
 
     // Render Table
@@ -417,7 +501,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Listeners ---
-    // Removed direct change listeners
+    // Sortable header click events
+    document.querySelectorAll('#license-table thead th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const key = th.dataset.sort;
+            if (!['customer_name', 'expiry_date', 'notice_date'].includes(key)) return;
+            const newDir = (currentSort.column === key && currentSort.direction === 'asc') ? 'desc' : 'asc';
+            sortData(key, newDir);
+        });
+    });
+
     if (btnSearch) btnSearch.addEventListener('click', executeSearch);
     if (btnReset) btnReset.addEventListener('click', handleReset);
 

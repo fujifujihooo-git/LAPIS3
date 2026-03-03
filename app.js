@@ -182,6 +182,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             cases = results;
+
+            // 検索実行時はカードの選択状態をリセットし、検索結果でカード数値を再描画する
+            activeCardId = null;
+            if (typeof updateCardStyles === 'function') updateCardStyles();
+            renderStats(cases);
             renderTable(cases);
 
         } catch (err) {
@@ -248,7 +253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const sorted = sortCasesCommon(data, currentSort);
 
         if (sorted.length === 0) {
-            caseListBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-muted);">該当する案件が見つかりません</td></tr>';
+            caseListBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-muted);">該当する案件はありません</td></tr>';
             return;
         }
 
@@ -288,12 +293,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    const parseDateSafe = (val) => {
+        if (!val) return null;
+        if (typeof val.toDate === 'function') return val.toDate();
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
+    };
+
     function renderStats(data) {
-        if (!statTotal) return;
-        statTotal.textContent = data.length; // Shows count of loaded cases only
-        statActive.textContent = data.filter(c => ['作成中', '受付（受理）'].includes(c.status)).length;
-        statReady.textContent = data.filter(c => c.status === '作成完了').length;
-        statCompleted.textContent = data.filter(c => c.status === '完了').length;
+        const terminalStatuses = ['完了', '返却済', '取下げ'];
+        const activeCount = data.filter(c => !terminalStatuses.includes(c.status)).length;
+        const urgentCount = data.filter(c => {
+            if (terminalStatuses.includes(c.status)) return false;
+            const d = calculateRemainingDays(c.application_scheduled_date);
+            return d !== null && d <= 7;
+        }).length;
+        const readyCount = data.filter(c => c.status === '申請準備完了').length;
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const completedCount = data.filter(c => {
+            if (c.status !== '完了') return false;
+            const d = c.status_changed_date ? parseDateSafe(c.status_changed_date) : parseDateSafe(c.last_updated);
+            return d && d >= monthStart;
+        }).length;
+
+        if (statTotal) statTotal.textContent = data.length;
+        if (statActive) statActive.textContent = activeCount;
+        const statUrgent = document.getElementById('stat-urgent');
+        if (statUrgent) statUrgent.textContent = urgentCount;
+        if (statReady) statReady.textContent = readyCount;
+        if (statCompleted) statCompleted.textContent = completedCount;
+
+        console.group('【デバッグ】初期データ集計（レンダリング用）');
+        console.log(`全データ件数 (DBから取得済): ${data.length}件`);
+        console.log(`- 進行中 (完了等以外): ${activeCount}件`);
+        console.log(`- 至急対応 (残り7日以内): ${urgentCount}件`);
+        console.log(`- 申請準備完了: ${readyCount}件`);
+        console.log(`- 今月の実績 (完了かつ当月変更): ${completedCount}件`);
+        console.groupEnd();
     }
 
     function getStatusKey(status) {
@@ -544,34 +581,84 @@ document.addEventListener('DOMContentLoaded', async () => {
         filterStatus.value = '';
         filterLicense.value = '';
         filterStaff.value = '';
-        if (filterCustomer) filterCustomer.value = ''; // Assuming input exists
+        if (filterCustomer) filterCustomer.value = '';
         filterDeadlineNear.checked = false;
-        // Reset to initial state
+        activeCardId = null;
+        updateCardStyles();
         init();
     });
 
-    // Stat Cards Clicks
-    const cards = [
-        { id: 'card-total', filter: () => { filterStatus.value = ''; executeSearch(); } },
-        { id: 'card-active', filter: () => { filterStatus.value = '作成中'; executeSearch(); } }, // Or '作成中' only? '作成中' + '受付' logic is in stats but filter implies one?
-        { id: 'card-ready', filter: () => { filterStatus.value = '作成完了'; executeSearch(); } },
-        { id: 'card-completed', filter: () => { filterStatus.value = '完了'; executeSearch(); } },
-        { id: 'card-urgent', filter: () => { filterDeadlineNear.checked = true; executeSearch(); } }
-    ];
+    // --- Card Quick Filter Logic ---
+    let activeCardId = null;
 
-    cards.forEach(cardCfg => {
-        const el = document.getElementById(cardCfg.id);
-        if (el) {
-            el.addEventListener('click', () => {
-                document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active-filter'));
-                el.classList.add('active-filter');
-                filterLicense.value = '';
-                filterStaff.value = '';
-                // filterCustomer.value = '';
-                if (cardCfg.id !== 'card-urgent') filterDeadlineNear.checked = false;
-                cardCfg.filter();
-            });
+    function applyCardFilter(cardId) {
+        const terminalStatuses = ['完了', '返却済', '取下げ'];
+
+        console.group('【デバッグ】カードフィルタ実行');
+        console.log(`全データ件数 (DB取得済の対象母数): ${cases.length}件`);
+        console.log(`クリックされたカード: ${cardId}`);
+
+        // Toggle: 同じカードを再クリック → 解除
+        if (activeCardId === cardId) {
+            console.log('=> フィルタ解除 (全件表示)');
+            activeCardId = null;
+            renderTable(cases);
+            updateCardStyles();
+            console.groupEnd();
+            return;
         }
+
+        let filtered;
+        switch (cardId) {
+            case 'card-total':
+                filtered = cases.filter(c => !terminalStatuses.includes(c.status));
+                break;
+            case 'card-urgent':
+                filtered = cases.filter(c => {
+                    if (terminalStatuses.includes(c.status)) return false;
+                    const d = calculateRemainingDays(c.application_scheduled_date);
+                    return d !== null && d <= 7;
+                });
+                break;
+            case 'card-ready':
+                filtered = cases.filter(c => c.status === '申請準備完了');
+                break;
+            case 'card-completed': {
+                const now = new Date();
+                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                filtered = cases.filter(c => {
+                    if (c.status !== '完了') return false;
+                    const d = c.status_changed_date ? parseDateSafe(c.status_changed_date) : parseDateSafe(c.last_updated);
+                    return d && d >= monthStart;
+                });
+                break;
+            }
+            default:
+                filtered = cases;
+        }
+
+        console.log(`=> フィルタリング結果: ${filtered.length}件`);
+        console.groupEnd();
+
+        activeCardId = cardId;
+        renderTable(filtered);
+        updateCardStyles();
+    }
+
+    function updateCardStyles() {
+        document.querySelectorAll('.stat-card-modern').forEach(el => {
+            el.classList.remove('selected');
+        });
+        if (activeCardId) {
+            const el = document.getElementById(activeCardId);
+            if (el) el.classList.add('selected');
+        }
+    }
+
+    // Card click events
+    ['card-total', 'card-urgent', 'card-ready', 'card-completed'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('click', () => applyCardFilter(id));
     });
 
     if (btnExportTop) btnExportTop.addEventListener('click', exportData);
