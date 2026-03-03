@@ -101,7 +101,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             initAutocomplete();
 
             if (currentId === 'new') {
-                pageTitle.textContent = '新規許認可登録';
+                if (pageTitle) pageTitle.textContent = '新規許認可登録';
+                renderTitleArea('new', null);
                 const cIdParam = getUrlParameter('customer_id');
                 if (cIdParam) {
                     fromCustomerId = cIdParam; // 遷移元の顧客IDを保持
@@ -220,7 +221,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (licenseEditTitle) {
             licenseEditTitle.textContent = `${cust.customer_id} ${cust.customer_name}`;
         }
+        renderTitleArea(currentId, cust);
         customerSearchGroup.style.display = 'none';
+    }
+
+    function renderTitleArea(id, cust) {
+        const titleArea = document.getElementById('detail-title-area');
+        if (!titleArea) return;
+
+        const name = cust ? cust.customer_name : '不明な顧客';
+
+        if (id === 'new' && !cust) {
+            titleArea.innerHTML = `<h1 class="page-title" id="page-title">新規許認可登録</h1>
+                <span id="license-id-display" style="font-size: 11pt; color: var(--text-muted); font-weight: 400; margin-left: 8px;">License ID: -</span>`;
+        } else {
+            const heading = id === 'new' ? '新規許認可登録' : '許認可詳細';
+            let html = `<h1 class="page-title" id="page-title" style="display:inline-block; margin-right:8px; margin-bottom:0;">${heading}：<span style="color: var(--text-main); font-weight: 600;">${name}</span></h1>`;
+
+            if (cust && id !== 'new') {
+                html += `<a href="customer_detail.html?id=${cust.customer_id}" class="action-link" style="margin-left:12px">→ 顧客詳細</a>`;
+            }
+
+            html += `<span id="license-id-display" style="font-size: 11pt; color: var(--text-muted); font-weight: 400; margin-left: 8px;">License ID: ${id === 'new' ? '-' : id}</span>`;
+
+            titleArea.innerHTML = html;
+        }
     }
 
     function loadData(l) {
@@ -349,6 +374,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 await saveToFirestore('customer_licenses', docId, data);
+                // Update URL for the newly created license without reloading
+                currentId = nextId;
+                if (fromCustomerId) {
+                    history.replaceState(null, '', `?customer_id=${fromCustomerId}&id=${nextId}`);
+                } else {
+                    history.replaceState(null, '', `?id=${nextId}`);
+                }
+
                 if (changedBy.value) {
                     const hId = Date.now();
                     await saveToFirestore('license_history', `hist_${hId}`, { history_id: hId, license_id: nextId, change_date: now, change_type: '新規', changed_by: parseInt(changedBy.value), comment: '新規作成' });
@@ -362,11 +395,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             showToast('保存しました', 'success');
 
-            // 顧客詳細画面から遷移した場合は元の顧客画面に戻る
-            const returnUrl = fromCustomerId
-                ? `customer_detail.html?id=${fromCustomerId}`
-                : 'license_list.html';
-            setTimeout(() => window.location.href = returnUrl, 1000);
+            // 顧客詳細画面から遷移した場合は元の顧客画面に戻る（コメントアウト）
+            // const returnUrl = fromCustomerId
+            //     ? `customer_detail.html?id=${fromCustomerId}`
+            //     : 'license_list.html';
+            // setTimeout(() => window.location.href = returnUrl, 1000);
         } catch (err) {
             console.error('保存失敗:', err);
             alert('保存失敗: ' + err.message);

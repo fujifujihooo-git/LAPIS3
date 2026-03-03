@@ -7,6 +7,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const filterLicenseType = document.getElementById('filter-license-type');
     const filterStatus = document.getElementById('filter-status');
     const filterNoticeDue = document.getElementById('filter-notice-due');
+    const filterExpiryStart = document.getElementById('filter-expiry-start');
+    const filterExpiryEnd = document.getElementById('filter-expiry-end');
+    const filterNoticeStart = document.getElementById('filter-notice-start');
+    const filterNoticeEnd = document.getElementById('filter-notice-end');
+    const filterFieldStaff = document.getElementById('filter-field-staff');
     const btnNewLicense = document.getElementById('btn-new-license');
     const btnReset = document.getElementById('btn-reset');
     const btnSearch = document.getElementById('btn-search-execute');
@@ -15,6 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let licenses = [];
     let customers = [];
     let licenseTypes = [];
+    let staffMembers = [];
     let filteredData = [];
     let currentSort = { column: 'notice_remaining', direction: 'asc' };
 
@@ -112,12 +118,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Resolve staff name from customer's field_staff_id
+    function getFieldStaffName(customer) {
+        if (!customer || !customer.field_staff_id) return '';
+        const staff = staffMembers.find(s => s.staff_id === Number(customer.field_staff_id));
+        return staff ? staff.staff_name : '';
+    }
+
     // Initialize Data from Firestore
     async function init() {
         console.log('Fetching master data for License List...');
         try {
-            // Fetch Masters Only
-            licenseTypes = await getAllFromFirestore('license_types');
+            // Fetch Masters: license_types + staff
+            const [lt, st] = await Promise.all([
+                getAllFromFirestore('license_types'),
+                getAllFromFirestore('staff')
+            ]);
+            licenseTypes = lt;
+            staffMembers = st;
 
             // Populate license type filter
             if (filterLicenseType) {
@@ -127,6 +145,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                     opt.value = lt.license_type_id;
                     opt.textContent = lt.license_type_name;
                     filterLicenseType.appendChild(opt);
+                });
+            }
+
+            // Populate field staff filter
+            if (filterFieldStaff) {
+                filterFieldStaff.innerHTML = '<option value="">すべて</option>';
+                staffMembers.filter(s => s.status === '在籍').sort((a, b) => {
+                    const nameA = a.staff_name || '';
+                    const nameB = b.staff_name || '';
+                    return nameA.localeCompare(nameB, 'ja');
+                }).forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.staff_id;
+                    opt.textContent = s.staff_name;
+                    filterFieldStaff.appendChild(opt);
                 });
             }
 
@@ -145,6 +178,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const licType = filterLicenseType.value;
         const statusVal = filterStatus.value;
         const noticeDue = filterNoticeDue.checked;
+        const expiryStart = filterExpiryStart ? filterExpiryStart.value : '';
+        const expiryEnd = filterExpiryEnd ? filterExpiryEnd.value : '';
+        const noticeStart = filterNoticeStart ? filterNoticeStart.value : '';
+        const noticeEnd = filterNoticeEnd ? filterNoticeEnd.value : '';
+        const fieldStaffVal = filterFieldStaff ? filterFieldStaff.value : '';
 
         licenseListBody.innerHTML = '<tr><td colspan="7" style="text-align:center">検索中...</td></tr>';
 
@@ -152,7 +190,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let results = [];
 
             // Quota optimization: Validation
-            if (!custName && !licType && !statusVal && !noticeDue) {
+            if (!custName && !licType && !statusVal && !noticeDue && !expiryStart && !expiryEnd && !noticeStart && !noticeEnd && !fieldStaffVal) {
                 // If NO search conditions, ask for confirmation or return all with strict limit
                 const proceed = confirm('検索条件が指定されていません。最新の許認可情報を表示しますか？');
                 if (!proceed) {
@@ -165,7 +203,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 1. If Customer Name is provided, search customers with PARTIAL match (includes).
             if (custName) {
                 // Fetch all customers to perform partial match on client side.
-                // Note: Firestore doesn't support native partial match.
                 const cSnap = await db.collection('customers').get();
                 const allCustomers = cSnap.docs.map(d => d.data());
 
@@ -210,8 +247,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else if (statusVal) {
                     query = query.where('status', '==', statusVal);
                 } else if (noticeDue) {
-                    // Notice due means notice_date <= today
-                    // This might require index
                     const today = new Date().toISOString().split('T')[0];
                     query = query.where('notice_date', '<=', today);
                 } else {
@@ -243,8 +278,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             // In-Memory Filtering for remaining conditions
-            if (custName) { /* Already handled via customer search */ }
-
             if (licType) { results = results.filter(l => l.license_type_id === parseInt(licType)); }
             if (statusVal) { results = results.filter(l => l.status === statusVal); }
             if (noticeDue) {
@@ -253,6 +286,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (!l.notice_date) return false;
                     return new Date(l.notice_date) <= today;
                 });
+            }
+
+            // Date range filters (client-side in-memory)
+            if (expiryStart) {
+                results = results.filter(l => l.expiry_date && l.expiry_date >= expiryStart);
+            }
+            if (expiryEnd) {
+                results = results.filter(l => l.expiry_date && l.expiry_date <= expiryEnd);
+            }
+            if (noticeStart) {
+                results = results.filter(l => l.notice_date && l.notice_date >= noticeStart);
+            }
+            if (noticeEnd) {
+                results = results.filter(l => l.notice_date && l.notice_date <= noticeEnd);
+            }
+
+            // Field Staff filter (via customer join)
+            if (fieldStaffVal) {
+                const staffId = parseInt(fieldStaffVal);
+                // Find customer IDs that have this field_staff_id
+                const matchingCustIds = customers
+                    .filter(c => Number(c.field_staff_id) === staffId)
+                    .map(c => c.customer_id);
+                results = results.filter(l => matchingCustIds.includes(l.customer_id));
             }
 
             licenses = results;
@@ -294,6 +351,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         data.forEach(item => {
             const customer = customers.find(c => c.customer_id === item.customer_id);
             const licenseType = licenseTypes.find(lt => lt.license_type_id === item.license_type_id);
+            const fieldStaffName = getFieldStaffName(customer);
 
             const remainingDays = calculateRemainingDays(item.expiry_date);
             const noticeDays = calculateDaysUntilNotice(item.notice_date);
@@ -305,7 +363,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             row.innerHTML = `
-                <td><strong>${formatDisplayValue(customer ? customer.customer_name : null)}</strong></td>
+                <td>
+                    <strong>${formatDisplayValue(customer ? customer.customer_name : null)}</strong>
+                    ${fieldStaffName ? `<span class="staff-name-sub">${fieldStaffName}</span>` : ''}
+                </td>
                 <td>
                     ${formatDisplayValue(licenseType ? licenseType.license_type_name : null)}
                     <span class="license-number-sub">${formatLicenseNumber(item)}</span>
@@ -338,6 +399,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         filterLicenseType.value = '';
         filterStatus.value = '有効';
         filterNoticeDue.checked = false;
+
+        // Flatpickr-aware date input clearing
+        [filterExpiryStart, filterExpiryEnd, filterNoticeStart, filterNoticeEnd].forEach(el => {
+            if (el && el._flatpickr) {
+                el._flatpickr.clear();
+            } else if (el) {
+                el.value = '';
+            }
+        });
+
+        if (filterFieldStaff) filterFieldStaff.value = '';
 
         // Return to initial display (Recent 50)
         await init();

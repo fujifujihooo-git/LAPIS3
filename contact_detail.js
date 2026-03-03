@@ -173,6 +173,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updatedData.created_date = now;
                 const docRef = db.collection('contacts').doc(`cnt_${nextId}`);
                 batch.set(docRef, updatedData);
+
+                // Update local state for new creation
+                currentDocId = `cnt_${nextId}`;
+                contactIdParam = nextId.toString();
+                history.replaceState(null, '', `?customer_id=${customerId}&id=${nextId}`);
             } else {
                 // 保持済みのドキュメントIDを使用（再クエリ不要）
                 if (currentDocId) {
@@ -185,9 +190,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             await batch.commit();
             showToast('保存しました', 'success');
-            setTimeout(() => {
-                window.location.href = `customer_detail.html?id=${customerId}`;
-            }, 1000);
+            // setTimeout(() => {
+            //     window.location.href = `customer_detail.html?id=${customerId}`;
+            // }, 1000);
 
         } catch (error) {
             console.error('Save failed:', error);

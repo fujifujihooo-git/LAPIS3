@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const statusBadgePreview = document.getElementById('status-badge-preview');
     const btnBack = document.getElementById('btn-back');
     const btnBackTop = document.getElementById('btn-back-top');
+    const btnBackToCustomer = document.getElementById('btn-back-to-customer');
 
     // Autocomplete Selectors
     const governmentOfficeSearch = document.getElementById('government_office_search');
@@ -572,6 +573,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 caseId = nextId; // Update global ID
                 const caseRef = db.collection('cases').doc(`case_${nextId}`);
                 batch.set(caseRef, updatedData);
+
+                // Update URL internally
+                history.replaceState(null, '', `?id=${nextId}`);
+                caseIdDisplay.textContent = `Case ID: ${nextId}`;
             } else {
                 updatedData.case_id = caseId;
                 const caseRef = db.collection('cases').doc(`case_${caseId}`);
@@ -606,7 +611,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast('保存しました', 'success');
 
             // ユーザーに保存完了を視覚的に伝えるため、1.5秒後に一覧へ遷移
-            setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+            // setTimeout(() => { window.location.href = 'index.html'; }, 1500);
             renderHistory(caseId); // 履歴がある場合は再描画
         } catch (error) {
             console.error('Save failed:', error);
@@ -694,6 +699,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.addEventListener('click', () => { if (confirm('一覧に戻りますか？')) window.location.href = 'index.html'; });
         }
     });
+
+    if (btnBackToCustomer) {
+        btnBackToCustomer.addEventListener('click', () => {
+            if (currentCase && currentCase.customer_id) {
+                window.location.href = `customer_detail.html?id=${currentCase.customer_id}`;
+            } else {
+                alert('紐付いている顧客の詳細情報が見つかりません。顧客一覧へ移動します。');
+                window.location.href = 'customer_list.html';
+            }
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('id') === 'new' && !urlParams.get('customer_id')) {
+            btnBackToCustomer.disabled = true;
+            btnBackToCustomer.style.opacity = '0.5';
+            btnBackToCustomer.style.cursor = 'not-allowed';
+            btnBackToCustomer.title = '顧客が未紐付けのため使用できません';
+        }
+    }
 
     const btnDelete = document.getElementById('btn-delete');
     if (caseId === 'new') { if (btnDelete) btnDelete.style.display = 'none'; }

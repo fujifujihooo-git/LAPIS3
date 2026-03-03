@@ -388,19 +388,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             // Debug: 保存直前のデータを表示
-            const debugMsg = `保存データの確認:\nID: ${newId}\n名前: ${updatedCustomer.customer_name}\nDocID: cust_${newId}`;
-            if (!confirm(debugMsg + '\n\nこの内容で保存しますか？')) return;
+            // const debugMsg = `保存データの確認:\nID: ${newId}\n名前: ${updatedCustomer.customer_name}\nDocID: cust_${newId}`;
+            // if (!confirm(debugMsg + '\n\nこの内容で保存しますか？')) return;
 
             if (customerIdParam === 'new') {
                 updatedCustomer.created_date = now;
                 await saveToFirestore('customers', `cust_${newId}`, updatedCustomer);
+                // URLを更新し、内部状態を既存顧客モードに変更
+                history.replaceState(null, '', `?id=${newId}`);
+                customerIdParam = String(newId);
+                currentCustomer = updatedCustomer;
+                document.getElementById('page-title').textContent = '顧客詳細';
             } else {
                 await saveToFirestore('customers', `cust_${newId}`, { ...currentCustomer, ...updatedCustomer });
+                currentCustomer = { ...currentCustomer, ...updatedCustomer };
             }
             showToast('保存しました', 'success');
-            // setTimeout(() => window.location.href = 'customer_list.html', 1000); // 一旦コメントアウトして確認
-            alert('保存完了しました。OKを押すと一覧に戻ります。');
-            window.location.href = 'customer_list.html';
+
+            // 下記の行をコメントアウトして、一覧画面へのリダイレクトとアラートを抑止
+            // alert('保存完了しました。OKを押すと一覧に戻ります。');
+            // window.location.href = 'customer_list.html';
+
+            // 必要に応じてdirtyフラグを解除する処理をここに追加
+            // if (typeof isDirty !== 'undefined') isDirty = false;
         } catch (err) {
             console.error(err);
             alert('保存失敗: ' + err.message);

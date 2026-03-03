@@ -138,6 +138,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 data.created_date = now;
                 await saveToFirestore('license_types', docId, data);
                 showToast('新規登録しました', 'success');
+
+                // Update internal state and URL
+                currentIdParam = newId.toString();
+                currentDocId = docId;
+                currentData = data;
+                history.replaceState(null, '', `?id=${newId}`);
             } else {
                 // Update: Use existing Doc ID
                 data.created_date = currentData?.created_date || now;
@@ -146,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await saveToFirestore('license_types', docId, data);
                 showToast('保存しました', 'success');
             }
-            setTimeout(() => { window.location.href = 'license_types_list.html'; }, 800);
+            // setTimeout(() => { window.location.href = 'license_types_list.html'; }, 800);
         } catch (error) {
             console.error('Save failed:', error);
             showToast('保存に失敗しました', 'error');

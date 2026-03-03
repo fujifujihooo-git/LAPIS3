@@ -598,12 +598,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof showToast === 'function') {
                 showToast('請求データを保存しました', 'success');
             } else {
-                alert('請求データを保存しました');
+                showToast('請求データを保存しました', 'success');
             }
 
-            setTimeout(() => {
-                window.location.href = 'invoice_list.html';
-            }, 1000);
+            if (!currentInvoiceId) {
+                currentInvoiceId = invRef.id;
+                history.replaceState(null, '', `?id=${currentInvoiceId}`);
+            }
+
+            // setTimeout(() => {
+            //     window.location.href = 'invoice_list.html';
+            // }, 1000);
 
         } catch (err) {
             console.error('Save failed:', err);

@@ -184,10 +184,11 @@
                 <div class="header-left">
                     <button id="mobile-toggle"
                         style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted);">☰</button>
-                    <div class="header-breadcrumb">
-                        <a href="license_list.html" style="text-decoration: none; color: var(--text-muted);">許認可一覧</a>
-                        <span style="margin: 0 8px; color: var(--text-muted);">/</span>
-                        <span id="page-title">許認可詳細</span>
+                    <div id="detail-title-area">
+                        <h1 class="page-title" id="page-title">許認可詳細</h1>
+                        <span id="license-id-display"
+                            style="font-size: 11pt; color: var(--text-muted); font-weight: 400; margin-left: 8px;">License
+                            ID: -</span>
                     </div>
                 </div>
                 <div class="header-right" id="header-right">
@@ -200,24 +201,22 @@
             <main id="page-content">
 
                 <!-- Actions Bar -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <h2 id="license-edit-title" style="margin: 0; font-size: 1.5rem; color: var(--text-main);">
-                            許認可情報編集</h2>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-back" id="btn-back">
-                            <i data-lucide="arrow-left"></i> 一覧へ
-                        </button>
-                        <button type="button" class="btn btn-nav-customer" id="btn-back-to-customer">
-                            <i data-lucide="user-search"></i> 顧客詳細へ
-                        </button>
-                        <button type="button" class="btn btn-delete" id="btn-delete-header" style="display: none;">
-                            <i data-lucide="trash-2"></i> 削除
-                        </button>
-                        <button type="button" class="btn btn-save" id="btn-save">
-                            <i data-lucide="save"></i> 保存
-                        </button>
+                <div class="block" style="margin-bottom: 24px;">
+                    <div class="block-content d-flex justify-content-between align-items-center"
+                        style="padding: 16px 20px;">
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-back" id="btn-back"><i data-lucide="arrow-left"></i>
+                                一覧に戻る</button>
+                            <button type="button" class="btn btn-nav-customer" id="btn-back-to-customer"><i
+                                    data-lucide="user-search"></i> 顧客詳細に戻る</button>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-delete" id="btn-delete" style="display: none;"><i
+                                    data-lucide="trash-2"></i>
+                                削除</button>
+                            <button type="button" class="btn btn-save" id="btn-save" style="min-width: 120px;"><i
+                                    data-lucide="save"></i> 保存</button>
+                        </div>
                     </div>
                 </div>
 
@@ -372,12 +371,7 @@
                     <p>登録日: <span id="created-date">-</span></p>
                     <p>最終更新日: <span id="last-updated">-</span></p>
                 </div>
-                <!-- Separate Delete Button at bottom (hidden by default) -->
-                <div style="margin-top: 24px; text-align: right; display: none;">
-                    <button class="btn btn-delete" id="btn-delete" style="font-size: 0.875rem;"><i
-                            data-lucide="trash-2"></i>
-                        許認可情報を削除する</button>
-                </div>
+                <!-- Delete Button (Removed from bottom as it is in the header now) -->
 
                 <footer style="margin-top: 60px; text-align: center; color: #aaa; font-size: 0.8rem;">
                     &copy; 2026 LAPIS2 Project

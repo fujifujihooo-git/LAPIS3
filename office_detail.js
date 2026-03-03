@@ -164,6 +164,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updatedData.office_id = newId;
                 updatedData.created_date = now;
                 await saveToFirestore('offices', `office_${newId}`, updatedData);
+
+                // Update internal state and URL
+                officeIdParam = newId.toString();
+                currentOffice = updatedData;
+                history.replaceState(null, '', `?customer_id=${customerId}&id=${newId}`);
             } else {
                 const oId = parseInt(officeIdParam);
                 updatedData.office_id = oId;
@@ -171,9 +176,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             showToast('保存しました', 'success');
-            setTimeout(() => {
-                window.location.href = `customer_detail.html?id=${customerId}`;
-            }, 1000);
+            // setTimeout(() => {
+            //     window.location.href = `customer_detail.html?id=${customerId}`;
+            // }, 1000);
         } catch (err) {
             console.error(err);
             debugLog('<span style="color:red">保存失敗: ' + err.message + '</span>');

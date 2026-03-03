@@ -157,11 +157,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 officeData.created_date = now;
                 await saveToFirestore('government_offices', docId, officeData);
                 showToast('新規登録しました', 'success');
+
+                // Update state and URL for the newly created item
+                currentOffice = officeData;
+                currentOffice._docId = docId;
+                officeId = newId;
+                pageTitle.textContent = '官公庁詳細';
+                if (btnDelete) btnDelete.style.display = 'block';
+                history.replaceState(null, '', `?id=${newId}`);
             }
 
-            setTimeout(() => {
-                window.location.href = 'government_office_list.html';
-            }, 1000);
+            // setTimeout(() => {
+            //     window.location.href = 'government_office_list.html';
+            // }, 1000);
 
         } catch (error) {
             console.error("Save failed:", error);

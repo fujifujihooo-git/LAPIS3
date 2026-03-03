@@ -189,6 +189,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 await saveToFirestore('staff', docId, updatedData);
                 showToast('新規登録しました', 'success');
+
+                // Update URL for new item without reloading
+                staffId = newId.toString();
+                currentDocId = docId;
+                currentStaff = updatedData;
+                history.replaceState(null, '', `?id=${newId}`);
             } else {
                 // Update existing document using its REAL ID
                 if (!docId) docId = `staff_${newId}`; // Fallback if somehow null
@@ -196,9 +202,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 await saveToFirestore('staff', docId, { ...currentStaff, ...updatedData });
                 showToast('保存しました', 'success');
             }
-            setTimeout(() => {
-                window.location.href = 'staff_list.html';
-            }, 1000);
+            // setTimeout(() => {
+            //     window.location.href = 'staff_list.html';
+            // }, 1000);
         } catch (error) {
             console.error("Save failed:", error);
             showToast('保存に失敗しました', 'error');
