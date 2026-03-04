@@ -9,13 +9,111 @@
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <!-- UnifiedDatePicker -->
+    <script src="unified_datepicker.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=BIZ+UDGothic:wght@400;700&display=swap"
         rel="stylesheet">
     <style>
-        /* Temporary localized overrides if needed */
+        /* ================================================
+           Filter Grid System — 4col × 2row
+           ================================================ */
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px 16px;
+        }
+
+        .filter-grid .filter-cell {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-grid .filter-cell label {
+            font-size: 13pt !important;
+            font-weight: 500;
+            margin-bottom: 4px;
+            color: var(--text-secondary, #555);
+        }
+
+        .filter-grid .filter-cell .form-select,
+        .filter-grid .filter-cell .form-control {
+            font-size: 13pt !important;
+            width: 100%;
+        }
+
+        /* 申請期限チェックボックス — 顧客名セル内に統合 */
+        .filter-deadline-inline {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .filter-deadline-inline input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .filter-deadline-inline label {
+            font-size: 11pt !important;
+            font-weight: 400 !important;
+            margin: 0 !important;
+            cursor: pointer;
+            color: var(--text-muted, #888) !important;
+        }
+
+        /* 期間 From / To ラベル付き */
+        .filter-date-label-inline {
+            font-size: 10pt !important;
+            color: var(--text-muted, #888) !important;
+            font-weight: 400 !important;
+            margin-bottom: 2px !important;
+        }
+
+        /* ボタンセル — 下揃え + 右寄せ */
+        .filter-cell-actions {
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .filter-cell-actions .btn {
+            white-space: nowrap;
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* テーブル・ブロック 13pt */
+        .block-content,
+        .table-modern,
+        .table-modern th {
+            font-size: 13pt !important;
+        }
+
+        .btn-search,
+        .btn-reset {
+            font-size: 13pt !important;
+        }
+
+        /* Responsive: 4 → 2 → 1 column */
+        @media (max-width: 1024px) {
+            .filter-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .filter-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 
@@ -151,14 +249,13 @@
                 <div class="block">
                     <div class="block-header">
                         <h3 class="block-title">検索フィルタ</h3>
-                        <div class="block-options">
-                            <button class="btn btn-reset" id="btn-reset-filters"><i data-lucide="rotate-ccw"></i>
-                                リセット</button>
-                        </div>
                     </div>
                     <div class="block-content">
-                        <div class="filter-bar">
-                            <div class="filter-item">
+
+                        <!-- ===== 4-Column Filter Grid ===== -->
+                        <div class="filter-grid">
+                            <!-- Row 1 -->
+                            <div class="filter-cell">
                                 <label for="filter-status">ステータス</label>
                                 <select id="filter-status" class="form-select">
                                     <option value="">すべて（仕掛中）</option>
@@ -173,32 +270,57 @@
                                     <option value="取下げ">取下げ</option>
                                 </select>
                             </div>
-                            <div class="filter-item">
+                            <div class="filter-cell">
                                 <label for="filter-license">許認可種別</label>
                                 <select id="filter-license" class="form-select">
                                     <option value="">すべて</option>
                                 </select>
                             </div>
-                            <div class="filter-item">
+                            <div class="filter-cell">
                                 <label for="filter-staff">担当者</label>
                                 <select id="filter-staff" class="form-select">
                                     <option value="">すべて</option>
                                 </select>
                             </div>
-                            <div class="filter-item">
+                            <div class="filter-cell">
                                 <label for="filter-customer">顧客名</label>
                                 <input type="text" id="filter-customer" class="form-control" placeholder="顧客名で検索...">
-                            </div>
-                            <div class="filter-item" style="padding-bottom: 2px;">
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                    <input type="checkbox" id="filter-deadline-near" style="width: 18px; height: 18px;">
-                                    <label for="filter-deadline-near" style="margin:0; cursor:pointer;">申請期限が近い</label>
+                                <div class="filter-deadline-inline">
+                                    <input type="checkbox" id="filter-deadline-near">
+                                    <label for="filter-deadline-near">申請期限が近い</label>
                                 </div>
-                                <button id="btn-search-execute" class="btn btn-search" style="width: 100%;">
-                                    <i data-lucide="search"></i> 検索を実行
+                            </div>
+
+                            <!-- Row 2 -->
+                            <div class="filter-cell">
+                                <label for="filter-date-type">日付種別</label>
+                                <select id="filter-date-type" class="form-select">
+                                    <option value="">指定なし</option>
+                                    <option value="contract_date">受任日</option>
+                                    <option value="application_scheduled_date">申請予定日</option>
+                                    <option value="acceptance_date">受付日</option>
+                                    <option value="completion_date">完了日</option>
+                                    <option value="return_date">返却日</option>
+                                </select>
+                            </div>
+                            <div class="filter-cell">
+                                <label class="filter-date-label-inline">開始日</label>
+                                <input type="date" id="filter-date-start" class="form-control">
+                            </div>
+                            <div class="filter-cell">
+                                <label class="filter-date-label-inline">終了日</label>
+                                <input type="date" id="filter-date-end" class="form-control">
+                            </div>
+                            <div class="filter-cell filter-cell-actions">
+                                <button class="btn btn-reset" id="btn-reset-filters">
+                                    <i data-lucide="rotate-ccw"></i> リセット
+                                </button>
+                                <button id="btn-search-execute" class="btn btn-search">
+                                    <i data-lucide="search"></i> 検索
                                 </button>
                             </div>
                         </div>
+                        <!-- ===== END Filter Grid ===== -->
 
                         <!-- Import/Export Actions -->
                         <div

@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const filterCustomer = document.getElementById('filter-customer');
     const filterDeadlineNear = document.getElementById('filter-deadline-near');
     const btnResetFilters = document.getElementById('btn-reset-filters');
+    const filterDateType = document.getElementById('filter-date-type');
+    const filterDateStart = document.getElementById('filter-date-start');
+    const filterDateEnd = document.getElementById('filter-date-end');
 
     // Data Management Selectors
     // Data Management Selectors (Top)
@@ -88,9 +91,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const staffVal = filterStaff.value;
         const custName = filterCustomer ? filterCustomer.value.trim() : '';
         const deadlineNear = filterDeadlineNear.checked;
+        const dateTypeVal = filterDateType ? filterDateType.value : '';
+        const dateStartVal = filterDateStart ? filterDateStart.value : '';
+        const dateEndVal = filterDateEnd ? filterDateEnd.value : '';
 
         console.log('[DEBUG] executeSearch called');
-        console.log('[DEBUG] Params:', { statusVal, licenseVal, staffVal, custName, deadlineNear });
+        console.log('[DEBUG] Params:', { statusVal, licenseVal, staffVal, custName, deadlineNear, dateTypeVal, dateStartVal, dateEndVal });
 
         caseListBody.innerHTML = '<tr><td colspan="6" style="text-align:center">検索中...</td></tr>';
 
@@ -184,6 +190,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 results = results.filter(c => {
                     const d = calculateRemainingDays(c.application_scheduled_date);
                     return d !== null && d <= 30;
+                });
+            }
+
+            // 日付種別＋期間フィルタ（インメモリ）
+            if (dateTypeVal && (dateStartVal || dateEndVal)) {
+                results = results.filter(c => {
+                    const rawVal = c[dateTypeVal];
+                    if (!rawVal) return false;
+                    // 文字列 "YYYY/MM/DD" or "YYYY-MM-DD" を正規化して比較
+                    const dateStr = String(rawVal).replace(/\//g, '-').split('T')[0];
+                    if (dateStartVal && dateStr < dateStartVal) return false;
+                    if (dateEndVal && dateStr > dateEndVal) return false;
+                    return true;
                 });
             }
 
@@ -584,6 +603,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         filterStaff.value = '';
         if (filterCustomer) filterCustomer.value = '';
         filterDeadlineNear.checked = false;
+        if (filterDateType) filterDateType.value = '';
+        if (filterDateStart) filterDateStart.value = '';
+        if (filterDateEnd) filterDateEnd.value = '';
         activeCardId = null;
         updateCardStyles();
         init();
