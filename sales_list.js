@@ -1,21 +1,21 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- State ---
     let cases = [];
-    let salesData = []; // Processed data for display/export
+    let salesData = [];
     let currentSort = { column: 'contract_date', direction: 'desc' };
 
     // Caches
     let customersMap = {};
     let staffMap = {};
-    let invoiceItemsMap = {}; // case_id -> [items]
-    let totalPeriodPaid = 0; // Global period paid total
+    let invoiceItemsMap = {};
+    let totalPeriodPaid = 0;
 
     // --- Selectors ---
     const listBody = document.getElementById('sales-list-body');
     const filterYearMonth = document.getElementById('filter-year-month');
     const filterCustomer = document.getElementById('filter-customer');
     const filterStaff = document.getElementById('filter-staff');
-    const btnExcelExport = document.getElementById('btn-excel-export');
+    const btnExcelExport = document.getElementById('btn-export-csv');
     const btnPdfExport = document.getElementById('btn-pdf-export');
     const btnSearchExecute = document.getElementById('btn-search-execute');
 
@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function init() {
         setupFilterOptions();
-        await fetchMasters(); // Staff, etc.
+        await fetchMasters();
         renderStaffOptions();
 
         // Sorting header listeners
@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupFilterOptions() {
+        if (!filterYearMonth) return;
         const now = new Date();
         const y = now.getFullYear();
         const m = String(now.getMonth() + 1).padStart(2, '0');
@@ -63,15 +64,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchMasters() {
-        // Staff
-        const sSnap = await db.collection('staff_members').get();
-        sSnap.forEach(doc => {
-            const s = doc.data();
-            staffMap[s.staff_id] = s;
-        });
+        // ★ コレクション名は 'staff' が正しい (他画面と統一)
+        try {
+            const sSnap = await db.collection('staff').get();
+            sSnap.forEach(doc => {
+                const s = doc.data();
+                staffMap[s.staff_id] = s;
+            });
+            console.log(`[Sales List] スタッフマスタ取得: ${Object.keys(staffMap).length}件`);
+        } catch (e) {
+            console.warn('[Sales List] スタッフ取得エラー:', e.message);
+        }
     }
 
     function renderStaffOptions() {
+        if (!filterStaff) return;
         filterStaff.innerHTML = '<option value="">すべて</option>';
         Object.values(staffMap)
             .filter(s => s.status === '在籍')
@@ -83,86 +90,144 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
+    // ================================================================
+    // searchData: メインのデータ取得・集約処理
+    // ================================================================
     async function searchData() {
-        // Loading
-        listBody.innerHTML = '<tr><td colspan="8" class="no-data-cell">データを集計中...</td></tr>';
-
+        // Loading UI
+        if (listBody) {
+            listBody.innerHTML = '<tr><td colspan="5" class="no-data-cell">データを集計中...</td></tr>';
+        }
         if (btnSearchExecute) {
             btnSearchExecute.disabled = true;
             btnSearchExecute.innerHTML = '<i data-lucide="loader-2" class="spin"></i> 集計中...';
-            lucide.createIcons();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        const dateVal = filterYearMonth.value; // YYYY-MM
+        // ── フィルタ値の取得 ──
+        // UnifiedMonthPicker は hidden input (filter-year-month) に YYYY-MM を保持
+        const dateVal = filterYearMonth?.value || '';
         let dateFrom = '';
         let dateTo = '';
         if (dateVal) {
             const [y, m] = dateVal.split('-');
-            const firstDay = new Date(Number(y), Number(m) - 1, 1);
-            const lastDay = new Date(Number(y), Number(m), 0); // last day of month
-            // form: YYYY-MM-DD
+            const lastDay = new Date(Number(y), Number(m), 0);
             dateFrom = `${y}-${m}-01`;
             dateTo = `${y}-${m}-${String(lastDay.getDate()).padStart(2, '0')}`;
         }
 
+        console.log(`[Sales List] ========== 集計開始 ==========`);
+        console.log(`[Sales List] 検索期間: ${dateFrom || '指定なし'} ～ ${dateTo || '指定なし'}`);
+
         try {
-            // 1. Fetch Cases in Period
+            // ================================================================
+            // 1. 案件(cases)コレクションから「受任日(contract_date)」で範囲検索
+            //    ※ Firestore上のフィールド名:
+            //       受任日 = contract_date  (YYYY-MM-DD 文字列)
+            //       見積金額(課税) = estimated_fee  (number)
+            //       立替金 = reimbursement_fee  (number)
+            // ================================================================
             let cQuery = db.collection('cases');
-            // Use contract_date
             if (dateFrom) cQuery = cQuery.where('contract_date', '>=', dateFrom);
             if (dateTo) cQuery = cQuery.where('contract_date', '<=', dateTo);
 
             const cSnap = await cQuery.get();
-            cases = cSnap.docs.map(d => d.data()).filter(c => c.status !== '取消');
+            const fetchedCases = cSnap.docs.map(d => d.data());
+            console.log(`[Sales List] Firestore取得件数 (contract_date ${dateFrom}～${dateTo}): ${fetchedCases.length}件`);
 
-            // 2. Fetch Related Data
+            // デバッグ: 全件の主要フィールドを出力
+            fetchedCases.forEach((c, i) => {
+                console.log(`[Sales List]   [${i}] case_id=${c.case_id}, contract_date=${c.contract_date}, ` +
+                    `status=${c.status}, estimated_fee=${c.estimated_fee}, ` +
+                    `procedure_name=${c.procedure_name}, license_type=${c.license_type}`);
+            });
+
+            // ================================================================
+            // 2. フィルタ条件:
+            //    ★★★ ユーザーのビジネスロジック: 「受任した時点で売上計上」 ★★★
+            //    - 唯一の除外条件: ステータスが「取消」の案件のみ除外
+            //    - estimated_fee が 0 や未入力でも表示する（見積未入力の案件も売上一覧に出す）
+            //    - 完了日やその他のステータスによるフィルタは行わない
+            // ================================================================
+            cases = fetchedCases.filter(c => {
+                if (c.status === '取消') {
+                    console.log(`[Sales List] フィルタ除外(取消): case_id=${c.case_id}`);
+                    return false;
+                }
+                return true;
+            });
+            console.log(`[Sales List] 売上対象件数 (フィルタ後): ${cases.length}件`);
+
+            // 3. 関連データの取得
             if (cases.length === 0) {
                 salesData = [];
-                // Check payments even if no sales? Yes, for cash flow.
-                // But logically, "Sales List" usually implies Sales.
-                // However, "Summary" has "Payment Status". 
-                // Let's fetch payments anyway.
                 await fetchPeriodPayments(dateFrom, dateTo);
                 render();
                 return;
             }
 
-            const caseIds = cases.map(c => c.case_id);
-            const customerIds = [...new Set(cases.map(c => c.customer_id))];
+            // ★★★ undefined/null を除外してからクエリに渡す（エラー防止の核心） ★★★
+            const caseIds = cases.map(c => c.case_id).filter(id => id !== undefined && id !== null);
+            const customerIds = [...new Set(cases.map(c => c.customer_id).filter(id => id !== undefined && id !== null))];
 
-            // Fetch Customers
-            const custChunks = [];
-            for (let i = 0; i < customerIds.length; i += 10) custChunks.push(customerIds.slice(i, i + 10));
+            console.log(`[Sales List] caseIds (${caseIds.length}件):`, caseIds);
+            console.log(`[Sales List] customerIds (${customerIds.length}件):`, customerIds);
 
-            if (custChunks.length > 0) {
-                const custSnaps = await Promise.all(custChunks.map(ids => db.collection('customers').where('customer_id', 'in', ids).get()));
-                customersMap = {};
-                custSnaps.forEach(snap => snap.forEach(d => {
-                    const c = d.data();
-                    customersMap[c.customer_id] = c;
-                }));
+            // 顧客データ取得（customer_id が存在する場合のみ）
+            customersMap = {};
+            if (customerIds.length > 0) {
+                try {
+                    const custChunks = [];
+                    for (let i = 0; i < customerIds.length; i += 10) custChunks.push(customerIds.slice(i, i + 10));
+                    const custSnaps = await Promise.all(
+                        custChunks.map(ids => {
+                            console.log(`[Sales List] 顧客クエリ発行: customer_id in`, ids);
+                            return db.collection('customers').where('customer_id', 'in', ids).get();
+                        })
+                    );
+                    custSnaps.forEach(snap => snap.forEach(d => {
+                        const c = d.data();
+                        customersMap[c.customer_id] = c;
+                    }));
+                    console.log(`[Sales List] 顧客マスタ取得完了: ${Object.keys(customersMap).length}件`);
+                } catch (custErr) {
+                    console.error('[Sales List] 顧客データ取得エラー:', custErr.message);
+                    console.error('[Sales List]   → customerIds:', customerIds);
+                }
             }
 
-            // Fetch Invoice Items for these Cases
-            // Note: Invoice Items have `case_id`.
-            const itemChunks = [];
-            for (let i = 0; i < caseIds.length; i += 10) itemChunks.push(caseIds.slice(i, i + 10));
-
-            if (itemChunks.length > 0) {
-                const itemSnaps = await Promise.all(itemChunks.map(ids => db.collection('invoice_items').where('case_id', 'in', ids).get()));
-
-                invoiceItemsMap = {};
-                itemSnaps.forEach(snap => snap.forEach(d => {
-                    const item = d.data();
-                    if (!invoiceItemsMap[item.case_id]) invoiceItemsMap[item.case_id] = [];
-                    invoiceItemsMap[item.case_id].push(item);
-                }));
+            // 請求明細データ取得（case_id が存在する場合のみ）
+            invoiceItemsMap = {};
+            if (caseIds.length > 0) {
+                try {
+                    const itemChunks = [];
+                    for (let i = 0; i < caseIds.length; i += 10) itemChunks.push(caseIds.slice(i, i + 10));
+                    const itemSnaps = await Promise.all(
+                        itemChunks.map(ids => {
+                            console.log(`[Sales List] 請求明細クエリ発行: case_id in`, ids);
+                            return db.collection('invoice_items').where('case_id', 'in', ids).get();
+                        })
+                    );
+                    itemSnaps.forEach(snap => snap.forEach(d => {
+                        const item = d.data();
+                        if (!invoiceItemsMap[item.case_id]) invoiceItemsMap[item.case_id] = [];
+                        invoiceItemsMap[item.case_id].push(item);
+                    }));
+                    console.log(`[Sales List] 請求明細取得完了: ${Object.keys(invoiceItemsMap).length}件`);
+                } catch (itemErr) {
+                    console.error('[Sales List] 請求明細取得エラー:', itemErr.message);
+                    console.error('[Sales List]   → caseIds:', caseIds);
+                }
             }
 
-            // Fetch Payments (For Period Cash Flow)
+            // 入金データ取得
             await fetchPeriodPayments(dateFrom, dateTo);
 
-            // 3. Aggregate
+            // ================================================================
+            // 4. salesData へのマッピング
+            //    - 請求明細がある場合: 明細から金額を積算 (確定)
+            //    - 請求明細がない場合: estimated_fee を見込売上として使用
+            // ================================================================
             salesData = cases.map(c => {
                 const items = invoiceItemsMap[c.case_id] || [];
                 const hasItems = items.length > 0;
@@ -173,6 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let status = '見込';
 
                 if (hasItems) {
+                    // 請求明細がある場合 → 確定金額
                     status = '確定';
                     items.forEach(item => {
                         const amt = Number(item.amount) || 0;
@@ -186,131 +252,144 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
                 } else {
+                    // 見積から取得 (estimated_fee は見積明細の課税合計)
                     status = '見込';
                     fee = Number(c.estimated_fee) || 0;
                     tax = Math.floor(fee * 0.1);
                     reimbursement = Number(c.reimbursement_fee) || 0;
                 }
 
-                return {
+                const entry = {
                     case_id: c.case_id,
-                    contract_date: c.contract_date,
-                    customer_name: customersMap[c.customer_id]?.customer_name || '',
-                    case_name: `${c.procedure_name} (${c.license_type || ''})`,
+                    contract_date: c.contract_date || '',
+                    customer_name: customersMap[c.customer_id]?.customer_name || c.customer_name || '',
+                    case_name: `${c.procedure_name || ''} (${c.license_type || ''})`,
                     fee,
                     tax,
                     total_sales: fee + tax,
                     reimbursement,
                     staff_id: c.field_staff_id,
+                    staff_name: staffMap[c.field_staff_id]?.staff_name || '',
                     status
                 };
+
+                console.log(`[Sales List] salesData: case_id=${entry.case_id}, ` +
+                    `date=${entry.contract_date}, fee=${entry.fee}, ` +
+                    `customer=${entry.customer_name}, case=${entry.case_name}`);
+
+                return entry;
             });
 
+            console.log(`[Sales List] salesData 生成完了: ${salesData.length}件`);
+            console.log(`[Sales List] ========== 集計完了 ==========`);
             render();
 
         } catch (error) {
-            console.error('Search Error:', error);
-            listBody.innerHTML = '<tr><td colspan="8" class="no-data-cell error">エラーが発生しました: ' + error.message + '</td></tr>';
+            console.error('[Sales List] 検索エラー:', error);
+            if (listBody) {
+                listBody.innerHTML = '<tr><td colspan="5" class="no-data-cell error">エラーが発生しました: ' + error.message + '</td></tr>';
+            }
         } finally {
             if (btnSearchExecute) {
                 btnSearchExecute.disabled = false;
                 btnSearchExecute.innerHTML = '<i data-lucide="search"></i> 集計実行';
-                lucide.createIcons();
+                if (typeof lucide !== 'undefined') lucide.createIcons();
             }
         }
     }
 
     async function fetchPeriodPayments(dateFrom, dateTo) {
-        let pQuery = db.collection('payments');
-        if (dateFrom) pQuery = pQuery.where('payment_date', '>=', dateFrom);
-        if (dateTo) pQuery = pQuery.where('payment_date', '<=', dateTo);
+        try {
+            let pQuery = db.collection('payments');
+            if (dateFrom) pQuery = pQuery.where('payment_date', '>=', dateFrom);
+            if (dateTo) pQuery = pQuery.where('payment_date', '<=', dateTo);
 
-        const pSnap = await pQuery.get();
-        const periodPayments = pSnap.docs.map(d => d.data());
-
-        totalPeriodPaid = periodPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+            const pSnap = await pQuery.get();
+            const periodPayments = pSnap.docs.map(d => d.data());
+            totalPeriodPaid = periodPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+        } catch (e) {
+            console.warn('[Sales List] 入金データ取得エラー:', e.message);
+            totalPeriodPaid = 0;
+        }
     }
 
-    // --- Helper for Filtering ---
+    // --- フィルタリング (顧客名・担当者の絞り込み) ---
     function getFilteredData() {
-        const custFilter = filterCustomer.value.toLowerCase();
-        const staffFilter = filterStaff.value;
+        const custFilter = filterCustomer ? filterCustomer.value.toLowerCase() : '';
+        const staffFilter = filterStaff ? filterStaff.value : '';
 
-        // 1. Filter
         let filtered = salesData.filter(d => {
             const mCust = d.customer_name.toLowerCase().includes(custFilter);
             const mStaff = staffFilter ? String(d.staff_id) === staffFilter : true;
             return mCust && mStaff;
         });
 
-        // 2. Sort
         filtered = handleSort('sales-table', filtered, currentSort.column, 'string', currentSort.direction);
 
         return filtered;
     }
 
+    // --- レンダリング ---
     function render() {
-        // use helper
         const filtered = getFilteredData();
 
-        // List Render
+        if (!listBody) return;
         listBody.innerHTML = '';
+
         if (filtered.length === 0) {
-            listBody.innerHTML = '<tr><td colspan="8" class="no-data-cell">該当する売上データはありません。</td></tr>';
+            listBody.innerHTML = '<tr><td colspan="5" class="no-data-cell">該当する売上データはありません。</td></tr>';
         } else {
             filtered.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.style.cursor = 'pointer';
                 tr.addEventListener('click', () => { window.location.href = `detail.html?id=${item.case_id}`; });
-
-                let statusClass = item.status === '確定' ? 'status-junin' : 'status-sodan';
-
                 tr.innerHTML = `
                     <td>${formatDate(item.contract_date)}</td>
                     <td>${formatDisplayValue(item.customer_name)}</td>
                     <td>${formatDisplayValue(item.case_name)}</td>
                     <td class="text-right">${formatCurrency(item.fee)}</td>
-                    <td class="text-right">${formatCurrency(item.tax)}</td>
-                    <td class="text-right font-bold">${formatCurrency(item.total_sales)}</td>
-                    <td class="text-right text-muted">${formatCurrency(item.reimbursement)}</td>
-                    <td class="text-center"><span class="badge ${statusClass}">${item.status}</span></td>
+                    <td>${formatDisplayValue(item.staff_name)}</td>
                 `;
                 listBody.appendChild(tr);
             });
         }
 
-        // Aggregates
-        const totalFee = filtered.reduce((s, i) => s + i.fee, 0);
-        const totalTax = filtered.reduce((s, i) => s + i.tax, 0);
+        // 集計値
+        const totalFee = filtered.reduce((s, i) => s + (Number(i.fee) || 0), 0);
+        const totalTax = filtered.reduce((s, i) => s + (Number(i.tax) || 0), 0);
         const totalSales = totalFee + totalTax;
-        const totalReimbursement = filtered.reduce((s, i) => s + i.reimbursement, 0);
+        const totalReimbursement = filtered.reduce((s, i) => s + (Number(i.reimbursement) || 0), 0);
 
-        const ym = filterYearMonth.value; // YYYY-MM
+        const ym = filterYearMonth?.value || '';
         const displayYm = ym ? ym.replace('-', '年') + '月' : '全期間';
 
-        aggTitle.textContent = `${displayYm} 集計 (表示分)`;
+        if (aggTitle) aggTitle.textContent = `${displayYm} 集計 (表示分)`;
 
-        // Update Summary Cards manually
+        // サマリーカード
         const elTotalSales = document.getElementById('val-total-sales');
         const elTotalCount = document.getElementById('val-total-count');
-        if (elTotalSales) elTotalSales.textContent = formatCurrency(totalSales);
+        if (elTotalSales) elTotalSales.textContent = formatCurrency(totalFee);
         if (elTotalCount) elTotalCount.textContent = `${filtered.length}件`;
 
-        aggFee.textContent = formatCurrency(totalFee);
-        aggTax.textContent = formatCurrency(totalTax);
-        aggTotalSales.textContent = formatCurrency(totalSales);
-        aggReimbursement.textContent = formatCurrency(totalReimbursement);
+        if (aggFee) aggFee.textContent = formatCurrency(totalFee);
+        if (aggTax) aggTax.textContent = formatCurrency(totalTax);
+        if (aggTotalSales) aggTotalSales.textContent = formatCurrency(totalSales);
+        if (aggReimbursement) aggReimbursement.textContent = formatCurrency(totalReimbursement);
 
-        // Summary View Update
-        renderSummaryView(filtered, totalFee, totalTax, totalSales, totalReimbursement, totalPeriodPaid);
+        // サマリービュー
+        const summaryContent = document.getElementById('summary-content');
+        if (summaryContent) {
+            renderSummaryView(filtered, totalFee, totalTax, totalSales, totalReimbursement, totalPeriodPaid);
+        }
     }
 
     function renderSummaryView(data, fee, tax, sales, reimb, periodPaid) {
         const summaryContent = document.getElementById('summary-content');
+        if (!summaryContent) return;
 
         const unpaid = sales - (periodPaid || 0);
 
-        // Staff stats
+        // 担当者別
         const staffStats = {};
         data.forEach(item => {
             const sid = item.staff_id || 0;
@@ -334,12 +413,12 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>`;
         });
 
-        const ym = filterYearMonth.value; // YYYY-MM
+        const ym = filterYearMonth?.value || '';
         const displayYm = ym ? ym.replace('-', '年') + '月' : '全期間';
 
         summaryContent.innerHTML = `
             <div class="summary-header">売上サマリー：${displayYm}</div>
-            
+
             <h3 style="margin-top: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">■ 売上</h3>
             <div class="summary-row"><span>報酬（税抜）</span><span>${formatCurrency(fee)}</span></div>
             <div class="summary-row"><span>消費税</span><span>${formatCurrency(tax)}</span></div>
@@ -367,86 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    // --- Export ---
-    function exportPDF() {
-        const filtered = getFilteredData();
-        if (filtered.length === 0) {
-            alert('出力対象のデータがありません');
-            return;
-        }
-
-        // Populate Template
-        const totalFee = filtered.reduce((s, i) => s + i.fee, 0);
-        const totalTax = filtered.reduce((s, i) => s + i.tax, 0);
-        const totalSales = totalFee + totalTax;
-        const totalReimbursement = filtered.reduce((s, i) => s + i.reimbursement, 0);
-        const unpaid = totalSales - totalPeriodPaid;
-
-        const ym = filterYearMonth.value; // YYYY-MM
-        const periodStr = ym ? ym.replace('-', '年') + '月' : '全期間';
-
-        document.getElementById('p-print-now').textContent = new Date().toLocaleString();
-        document.getElementById('p-period').textContent = periodStr;
-        document.getElementById('p-total-sales').textContent = formatCurrency(totalSales);
-        document.getElementById('p-total-fee').textContent = formatCurrency(totalFee);
-        document.getElementById('p-total-tax').textContent = formatCurrency(totalTax);
-        document.getElementById('p-total-reimbursement').textContent = formatCurrency(totalReimbursement);
-        document.getElementById('p-total-paid').textContent = formatCurrency(totalPeriodPaid);
-        document.getElementById('p-total-unpaid').textContent = formatCurrency(unpaid);
-
-        // List Body
-        const tbody = document.getElementById('p-sales-body');
-        tbody.innerHTML = filtered.map(item => `
-            <tr>
-                <td style="border:1px solid #ddd;padding:6px;">${formatDate(item.contract_date)}</td>
-                <td style="border:1px solid #ddd;padding:6px;">${item.customer_name}</td>
-                <td style="border:1px solid #ddd;padding:6px;">${item.case_name}</td>
-                <td style="border:1px solid #ddd;padding:6px;text-align:right;">${formatCurrency(item.fee)}</td>
-                <td style="border:1px solid #ddd;padding:6px;text-align:right;">${formatCurrency(item.tax)}</td>
-                <td style="border:1px solid #ddd;padding:6px;text-align:right;">${formatCurrency(item.total_sales)}</td>
-            </tr>
-        `).join('');
-
-        // Staff Body
-        const staffStats = {};
-        filtered.forEach(item => {
-            const sid = item.staff_id || 0;
-            if (!staffStats[sid]) {
-                const sName = staffMap[sid]?.staff_name || '（担当なし）';
-                staffStats[sid] = { name: sName, count: 0, sales: 0, reimb: 0 };
-            }
-            staffStats[sid].count++;
-            staffStats[sid].sales += item.total_sales;
-            staffStats[sid].reimb += item.reimbursement;
-        });
-        const staffBody = document.getElementById('p-staff-body');
-        staffBody.innerHTML = Object.values(staffStats).map(s => `
-            <tr>
-                <td style="border:1px solid #ddd;padding:6px;">${s.name}</td>
-                <td style="border:1px solid #ddd;padding:6px;text-align:right;">${s.count}</td>
-                <td style="border:1px solid #ddd;padding:6px;text-align:right;">${formatCurrency(s.sales)}</td>
-                <td style="border:1px solid #ddd;padding:6px;text-align:right;">${formatCurrency(s.reimb)}</td>
-            </tr>
-        `).join('');
-
-
-        // Run html2pdf
-        const element = document.getElementById('print-template-sales');
-        element.style.display = 'block';
-
-        const ym = filterYearMonth.value || 'all';
-
-        html2pdf(element, {
-            margin: 10,
-            filename: `売上帳票_${ym.replace(/-/g, '')}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        }).then(() => {
-            element.style.display = 'none';
-        });
-    }
-
+    // --- Excel エクスポート ---
     function exportExcel() {
         const filtered = getFilteredData();
         if (filtered.length === 0) {
@@ -454,32 +454,35 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (typeof XLSX === 'undefined') {
+            alert('Excelエクスポートライブラリが読み込まれていません');
+            return;
+        }
 
         const wb = XLSX.utils.book_new();
-        const ym = filterYearMonth.value || 'all';
+        const ym = filterYearMonth?.value || 'all';
         const displayYm = ym !== 'all' ? ym.replace('-', '年') + '月' : '全期間';
 
-        // --- Sheet 1: Sales List ---
+        // Sheet 1: 売上明細
         const listData = filtered.map(item => ({
-            "売上日": item.contract_date,
+            "売上日(受任日)": item.contract_date,
             "顧客名": item.customer_name,
             "案件名": item.case_name,
             "報酬(税抜)": item.fee,
             "消費税": item.tax,
             "売上計": item.total_sales,
             "立替金": item.reimbursement,
-            "担当者": staffMap[item.staff_id]?.staff_name || '',
+            "担当者": item.staff_name,
             "ステータス": item.status
         }));
         const wsList = XLSX.utils.json_to_sheet(listData);
         XLSX.utils.book_append_sheet(wb, wsList, "売上明細");
 
-        // --- Sheet 2: Summary ---
-        // Calc Totals
-        const totalFee = filtered.reduce((s, i) => s + i.fee, 0);
-        const totalTax = filtered.reduce((s, i) => s + i.tax, 0);
+        // Sheet 2: サマリー
+        const totalFee = filtered.reduce((s, i) => s + (Number(i.fee) || 0), 0);
+        const totalTax = filtered.reduce((s, i) => s + (Number(i.tax) || 0), 0);
         const totalSales = totalFee + totalTax;
-        const totalReimbursement = filtered.reduce((s, i) => s + i.reimbursement, 0);
+        const totalReimbursement = filtered.reduce((s, i) => s + (Number(i.reimbursement) || 0), 0);
         const unpaid = totalSales - totalPeriodPaid;
 
         const summaryRows = [
@@ -491,12 +494,11 @@ document.addEventListener('DOMContentLoaded', () => {
             ["立替金合計", totalReimbursement, ""],
             ["期間内入金計", totalPeriodPaid, "期間内の全入金"],
             ["未回収(参考)", unpaid, "売上計 - 入金計"],
-            ["", "", ""], // Spacer
+            ["", "", ""],
             ["【担当者別集計】", "", ""],
             ["担当者", "件数", "売上合計"]
         ];
 
-        // Staff Aggregation for Excel
         const staffStats = {};
         filtered.forEach(item => {
             const sid = item.staff_id || 0;
@@ -515,34 +517,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
         XLSX.utils.book_append_sheet(wb, wsSummary, "サマリー");
 
-        // Download
         XLSX.writeFile(wb, `売上管理_${ym.replace(/-/g, '')}.xlsx`);
     }
 
-    // --- Events ---
+    // --- イベントバインディング ---
     if (filterYearMonth) filterYearMonth.addEventListener('change', searchData);
     if (btnSearchExecute) btnSearchExecute.addEventListener('click', searchData);
     [filterCustomer, filterStaff].forEach(el => {
-        if (el) el.addEventListener('input', render)
+        if (el) el.addEventListener('input', render);
     });
 
     if (btnExcelExport) btnExcelExport.addEventListener('click', exportExcel);
-    if (btnPdfExport) btnPdfExport.addEventListener('click', exportPDF);
 
-    // Tab Switching
-    tabList.addEventListener('click', () => {
-        tabList.classList.add('active');
-        tabSummary.classList.remove('active');
-        viewList.style.display = 'block';
-        monthlyAggArea.style.display = 'flex';
-        viewSummary.style.display = 'none';
-    });
+    // タブ切替
+    if (tabList) {
+        tabList.addEventListener('click', () => {
+            tabList.classList.add('active');
+            if (tabSummary) tabSummary.classList.remove('active');
+            if (viewList) viewList.style.display = 'block';
+            if (monthlyAggArea) monthlyAggArea.style.display = 'flex';
+            if (viewSummary) viewSummary.style.display = 'none';
+        });
+    }
 
-    tabSummary.addEventListener('click', () => {
-        tabList.classList.remove('active');
-        tabSummary.classList.add('active');
-        viewList.style.display = 'none';
-        monthlyAggArea.style.display = 'none';
-        viewSummary.style.display = 'block';
-    });
+    if (tabSummary) {
+        tabSummary.addEventListener('click', () => {
+            if (tabList) tabList.classList.remove('active');
+            tabSummary.classList.add('active');
+            if (viewList) viewList.style.display = 'none';
+            if (monthlyAggArea) monthlyAggArea.style.display = 'none';
+            if (viewSummary) viewSummary.style.display = 'block';
+        });
+    }
 });
