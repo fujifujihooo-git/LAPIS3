@@ -12,12 +12,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Selectors ---
     const listBody = document.getElementById('sales-list-body');
-    const filterDateFrom = document.getElementById('filter-date-from');
-    const filterDateTo = document.getElementById('filter-date-to');
+    const filterYearMonth = document.getElementById('filter-year-month');
     const filterCustomer = document.getElementById('filter-customer');
     const filterStaff = document.getElementById('filter-staff');
     const btnExcelExport = document.getElementById('btn-excel-export');
     const btnPdfExport = document.getElementById('btn-pdf-export');
+    const btnSearchExecute = document.getElementById('btn-search-execute');
 
     // Tabs
     const tabList = document.getElementById('tab-list');
@@ -57,11 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setupFilterOptions() {
         const now = new Date();
-        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-        filterDateFrom.value = firstDay.toISOString().substring(0, 10);
-        filterDateTo.value = lastDay.toISOString().substring(0, 10);
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        filterYearMonth.value = `${y}-${m}`;
     }
 
     async function fetchMasters() {
@@ -89,8 +87,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // Loading
         listBody.innerHTML = '<tr><td colspan="8" class="no-data-cell">データを集計中...</td></tr>';
 
-        const dateFrom = filterDateFrom.value;
-        const dateTo = filterDateTo.value;
+        if (btnSearchExecute) {
+            btnSearchExecute.disabled = true;
+            btnSearchExecute.innerHTML = '<i data-lucide="loader-2" class="spin"></i> 集計中...';
+            lucide.createIcons();
+        }
+
+        const dateVal = filterYearMonth.value; // YYYY-MM
+        let dateFrom = '';
+        let dateTo = '';
+        if (dateVal) {
+            const [y, m] = dateVal.split('-');
+            const firstDay = new Date(Number(y), Number(m) - 1, 1);
+            const lastDay = new Date(Number(y), Number(m), 0); // last day of month
+            // form: YYYY-MM-DD
+            dateFrom = `${y}-${m}-01`;
+            dateTo = `${y}-${m}-${String(lastDay.getDate()).padStart(2, '0')}`;
+        }
 
         try {
             // 1. Fetch Cases in Period
@@ -198,6 +211,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Search Error:', error);
             listBody.innerHTML = '<tr><td colspan="8" class="no-data-cell error">エラーが発生しました: ' + error.message + '</td></tr>';
+        } finally {
+            if (btnSearchExecute) {
+                btnSearchExecute.disabled = false;
+                btnSearchExecute.innerHTML = '<i data-lucide="search"></i> 集計実行';
+                lucide.createIcons();
+            }
         }
     }
 
@@ -266,10 +285,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalSales = totalFee + totalTax;
         const totalReimbursement = filtered.reduce((s, i) => s + i.reimbursement, 0);
 
-        const from = filterDateFrom.value.replace(/-/g, '/');
-        const to = filterDateTo.value.replace(/-/g, '/');
+        const ym = filterYearMonth.value; // YYYY-MM
+        const displayYm = ym ? ym.replace('-', '年') + '月' : '全期間';
 
-        aggTitle.textContent = `${from} 〜 ${to} 集計 (表示分)`;
+        aggTitle.textContent = `${displayYm} 集計 (表示分)`;
+
+        // Update Summary Cards manually
+        const elTotalSales = document.getElementById('val-total-sales');
+        const elTotalCount = document.getElementById('val-total-count');
+        if (elTotalSales) elTotalSales.textContent = formatCurrency(totalSales);
+        if (elTotalCount) elTotalCount.textContent = `${filtered.length}件`;
+
         aggFee.textContent = formatCurrency(totalFee);
         aggTax.textContent = formatCurrency(totalTax);
         aggTotalSales.textContent = formatCurrency(totalSales);
@@ -308,11 +334,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>`;
         });
 
-        const fromDisplay = filterDateFrom.value.replace(/-/g, '/');
-        const toDisplay = filterDateTo.value.replace(/-/g, '/');
+        const ym = filterYearMonth.value; // YYYY-MM
+        const displayYm = ym ? ym.replace('-', '年') + '月' : '全期間';
 
         summaryContent.innerHTML = `
-            <div class="summary-header">売上サマリー：${fromDisplay} 〜 ${toDisplay}</div>
+            <div class="summary-header">売上サマリー：${displayYm}</div>
             
             <h3 style="margin-top: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">■ 売上</h3>
             <div class="summary-row"><span>報酬（税抜）</span><span>${formatCurrency(fee)}</span></div>
@@ -356,11 +382,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalReimbursement = filtered.reduce((s, i) => s + i.reimbursement, 0);
         const unpaid = totalSales - totalPeriodPaid;
 
-        const from = filterDateFrom.value.replace(/-/g, '/');
-        const to = filterDateTo.value.replace(/-/g, '/');
+        const ym = filterYearMonth.value; // YYYY-MM
+        const periodStr = ym ? ym.replace('-', '年') + '月' : '全期間';
 
         document.getElementById('p-print-now').textContent = new Date().toLocaleString();
-        document.getElementById('p-period').textContent = `${from} 〜 ${to}`;
+        document.getElementById('p-period').textContent = periodStr;
         document.getElementById('p-total-sales').textContent = formatCurrency(totalSales);
         document.getElementById('p-total-fee').textContent = formatCurrency(totalFee);
         document.getElementById('p-total-tax').textContent = formatCurrency(totalTax);
@@ -408,9 +434,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const element = document.getElementById('print-template-sales');
         element.style.display = 'block';
 
+        const ym = filterYearMonth.value || 'all';
+
         html2pdf(element, {
             margin: 10,
-            filename: `売上帳票_${from.replace(/\//g, '')}-${to.replace(/\//g, '')}.pdf`,
+            filename: `売上帳票_${ym.replace(/-/g, '')}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2 },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -426,9 +454,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+
         const wb = XLSX.utils.book_new();
-        const from = filterDateFrom.value;
-        const to = filterDateTo.value;
+        const ym = filterYearMonth.value || 'all';
+        const displayYm = ym !== 'all' ? ym.replace('-', '年') + '月' : '全期間';
 
         // --- Sheet 1: Sales List ---
         const listData = filtered.map(item => ({
@@ -455,7 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const summaryRows = [
             ["項目", "金額", "備考"],
-            ["集計期間", `${from} 〜 ${to}`, ""],
+            ["集計期間", displayYm, ""],
             ["報酬合計(税抜)", totalFee, ""],
             ["消費税", totalTax, ""],
             ["売上合計", totalSales, "報酬+消費税"],
@@ -487,12 +516,15 @@ document.addEventListener('DOMContentLoaded', () => {
         XLSX.utils.book_append_sheet(wb, wsSummary, "サマリー");
 
         // Download
-        XLSX.writeFile(wb, `売上管理_${from.replace(/-/g, '')}-${to.replace(/-/g, '')}.xlsx`);
+        XLSX.writeFile(wb, `売上管理_${ym.replace(/-/g, '')}.xlsx`);
     }
 
     // --- Events ---
-    [filterDateFrom, filterDateTo].forEach(el => el.addEventListener('change', searchData));
-    [filterCustomer, filterStaff].forEach(el => el.addEventListener('input', render));
+    if (filterYearMonth) filterYearMonth.addEventListener('change', searchData);
+    if (btnSearchExecute) btnSearchExecute.addEventListener('click', searchData);
+    [filterCustomer, filterStaff].forEach(el => {
+        if (el) el.addEventListener('input', render)
+    });
 
     if (btnExcelExport) btnExcelExport.addEventListener('click', exportExcel);
     if (btnPdfExport) btnPdfExport.addEventListener('click', exportPDF);
