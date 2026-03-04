@@ -13,17 +13,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const filterDateStart = document.getElementById('filter-date-start');
     const filterDateEnd = document.getElementById('filter-date-end');
 
-    // Data Management Selectors
-    // Data Management Selectors (Top)
-    const btnExportTop = document.getElementById('btn-export-top');
-    const btnImportTriggerTop = document.getElementById('btn-import-trigger-top');
-    const inputImportTop = document.getElementById('input-import-top');
-
-    // Data Management Selectors (Bottom)
-    const btnExportBottom = document.getElementById('btn-export-bottom');
-    const btnImportTriggerBottom = document.getElementById('btn-import-trigger-bottom');
-    const inputImportBottom = document.getElementById('input-import-bottom');
-
     // Stats Selectors
     const statTotal = document.getElementById('stat-total');
     const statActive = document.getElementById('stat-active');
@@ -671,14 +660,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('click', () => applyCardFilter(id));
     });
-
-    if (btnExportTop) btnExportTop.addEventListener('click', exportData);
-    if (btnImportTriggerTop) btnImportTriggerTop.addEventListener('click', () => inputImportTop.click());
-    if (inputImportTop) inputImportTop.addEventListener('change', importData);
-
-    if (btnExportBottom) btnExportBottom.addEventListener('click', exportData);
-    if (btnImportTriggerBottom) btnImportTriggerBottom.addEventListener('click', () => inputImportBottom.click());
-    if (inputImportBottom) inputImportBottom.addEventListener('change', importData);
 
     // Setup headers using common.js logic
     initSortHeaders('#case-table', currentSort, () => renderTable(cases));
