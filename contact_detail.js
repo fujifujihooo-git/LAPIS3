@@ -112,6 +112,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         // ヘッダーの担当者名表示
         const headerName = document.getElementById('header-contact-name');
         if (headerName) headerName.textContent = data.contact_name || '';
+
+        // Assuming these elements exist in the HTML to display dates
+        const createdDateDisplay = document.getElementById('created-date-display');
+        const lastUpdatedDisplay = document.getElementById('last-updated-display');
+        if (createdDateDisplay) createdDateDisplay.textContent = data.created_date ? new Date(data.created_date).toLocaleString() : '-';
+        if (lastUpdatedDisplay) lastUpdatedDisplay.textContent = formatToJST(data.last_updated);
     }
 
     async function handleSave(e) {

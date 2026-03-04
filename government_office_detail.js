@@ -108,8 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('office_prefecture').value = data.office_prefecture || '';
         document.getElementById('office_type').value = data.office_type;
         document.getElementById('status').value = data.status;
-        document.getElementById('created-date-display').innerHTML = formatDate(data.created_date);
-        document.getElementById('last-updated-display').innerHTML = formatDate(data.last_updated);
+        document.getElementById('created-date-display').innerHTML = formatToJST(data.created_date);
+        document.getElementById('last-updated-display').innerHTML = formatToJST(data.last_updated);
     }
 
     officeForm.addEventListener('submit', async (e) => {

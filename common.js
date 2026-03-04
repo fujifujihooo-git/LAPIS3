@@ -142,6 +142,47 @@ function convertToWareki(dateStr) {
     }
 }
 
+/**
+ * Convert Date, Firestore Timestamp, or ISO string to JST Time String
+ * Output Format: YYYY/MM/DD HH:mm
+ */
+function formatToJST(dateInput) {
+    if (!dateInput) return '-';
+
+    let d;
+    if (typeof dateInput === 'string') {
+        d = new Date(dateInput);
+    } else if (typeof dateInput.toDate === 'function') {
+        d = dateInput.toDate();
+    } else {
+        d = new Date(dateInput);
+    }
+
+    if (isNaN(d.getTime())) return '-';
+
+    // Japanese Time Settings
+    const options = {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    };
+
+    try {
+        const formatter = new Intl.DateTimeFormat('ja-JP', options);
+        // => "2026/03/03 10:10" (some environments may use commas/slashes differently by default, so we replace)
+        const parts = formatter.formatToParts(d);
+        const map = {};
+        parts.forEach(p => map[p.type] = p.value);
+        return `${map.year}/${map.month}/${map.day} ${map.hour}:${map.minute}`;
+    } catch (e) {
+        console.error('JST Date formatting error:', e);
+        return '-';
+    }
+}
 
 
 // --- Data Initialization Functions ---

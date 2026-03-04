@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (c.corporate_number) document.getElementById('corporate_number').value = c.corporate_number;
         if (c.primary_staff_id) document.getElementById('primary_staff_id').value = c.primary_staff_id;
 
-        if (lastUpdatedDisplay) lastUpdatedDisplay.textContent = c.last_updated || '-';
+        if (lastUpdatedDisplay) lastUpdatedDisplay.textContent = formatToJST(c.last_updated);
     }
 
     function getStatusKey(status) {
@@ -212,6 +212,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const sortedRelated = sortCasesCommon(related, currentRelatedSort);
 
+            const safeDateStr = (val) => {
+                if (!val) return '-';
+                if (typeof val.toDate === 'function') {
+                    const d = val.toDate();
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${y}-${m}-${day}`;
+                }
+                return String(val).split('T')[0];
+            };
+
             sortedRelated.forEach(c => {
                 if (!c) return; // 安全対策
                 const tr = document.createElement('tr');
@@ -222,12 +234,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 tr.innerHTML = `
                     <td><span class="badge status-${getStatusKey(c?.status)}">${c?.status || '-'}</span></td>
-                    <td>${c?.acceptance_date || '-'}</td>
+                    <td>${safeDateStr(c?.contract_date)}</td>
                     <td>
                         <div style="font-weight: 600;">${c?.license_type || '-'}</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted);">${c?.procedure_name || '-'}</div>
                     </td>
-                    <td>${c?.application_scheduled_date || '-'}</td>
+                    <td>${safeDateStr(c?.acceptance_date)}</td>
                     <td>
                         <span class="days-badge ${daysClass}">${formatRemainingDays(days, c?.status)}</span>
                     </td>

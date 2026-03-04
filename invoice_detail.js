@@ -206,8 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 else dDateEl.value = formState.due_date;
             }
 
-            createdDateSpan.innerHTML = formatDate(currentInvoice.created_date);
-            lastUpdatedSpan.innerHTML = formatDate(currentInvoice.last_updated);
+            createdDateSpan.innerHTML = formatToJST(currentInvoice.created_date);
+            lastUpdatedSpan.innerHTML = formatToJST(currentInvoice.last_updated);
 
             // Need to fetch related cases for display names in Items? 
             // `getCaseName` logic requires cases.

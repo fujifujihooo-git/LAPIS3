@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td>${item.customer_type}</td>
                 <td>${formatDisplayValue(item.representative_name)}</td>
                 <td>${formatDisplayValue(item.phone)}</td>
-                <td><small>${formatDate(item.last_updated)}</small></td>
+                <td><small>${formatToJST(item.last_updated)}</small></td>
             `;
             customerListBody.appendChild(row);
         });

@@ -306,7 +306,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 caseIdDisplay.textContent = `Case ID: ${currentCase.case_id}`;
-                lastUpdatedDisplay.textContent = currentCase.last_updated || '-';
+                if (lastUpdatedDisplay) {
+                    lastUpdatedDisplay.textContent = formatToJST(currentCase.last_updated);
+                }
                 renderCustomerSelection(currentCase.customer_id);
                 populateForm(currentCase);
             }
@@ -382,7 +384,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tr = document.createElement('tr');
             const isLatest = index === 0;
             tr.innerHTML = `
-                <td>${formatDate(h.changed_date)}</td>
+                <td>${formatToJST(h.changed_date)}</td>
                 <td>${h.old_status} → ${h.new_status}</td>
                 <td>${h.changed_by}</td>
                 <td>${h.comment || ''}</td>

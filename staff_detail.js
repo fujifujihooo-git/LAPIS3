@@ -75,9 +75,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function populateForm(data) {
         if (staffIdInput) staffIdInput.value = data.staff_id;
         staffTitle.textContent = `担当者詳細：${data.staff_name}`;
-
-        if (lastUpdatedDisplay) lastUpdatedDisplay.innerHTML = formatDate(data.last_updated);
-        if (createdDateDisplay) createdDateDisplay.innerHTML = formatDate(data.created_date || data.created_at); // Handle both checks
+        // 更新日時等の表示
+        if (lastUpdatedDisplay) lastUpdatedDisplay.innerHTML = formatToJST(data.last_updated);
+        if (createdDateDisplay) createdDateDisplay.innerHTML = formatToJST(data.created_date || data.created_at); // Handle both checks
 
         document.getElementById('staff_name').value = data.staff_name || '';
         document.getElementById('staff_name_kana').value = data.staff_kana || ''; // Fixed ID

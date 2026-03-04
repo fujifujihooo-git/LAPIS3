@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         noticeDate.value = l.notice_date || '';
         remarks.value = l.remarks || '';
         createdDateDisplay.textContent = l.created_date || '-';
-        lastUpdatedDisplay.textContent = l.last_updated || '-';
+        lastUpdatedDisplay.textContent = formatToJST(l.last_updated);
 
         if (l.government_office_id) {
             const off = governmentOffices.find(o => o.office_id === l.government_office_id);
@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const s = staffMembers.find(st => st.staff_id === h.changed_by);
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${formatDate(h.change_date)}</td>
+                <td>${formatToJST(h.change_date)}</td>
                 <td>${h.change_type}</td>
                 <td>${s ? s.staff_name : '不明'}</td>
                 <td>${h.comment || '-'}</td>

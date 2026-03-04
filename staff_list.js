@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             const statusClass = getStaffStatusClass(item.status);
-            const lastUpdatedDate = formatDate(item.last_updated);
+            const lastUpdatedDate = formatToJST(item.last_updated);
 
             row.innerHTML = `
                 <td><span style="color: var(--text-muted); font-family: monospace;">${item.staff_id}</span></td>

@@ -88,8 +88,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     function populateForm(data) {
         if (officeIdDisplay) officeIdDisplay.textContent = `Office ID: ${data.office_id}`;
         if (officeTitle) officeTitle.textContent = `拠点詳細：${data.office_name}`;
-        if (createdDateDisplay) createdDateDisplay.textContent = data.created_date || '-';
-        if (lastUpdatedDisplay) lastUpdatedDisplay.textContent = data.last_updated || '-';
+        if (createdDateDisplay) createdDateDisplay.textContent = data.created_date ? new Date(data.created_date).toLocaleString() : '-';
+        if (lastUpdatedDisplay) lastUpdatedDisplay.textContent = formatToJST(data.last_updated);
 
         const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
 

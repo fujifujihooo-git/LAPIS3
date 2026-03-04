@@ -271,9 +271,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             const fieldStaff = staffMembers.find(s => s.staff_id === Number(c.field_staff_id))?.staff_name || '-';
             const docStaff = staffMembers.find(s => s.staff_id === Number(c.document_staff_id))?.staff_name || '-';
 
+            const safeDateStr = (val) => {
+                if (!val) return '-';
+                if (typeof val.toDate === 'function') {
+                    const d = val.toDate();
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${y}-${m}-${day}`;
+                }
+                return String(val).split('T')[0]; // 文字列の場合の時間部分をカット
+            };
+
             tr.innerHTML = `
                 <td><span class="badge status-${getStatusKey(c.status)}">${c.status || '-'}</span></td>
-                <td>${c.acceptance_date || '-'}</td>
+                <td>${safeDateStr(c.contract_date)}</td>
                 <td class="customer-cell">
                     <a href="customer_detail.html?id=${c.customer_id}">${c.customer_name || '-'}</a>
                 </td>

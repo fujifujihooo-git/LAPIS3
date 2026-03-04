@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sortOrder.value = (licenseType.sort_order !== undefined && licenseType.sort_order !== null) ? licenseType.sort_order : '';
         remarks.value = licenseType.remarks || '';
         createdDate.textContent = licenseType.created_date || '-';
-        lastUpdated.textContent = licenseType.last_updated || '-';
+        lastUpdated.textContent = formatToJST(licenseType.last_updated);
         toggleNoticeDaysGroup();
     }
 
