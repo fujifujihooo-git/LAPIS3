@@ -212,20 +212,21 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
+    <script src="unified_monthpicker.js"></script>
     <script src="sales_list.js"></script>
 
     <script>
-    const btnTop = document.getElementById('back-to-top');
-    window.addEventListener('scroll', () => {
-    if (window.scrollY > 300) {
-    btnTop.style.opacity = '1';
-    btnTop.style.pointerEvents = 'auto';
-    } else {
-    btnTop.style.opacity = '0';
-    btnTop.style.pointerEvents = 'none';
-    }
-    });
-    btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        const btnTop = document.getElementById('back-to-top');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                btnTop.style.opacity = '1';
+                btnTop.style.pointerEvents = 'auto';
+            } else {
+                btnTop.style.opacity = '0';
+                btnTop.style.pointerEvents = 'none';
+            }
+        });
+        btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     </script>
 </body>
 
