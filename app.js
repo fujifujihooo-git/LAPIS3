@@ -28,6 +28,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const statCompleted = document.getElementById('stat-completed');
 
     // --- State ---
+    const ACTIVE_STATUSES = [
+        '相談', '受任', '作成中',
+        '申請準備完了', '受付（受理）', '補正対応中'
+    ];
+
     let cases = [];
     let customers = [];
     let staffMembers = [];
@@ -137,25 +142,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (statusVal) {
                     query = query.where('status', '==', statusVal);
-                }
-
-                if (licenseVal) {
-                    query = query.where('license_type', '==', licenseVal);
-                }
-
-                if (staffVal) {
-                    query = query.where('field_staff_id', '==', parseInt(staffVal));
-                }
-
-                // Always limit if no specific filters (prevent full scan)
-                if (!statusVal && !licenseVal && !staffVal) {
-                    query = query.orderBy('created_date', 'desc').limit(50);
                 } else {
-                    query = query.limit(100);
+                    // 全期間の「仕掛中」をすべてDBから取得（件数制限なし）
+                    query = query.where('status', 'in', ACTIVE_STATUSES);
                 }
+
+                // Note: DB側で 'license_type' 等のwhereや orderBy を混ぜると複合インデックスが要求されるため、
+                // インデックス節約と過去案件の確実な取得を両立すべく、ステータス単体のみで全件取得し JS側でフィルタ・ソートします。
 
                 const snap = await query.get();
                 results = snap.docs.map(d => d.data());
+
+                // 元々 orderBy('created_date', 'desc') だったため JSで降順ソート
+                results.sort((a, b) => {
+                    const da = a.created_date ? new Date(a.created_date).getTime() : 0;
+                    const db = b.created_date ? new Date(b.created_date).getTime() : 0;
+                    return db - da; // 降順
+                });
             }
 
             // In-Memory Filtering for remaining conditions (AND logic)
@@ -164,6 +167,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (statusVal) {
                 results = results.filter(c => c.status === statusVal);
+            } else {
+                // ステータス指定がない場合は「仕掛中」のアクティブステータスのみに絞る
+                results = results.filter(c => ACTIVE_STATUSES.includes(c.status));
             }
             if (licenseVal) {
                 results = results.filter(c => c.license_type === licenseVal);
@@ -293,43 +299,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    const parseDateSafe = (val) => {
-        if (!val) return null;
-        if (typeof val.toDate === 'function') return val.toDate();
-        const d = new Date(val);
-        return isNaN(d.getTime()) ? null : d;
-    };
-
     function renderStats(data) {
-        const terminalStatuses = ['完了', '返却済', '取下げ'];
-        const activeCount = data.filter(c => !terminalStatuses.includes(c.status)).length;
+        const activeCount = data.filter(c => ACTIVE_STATUSES.includes(c.status)).length;
         const urgentCount = data.filter(c => {
-            if (terminalStatuses.includes(c.status)) return false;
+            if (!ACTIVE_STATUSES.includes(c.status)) return false;
             const d = calculateRemainingDays(c.application_scheduled_date);
             return d !== null && d <= 7;
         }).length;
         const readyCount = data.filter(c => c.status === '申請準備完了').length;
-        const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const completedCount = data.filter(c => {
-            if (c.status !== '完了') return false;
-            const d = c.status_changed_date ? parseDateSafe(c.status_changed_date) : parseDateSafe(c.last_updated);
-            return d && d >= monthStart;
-        }).length;
 
         if (statTotal) statTotal.textContent = data.length;
         if (statActive) statActive.textContent = activeCount;
         const statUrgent = document.getElementById('stat-urgent');
         if (statUrgent) statUrgent.textContent = urgentCount;
         if (statReady) statReady.textContent = readyCount;
-        if (statCompleted) statCompleted.textContent = completedCount;
 
         console.group('【デバッグ】初期データ集計（レンダリング用）');
         console.log(`全データ件数 (DBから取得済): ${data.length}件`);
         console.log(`- 進行中 (完了等以外): ${activeCount}件`);
         console.log(`- 至急対応 (残り7日以内): ${urgentCount}件`);
         console.log(`- 申請準備完了: ${readyCount}件`);
-        console.log(`- 今月の実績 (完了かつ当月変更): ${completedCount}件`);
         console.groupEnd();
     }
 
@@ -592,8 +581,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let activeCardId = null;
 
     function applyCardFilter(cardId) {
-        const terminalStatuses = ['完了', '返却済', '取下げ'];
-
         console.group('【デバッグ】カードフィルタ実行');
         console.log(`全データ件数 (DB取得済の対象母数): ${cases.length}件`);
         console.log(`クリックされたカード: ${cardId}`);
@@ -611,11 +598,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         let filtered;
         switch (cardId) {
             case 'card-total':
-                filtered = cases.filter(c => !terminalStatuses.includes(c.status));
+                filtered = cases.filter(c => ACTIVE_STATUSES.includes(c.status));
                 break;
             case 'card-urgent':
                 filtered = cases.filter(c => {
-                    if (terminalStatuses.includes(c.status)) return false;
+                    if (!ACTIVE_STATUSES.includes(c.status)) return false;
                     const d = calculateRemainingDays(c.application_scheduled_date);
                     return d !== null && d <= 7;
                 });
@@ -623,16 +610,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             case 'card-ready':
                 filtered = cases.filter(c => c.status === '申請準備完了');
                 break;
-            case 'card-completed': {
-                const now = new Date();
-                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-                filtered = cases.filter(c => {
-                    if (c.status !== '完了') return false;
-                    const d = c.status_changed_date ? parseDateSafe(c.status_changed_date) : parseDateSafe(c.last_updated);
-                    return d && d >= monthStart;
-                });
-                break;
-            }
             default:
                 filtered = cases;
         }
@@ -656,7 +633,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Card click events
-    ['card-total', 'card-urgent', 'card-ready', 'card-completed'].forEach(id => {
+    ['card-total', 'card-urgent', 'card-ready'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('click', () => applyCardFilter(id));
     });
