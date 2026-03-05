@@ -433,6 +433,10 @@
                         <button type="button" class="btn btn-nav-customer" id="btn-back-to-customer">
                             <i data-lucide="user-search"></i> 顧客詳細へ
                         </button>
+                        <button type="button" class="btn btn-secondary" id="btn-pdf-export" onclick="exportInvoicePDF()"
+                            style="display: none;">
+                            <i data-lucide="file-text"></i> PDF出力
+                        </button>
                         <button type="button" class="btn btn-delete" id="btn-delete-invoice" style="display: none;">
                             <i data-lucide="trash-2"></i> 削除
                         </button>
@@ -764,7 +768,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
-    <script src="invoice_detail.js?v=20260226"></script>
+    <!-- jsPDF + AutoTable for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="invoice_pdf.js?v=20260305"></script>
+    <script src="invoice_detail.js?v=20260305"></script>
 
     <script>
         // Global function for closing modals if needed by inline onclicks

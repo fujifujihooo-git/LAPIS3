@@ -180,6 +180,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             pageTitle.textContent = `請求詳細: ${customerName}`;
             btnDelete.style.display = 'flex';
+            // PDF出力ボタンを表示（既存データがある場合のみ）
+            const btnPdf = document.getElementById('btn-pdf-export');
+            if (btnPdf) btnPdf.style.display = 'inline-flex';
 
             // Populate formState
             formState.invoice_number = currentInvoice.invoice_number || '';
