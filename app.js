@@ -279,21 +279,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const fieldStaff = staffMembers.find(s => s.staff_id === Number(c.field_staff_id))?.staff_name || '-';
             const docStaff = staffMembers.find(s => s.staff_id === Number(c.document_staff_id))?.staff_name || '-';
 
-            const safeDateStr = (val) => {
-                if (!val) return '-';
-                if (typeof val.toDate === 'function') {
-                    const d = val.toDate();
-                    const y = d.getFullYear();
-                    const m = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    return `${y}-${m}-${day}`;
-                }
-                return String(val).split('T')[0]; // 文字列の場合の時間部分をカット
-            };
-
             tr.innerHTML = `
                 <td><span class="badge status-${getStatusKey(c.status)}">${c.status || '-'}</span></td>
-                <td>${safeDateStr(c.contract_date)}</td>
+                <td>${formatDate(c.contract_date)}</td>
                 <td class="customer-cell">
                     <a href="customer_detail.html?id=${c.customer_id}">${c.customer_name || '-'}</a>
                 </td>
@@ -303,7 +291,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </td>
                 <td>
                     <span class="days-badge ${daysClass}">${formatRemainingDays(days, c.status)}</span>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">${c.application_scheduled_date || '-'}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">${formatDate(c.application_scheduled_date)}</div>
                 </td>
                 <td>
                     <div>${fieldStaff}</div>

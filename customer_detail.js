@@ -212,17 +212,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const sortedRelated = sortCasesCommon(related, currentRelatedSort);
 
-            const safeDateStr = (val) => {
-                if (!val) return '-';
-                if (typeof val.toDate === 'function') {
-                    const d = val.toDate();
-                    const y = d.getFullYear();
-                    const m = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    return `${y}-${m}-${day}`;
-                }
-                return String(val).split('T')[0];
-            };
 
             sortedRelated.forEach(c => {
                 if (!c) return; // 安全対策
@@ -234,12 +223,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 tr.innerHTML = `
                     <td><span class="badge status-${getStatusKey(c?.status)}">${c?.status || '-'}</span></td>
-                    <td>${safeDateStr(c?.contract_date)}</td>
+                    <td>${formatDate(c?.contract_date)}</td>
                     <td>
                         <div style="font-weight: 600;">${c?.license_type || '-'}</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted);">${c?.procedure_name || '-'}</div>
                     </td>
-                    <td>${safeDateStr(c?.acceptance_date)}</td>
+                    <td>${formatDate(c?.acceptance_date)}</td>
                     <td>
                         <span class="days-badge ${daysClass}">${formatRemainingDays(days, c?.status)}</span>
                     </td>
@@ -337,7 +326,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             tr.innerHTML = `
                 <td style="font-weight: 600;">${typeName}</td>
                 <td>${licenseNum}</td>
-                <td>${l.expiry_date || '-'}</td>
+                <td>${formatDate(l.expiry_date)}</td>
                 <td><span class="days-badge ${daysClass}">${formatRemainingDays(days)}</span></td>
                 <td><span class="badge ${l.status === '有効' ? 'status-junin' : 'status-torisage'}">${l.status || '-'}</span></td>
             `;
