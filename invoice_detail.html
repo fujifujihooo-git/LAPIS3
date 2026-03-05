@@ -26,11 +26,51 @@
     <!-- Flatpickr (High Visibility Calendar) -->
     <script src="unified_datepicker.js"></script>
     <style>
-        /* Local overrides for invoice detail */
-        /* Strict 13pt enforcement */
+        /* ===== Card-Based Invoice Detail UI ===== */
+
+        /* Page background */
+        #page-content {
+            background: #f1f5f9;
+            padding: 24px;
+        }
+
+        /* Card Component */
+        .inv-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+            padding: 28px 32px;
+            margin-bottom: 20px;
+            transition: box-shadow 0.2s;
+        }
+
+        .inv-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Section Title with left accent bar */
+        .inv-card-title {
+            font-size: 13pt;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0 0 20px 0;
+            padding-left: 14px;
+            border-left: 4px solid var(--primary, #3b82f6);
+            line-height: 1.4;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .inv-card-title .card-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Form */
         .form-section-title {
             font-size: 13pt;
-            /* Strict 13pt */
             font-weight: 600;
             margin-bottom: 20px;
             padding-bottom: 8px;
@@ -45,13 +85,16 @@
             margin-bottom: 24px;
         }
 
+        .form-grid:last-child {
+            margin-bottom: 0;
+        }
+
         .form-group label {
             display: block;
             margin-bottom: 8px;
             font-weight: 500;
             color: var(--text-main);
             font-size: 13pt;
-            /* Strict 13pt */
         }
 
         .form-control,
@@ -62,11 +105,9 @@
             border: 1px solid var(--border-color);
             border-radius: 6px;
             font-size: 13pt;
-            /* Strict 13pt */
             transition: all 0.2s;
             background: #fff;
             min-height: 44px;
-            /* Ensure sufficient touch target / input box height for 13pt */
         }
 
         .form-control:focus,
@@ -81,15 +122,13 @@
             resize: vertical;
         }
 
-        /* Summary Box */
+        /* Summary Box - now full-width inside its card */
         .summary-box {
             background: #f8fafc;
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 24px;
             width: 100%;
-            max-width: 350px;
-            margin-left: auto;
         }
 
         .summary-row {
@@ -97,7 +136,6 @@
             justify-content: space-between;
             margin-bottom: 12px;
             font-size: 13pt;
-            /* Strict 13pt */
             color: var(--text-main);
         }
 
@@ -106,7 +144,6 @@
             margin-top: 16px;
             padding-top: 16px;
             font-size: 13pt;
-            /* Strict 13pt, using bold instead of size to differentiate */
             font-weight: 700;
             color: var(--primary);
             display: flex;
@@ -114,16 +151,48 @@
             align-items: center;
         }
 
-        .balance-info {
-            margin-top: 24px;
-            padding-top: 16px;
-            border-top: 1px dashed var(--border-color);
-            text-align: right;
+        /* Payment + Balance 2-column layout */
+        .inv-finance-grid {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 24px;
+            align-items: start;
         }
 
-        .balance-info div {
-            font-size: 13pt !important;
-            /* Strict 13pt overrides */
+        @media (max-width: 900px) {
+            .inv-finance-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Balance card highlight */
+        .balance-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            padding: 24px;
+        }
+
+        .balance-card .balance-label {
+            font-size: 12pt;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+
+        .balance-card .balance-value {
+            font-size: 15pt;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .balance-card .balance-value.unpaid {
+            color: #dc2626;
+        }
+
+        .balance-card .balance-separator {
+            border-top: 1px dashed #e2e8f0;
+            margin: 16px 0;
         }
 
         /* Autocomplete */
@@ -152,7 +221,6 @@
             cursor: pointer;
             border-bottom: 1px solid #d4d4d4;
             font-size: 13pt;
-            /* Strict 13pt */
         }
 
         .autocomplete-items div:hover {
@@ -174,7 +242,6 @@
         .btn {
             font-size: 13pt !important;
             min-height: 44px;
-            /* Adequate touch target */
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -182,10 +249,19 @@
 
         .btn-sm {
             min-height: 36px;
-            /* slightly smaller but still readable */
         }
 
-        /* Modal Overrides for this page if needed */
+        /* Metadata footer */
+        .inv-meta-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 24px;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            margin-top: 8px;
+        }
+
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -233,6 +309,18 @@
 
         .close-modal:hover {
             color: #000;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .inv-card {
+                padding: 20px 16px;
+                border-radius: 8px;
+            }
+
+            #page-content {
+                padding: 12px;
+            }
         }
     </style>
 </head>
@@ -354,133 +442,139 @@
                     </div>
                 </div>
 
-                <div class="block">
-                    <div class="block-content">
-                        <!-- Basic Info -->
-                        <h3 class="form-section-title">基本情報</h3>
-                        <div class="form-grid">
-                            <div class="form-group autocomplete-wrapper" id="customer-select-group">
-                                <label for="input-customer-search">顧客検索 <span class="required">*</span></label>
-                                <div style="display: flex; gap: 8px;">
-                                    <input type="text" id="input-customer-search" class="form-control"
-                                        placeholder="顧客名を入力して検索..." autocomplete="off">
-                                    <button type="button" class="btn btn-secondary" id="btn-customer-search"
-                                        style="flex-shrink: 0; padding: 0 16px;">
-                                        <i data-lucide="search" style="width: 16px; height: 16px;"></i> 検索
-                                    </button>
-                                </div>
-                                <small
-                                    style="display: block; color: #64748b; margin-top: 6px; font-size: 11.5pt;">※頭文字からの前方一致検索となります（部分一致での検索はできません）</small>
-                                <input type="hidden" id="customer_id">
-                                <div id="autocomplete-list" class="autocomplete-items"></div>
+                <!-- ===== Card 1: 基本情報 ===== -->
+                <div class="inv-card">
+                    <h3 class="inv-card-title">基本情報</h3>
+                    <div class="form-grid">
+                        <div class="form-group autocomplete-wrapper" id="customer-select-group">
+                            <label for="input-customer-search">顧客検索 <span class="required">*</span></label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="input-customer-search" class="form-control"
+                                    placeholder="顧客名を入力して検索..." autocomplete="off">
+                                <button type="button" class="btn btn-secondary" id="btn-customer-search"
+                                    style="flex-shrink: 0; padding: 0 16px;">
+                                    <i data-lucide="search" style="width: 16px; height: 16px;"></i> 検索
+                                </button>
                             </div>
+                            <small
+                                style="display: block; color: #64748b; margin-top: 6px; font-size: 11.5pt;">※頭文字からの前方一致検索となります（部分一致での検索はできません）</small>
+                            <input type="hidden" id="customer_id">
+                            <div id="autocomplete-list" class="autocomplete-items"></div>
+                        </div>
 
-                            <!-- Display mode for customer snapshot preview -->
-                            <div class="form-group" id="customer-display-group"
-                                style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px;">
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                                    <label style="margin: 0; color: #475569; font-weight: 600;">請求先（確定情報）</label>
-                                    <button type="button" class="btn btn-secondary btn-sm" id="btn-change-customer"
-                                        style="padding: 4px 12px;">
-                                        <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i> 変更
-                                    </button>
-                                </div>
-                                <div id="customer-snapshot-preview"
-                                    style="font-size: 13pt; line-height: 1.6; color: #1e293b;">
-                                    <div id="preview-zip"></div>
-                                    <div id="preview-address"></div>
-                                    <div id="preview-building"></div>
-                                    <div style="margin-top: 12px; font-weight: 600; font-size: 14pt;">
-                                        <span id="preview-name"></span> <span id="preview-title"></span>
-                                    </div>
+                        <!-- Display mode for customer snapshot preview -->
+                        <div class="form-group" id="customer-display-group"
+                            style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                                <label style="margin: 0; color: #475569; font-weight: 600;">請求先（確定情報）</label>
+                                <button type="button" class="btn btn-secondary btn-sm" id="btn-change-customer"
+                                    style="padding: 4px 12px;">
+                                    <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i> 変更
+                                </button>
+                            </div>
+                            <div id="customer-snapshot-preview"
+                                style="font-size: 13pt; line-height: 1.6; color: #1e293b;">
+                                <div id="preview-zip"></div>
+                                <div id="preview-address"></div>
+                                <div id="preview-building"></div>
+                                <div style="margin-top: 12px; font-weight: 600; font-size: 14pt;">
+                                    <span id="preview-name"></span> <span id="preview-title"></span>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="invoice_number">請求番号 <span class="required">*</span></label>
-                                <input type="text" id="invoice_number" class="form-control" placeholder="例: 2025-001">
-                            </div>
-                            <div class="form-group">
-                                <label for="invoice_date">請求日 <span class="required">*</span></label>
-                                <input type="date" id="invoice_date" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="due_date">支払期限</label>
-                                <input type="date" id="due_date" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="status">ステータス <span class="required">*</span></label>
-                                <select id="status" class="form-select">
-                                    <option value="下書き">下書き</option>
-                                    <option value="発行済">発行済</option>
-                                    <option value="一部入金">一部入金</option>
-                                    <option value="入金済">入金済</option>
-                                    <option value="延滞">延滞</option>
-                                </select>
-                            </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="invoice_number">請求番号 <span class="required">*</span></label>
+                            <input type="text" id="invoice_number" class="form-control" placeholder="例: 2025-001">
                         </div>
+                        <div class="form-group">
+                            <label for="invoice_date">請求日 <span class="required">*</span></label>
+                            <input type="date" id="invoice_date" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="due_date">支払期限</label>
+                            <input type="date" id="due_date" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="status">ステータス <span class="required">*</span></label>
+                            <select id="status" class="form-select">
+                                <option value="下書き">下書き</option>
+                                <option value="発行済">発行済</option>
+                                <option value="一部入金">一部入金</option>
+                                <option value="入金済">入金済</option>
+                                <option value="延滞">延滞</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
 
-                        <!-- Invoice Items -->
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; margin-top: 40px; margin-bottom: 16px;">
-                            <h3 class="form-section-title" style="margin-bottom: 0; border: none;">請求明細</h3>
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-secondary btn-sm"
-                                    id="btn-import-estimate">案件から取込</button>
-                                <button type="button" class="btn btn-secondary btn-sm" id="btn-add-item">＋ 明細追加</button>
-                            </div>
+                <!-- ===== Card 2: 請求明細 ===== -->
+                <div class="inv-card">
+                    <h3 class="inv-card-title">
+                        <span>請求明細</span>
+                        <div class="card-actions">
+                            <button type="button" class="btn btn-secondary btn-sm"
+                                id="btn-import-estimate">案件から取込</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-add-item">＋ 明細追加</button>
                         </div>
+                    </h3>
 
-                        <div class="table-responsive mb-4">
-                            <table class="table-modern" id="item-table" style="table-layout: fixed; width: 100%;">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 10%;">種別</th>
-                                        <th style="width: 20%;">案件</th>
-                                        <th style="width: 25%;">内容</th>
-                                        <th style="width: 12%; text-align: right;">単価</th>
-                                        <th style="width: 8%; text-align: right;">数量</th>
-                                        <th style="width: 12%; text-align: right;">金額</th>
-                                        <th style="width: 5%; text-align: center;">課税</th>
-                                        <th style="width: 8%; text-align: center;">編集</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="item-list-body">
-                                    <!-- JS populated -->
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="table-responsive mb-4">
+                        <table class="table-modern" id="item-table" style="table-layout: fixed; width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%;">種別</th>
+                                    <th style="width: 20%;">案件</th>
+                                    <th style="width: 25%;">内容</th>
+                                    <th style="width: 12%; text-align: right;">単価</th>
+                                    <th style="width: 8%; text-align: right;">数量</th>
+                                    <th style="width: 12%; text-align: right;">金額</th>
+                                    <th style="width: 5%; text-align: center;">課税</th>
+                                    <th style="width: 8%; text-align: center;">編集</th>
+                                </tr>
+                            </thead>
+                            <tbody id="item-list-body">
+                                <!-- JS populated -->
+                            </tbody>
+                        </table>
+                    </div>
 
-                        <!-- Summary -->
-                        <div class="summary-box">
-                            <div class="summary-row">
-                                <span>課税対象額</span>
-                                <span id="display-subtotal-taxable">¥0</span>
-                            </div>
-                            <div class="summary-row">
-                                <span>消費税(10%)</span>
-                                <span id="display-tax-amount">¥0</span>
-                            </div>
-                            <div class="summary-row">
-                                <span>非課税額</span>
-                                <span id="display-subtotal-nontaxable">¥0</span>
-                            </div>
-                            <div class="summary-total">
-                                <span>合計金額</span>
-                                <span id="display-total-amount">¥0</span>
-                            </div>
+                    <!-- Summary -->
+                    <div class="summary-box">
+                        <div class="summary-row">
+                            <span>課税対象額</span>
+                            <span id="display-subtotal-taxable">¥0</span>
                         </div>
+                        <div class="summary-row">
+                            <span>消費税(10%)</span>
+                            <span id="display-tax-amount">¥0</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>非課税額</span>
+                            <span id="display-subtotal-nontaxable">¥0</span>
+                        </div>
+                        <div class="summary-total">
+                            <span>合計金額</span>
+                            <span id="display-total-amount">¥0</span>
+                        </div>
+                    </div>
+                </div>
 
-                        <!-- Payment Record -->
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; margin-top: 40px; margin-bottom: 16px;">
-                            <h3 class="form-section-title" style="margin-bottom: 0; border: none;">入金記録</h3>
-                            <button type="button" class="btn btn-secondary btn-sm" id="btn-add-payment">＋ 入金追加</button>
-                        </div>
-                        <div class="table-responsive mb-4">
+                <!-- ===== Card 3: 入金記録 + 残高サマリー (2-col) ===== -->
+                <div class="inv-finance-grid">
+                    <!-- Left: 入金テーブル -->
+                    <div class="inv-card" style="margin-bottom: 0;">
+                        <h3 class="inv-card-title">
+                            <span>入金記録</span>
+                            <div class="card-actions">
+                                <button type="button" class="btn btn-secondary btn-sm" id="btn-add-payment">＋
+                                    入金追加</button>
+                            </div>
+                        </h3>
+                        <div class="table-responsive">
                             <table class="table-modern" id="payment-table">
                                 <thead>
                                     <tr>
@@ -496,25 +590,30 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
 
-                        <div class="balance-info">
-                            <div style="color: #64748b; margin-bottom: 4px;">入金合計: <span id="display-payment-total"
-                                    style="font-weight: 600;">¥0</span></div>
-                            <div style="font-weight: 700;">残高: <span id="display-balance"
-                                    style="color: var(--primary);">¥0</span></div>
-                        </div>
-
-                        <!-- Remarks -->
-                        <div class="form-group" style="margin-top: 32px;">
-                            <label for="remarks">備考</label>
-                            <textarea id="remarks" class="form-control" rows="3" placeholder="備考を入力..."></textarea>
-                        </div>
+                    <!-- Right: 残高サマリー -->
+                    <div class="balance-card">
+                        <div class="balance-label">入金合計</div>
+                        <div class="balance-value" id="display-payment-total">¥0</div>
+                        <div class="balance-separator"></div>
+                        <div class="balance-label">残高（未入金）</div>
+                        <div class="balance-value" id="display-balance">¥0</div>
                     </div>
                 </div>
 
-                <div style="text-align: right; margin-top: 20px; color: var(--text-muted); font-size: 0.8rem;">
-                    <p>登録日: <span id="created_date">-</span></p>
-                    <p>最終更新日: <span id="last_updated">-</span></p>
+                <!-- ===== Card 4: 備考 ===== -->
+                <div class="inv-card">
+                    <h3 class="inv-card-title">備考</h3>
+                    <div class="form-group" style="margin: 0;">
+                        <textarea id="remarks" class="form-control" rows="3" placeholder="備考を入力..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Metadata Footer -->
+                <div class="inv-meta-footer">
+                    <span>登録日: <span id="created_date">-</span></span>
+                    <span>最終更新日: <span id="last_updated">-</span></span>
                 </div>
 
                 <footer style="margin-top: 60px; text-align: center; color: #aaa; font-size: 0.8rem;">

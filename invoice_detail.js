@@ -357,11 +357,13 @@ document.addEventListener('DOMContentLoaded', () => {
         dispPaymentTotal.textContent = formatCurrency(payTotal);
         dispBalance.textContent = formatCurrency(balance);
 
-        // Balance Color
+        // Balance Color + unpaid highlight
         if (balance <= 0) {
             dispBalance.style.color = '#059669';
+            dispBalance.classList.remove('unpaid');
         } else {
             dispBalance.style.color = '#dc2626';
+            dispBalance.classList.add('unpaid');
         }
 
         return { taxable, tax, nontaxable, total, payTotal, balance };
