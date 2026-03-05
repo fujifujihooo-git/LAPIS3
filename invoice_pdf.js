@@ -11,12 +11,28 @@ const HANKO_SYOKUIN_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAG
 // ===== 自社情報 =====
 const OFFICE_INFO = {
     name: '行政書士 中村事務所',
+    nameLine1: '行政',
+    nameLine2: '中村事務所',
+    nameLine3: '書士',
     representative: '中村 宏明',
     postal: '〒160-0023',
     address: '東京都新宿区西新宿7-19-7-402',
     tel: 'TEL 03-5386-3001',
-    fax: 'FAX 03-5386-3002'
+    fax: 'FAX 03-5386-3002',
+    registrationNumber: 'T4011101011419'
 };
+
+// ===== 振込先情報 =====
+const BANK_INFO = {
+    bankName: '三菱UFJ銀行',
+    branchName: '新宿中央支店',
+    accountType: '普通',
+    accountNumber: 'XXXXXXX',
+    accountHolder: 'ナカムラ ヒロアキ'
+};
+
+// ===== 法的免責事項（所得税法第204条） =====
+const LEGAL_DISCLAIMER = '※源泉所得税につきましては、所得税法第204条の規定により貴社にてお取り扱いくださいますようお願い申し上げます。';
 
 // ===== フォントキャッシュ =====
 let fontLoaded = false;
@@ -110,223 +126,252 @@ async function generateInvoicePDF(data) {
         const marginL = 20;
         const marginR = 20;
         const contentW = pageW - marginL - marginR;
-        let y = 20; // current Y position
-
-        // ===== 4. タイトル: 請求書 =====
-        doc.setFontSize(24);
-        doc.setTextColor(30, 41, 59);
-        doc.text('請 求 書', pageW / 2, y, { align: 'center' });
-        y += 5;
-
-        // 下線
-        doc.setDrawColor(59, 130, 246); // blue
-        doc.setLineWidth(0.8);
-        doc.line(marginL + 30, y, pageW - marginR - 30, y);
-        y += 12;
-
-        // ===== 5. 請求番号・請求日 (右寄せ) =====
-        doc.setFontSize(9);
-        doc.setTextColor(100, 116, 139);
         const rightX = pageW - marginR;
-        doc.text('請求番号: ' + (data.invoiceNumber || '-'), rightX, y, { align: 'right' });
-        y += 5;
-        doc.text('請求日: ' + (data.invoiceDate || '-'), rightX, y, { align: 'right' });
-        if (data.dueDate) {
-            y += 5;
-            doc.text('支払期限: ' + data.dueDate, rightX, y, { align: 'right' });
-        }
-        y -= (data.dueDate ? 10 : 5); // Reset Y for left-side content
+        let y = 18;
 
-        // ===== 6. 請求先 (左寄せ) =====
+        // ============================================================
+        // ===== 4. タイトル: 請 求 書 =====
+        // ============================================================
+        doc.setFontSize(20);
+        doc.setTextColor(30, 41, 59);
+        doc.text('請  求  書', pageW / 2, y, { align: 'center' });
+        y += 4;
+
+        // タイトル下線（ダークネイビー）
+        doc.setDrawColor(30, 41, 59);
+        doc.setLineWidth(0.6);
+        doc.line(pageW / 2 - 28, y, pageW / 2 + 28, y);
+        y += 10;
+
+        // ============================================================
+        // ===== 5. 左上: 請求先情報 / 右上: 請求番号・日付・登録番号 =====
+        // ============================================================
+        const headerTopY = y;
+
+        // --- 右上: 請求番号・請求日・登録番号 ---
+        doc.setFontSize(9);
+        doc.setTextColor(60, 60, 60);
+        let ryPos = headerTopY;
+        doc.text('請求番号: ' + (data.invoiceNumber || '-'), rightX, ryPos, { align: 'right' });
+        ryPos += 5;
+        doc.text('請求日: ' + (data.invoiceDate || '-'), rightX, ryPos, { align: 'right' });
+        ryPos += 5;
+        doc.text('登録番号: ' + OFFICE_INFO.registrationNumber, rightX, ryPos, { align: 'right' });
+        ryPos += 3;
+
+        // --- 左上: 宛名 ---
         doc.setFontSize(14);
         doc.setTextColor(30, 41, 59);
         const custName = (data.customerName || '') + '　' + (data.customerTitle || '御中');
-        doc.text(custName, marginL, y);
-        y += 2;
-        // 下線
-        doc.setDrawColor(30, 41, 59);
-        doc.setLineWidth(0.5);
-        doc.line(marginL, y, marginL + 90, y);
-        y += 6;
+        doc.text(custName, marginL, headerTopY + 2);
 
+        // 宛名下線
+        doc.setDrawColor(30, 41, 59);
+        doc.setLineWidth(0.4);
+        const custNameWidth = Math.min(doc.getTextWidth(custName) + 4, 100);
+        doc.line(marginL, headerTopY + 4, marginL + custNameWidth, headerTopY + 4);
+
+        // 顧客住所情報
+        let cyPos = headerTopY + 9;
         doc.setFontSize(8.5);
-        doc.setTextColor(100, 116, 139);
+        doc.setTextColor(80, 80, 80);
         if (data.customerPostal) {
-            doc.text(data.customerPostal, marginL, y);
-            y += 4;
+            doc.text(data.customerPostal, marginL, cyPos);
+            cyPos += 4;
         }
         if (data.customerAddress) {
-            doc.text(data.customerAddress, marginL, y);
-            y += 4;
+            doc.text(data.customerAddress, marginL, cyPos);
+            cyPos += 4;
         }
         if (data.customerBuilding) {
-            doc.text(data.customerBuilding, marginL, y);
-            y += 4;
+            doc.text(data.customerBuilding, marginL, cyPos);
+            cyPos += 4;
         }
 
-        y += 6;
+        // Y位置を左右の大きい方に合わせる
+        y = Math.max(cyPos, ryPos) + 4;
 
-        // ===== 7. 合計金額ハイライトボックス =====
+        // ============================================================
+        // ===== 6. 発行元情報（右寄せブロック）+ ロゴ + 職印 =====
+        // ============================================================
+        const issuerBlockX = rightX - 75;
+        const issuerTopY = y;
+
+        // ロゴ画像
+        try {
+            doc.addImage(LOGO_OFFICE_B64, 'PNG', issuerBlockX, issuerTopY, 65, 16);
+        } catch (e) {
+            console.warn('Logo image error:', e);
+            doc.setFontSize(11);
+            doc.setTextColor(30, 41, 59);
+            doc.text(OFFICE_INFO.name, issuerBlockX, issuerTopY + 8);
+        }
+
+        // 事務所住所・TEL/FAX（ロゴの下）
+        let issuerY = issuerTopY + 19;
+        doc.setFontSize(7.5);
+        doc.setTextColor(80, 80, 80);
+        doc.text(OFFICE_INFO.postal + ' ' + OFFICE_INFO.address, issuerBlockX, issuerY);
+        issuerY += 3.5;
+        doc.text(OFFICE_INFO.tel + '  ' + OFFICE_INFO.fax, issuerBlockX, issuerY);
+        issuerY += 3.5;
+
+        // 職印画像（事務所ブロック右上に重ねて配置）
+        const hankoSize = 22;
+        const hankoX = rightX - hankoSize - 2;
+        const hankoY = issuerTopY + 1;
+        try {
+            doc.addImage(HANKO_SYOKUIN_B64, 'PNG', hankoX, hankoY, hankoSize, hankoSize);
+        } catch (e) {
+            console.warn('Hanko image error:', e);
+        }
+
+        y = issuerY + 6;
+
+        // ============================================================
+        // ===== 7. ご請求金額ハイライトボックス =====
+        // ============================================================
         const boxY = y;
-        doc.setFillColor(243, 244, 246); // gray-100
-        doc.roundedRect(marginL, boxY, contentW, 16, 3, 3, 'F');
+        doc.setFillColor(240, 242, 245);
+        doc.setDrawColor(30, 41, 59);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(marginL, boxY, contentW, 14, 2, 2, 'FD');
         doc.setFontSize(10);
-        doc.setTextColor(100, 116, 139);
-        doc.text('ご請求金額（税込）', marginL + 6, boxY + 7);
-        doc.setFontSize(18);
+        doc.setTextColor(60, 60, 60);
+        doc.text('ご請求金額（税込）', marginL + 6, boxY + 6);
+        doc.setFontSize(16);
         doc.setTextColor(30, 41, 59);
-        doc.text(pdfFormatCurrency(data.totalAmount), rightX - 6, boxY + 11, { align: 'right' });
-        y = boxY + 22;
+        doc.text(pdfFormatCurrency(data.totalAmount), rightX - 6, boxY + 9.5, { align: 'right' });
+        y = boxY + 20;
 
-        // ===== 8. 明細テーブル =====
-        const tableColumns = [
-            { header: '種別', dataKey: 'type' },
-            { header: '内容', dataKey: 'desc' },
-            { header: '単価', dataKey: 'price' },
-            { header: '数量', dataKey: 'qty' },
-            { header: '金額', dataKey: 'amount' },
-            { header: '課税', dataKey: 'tax' }
-        ];
+        // ============================================================
+        // ===== 8. 明細テーブル（課税→小計→消費税→非課税→合計） =====
+        // ============================================================
 
-        const tableRows = (data.items || []).map(item => ({
-            type: item.item_type || '-',
-            desc: item.description || '-',
-            price: pdfFormatCurrency(item.unit_price),
-            qty: String(item.quantity || 1),
-            amount: pdfFormatCurrency(item.amount),
-            tax: item.is_taxable ? '○' : '×'
-        }));
+        // --- 課税対象項目と非課税項目を分離 ---
+        const taxableItems = (data.items || []).filter(item => item.is_taxable);
+        const nontaxableItems = (data.items || []).filter(item => !item.is_taxable);
 
+        // --- テーブルボディ構築 ---
+        const tableBody = [];
+
+        // ① 課税対象項目
+        taxableItems.forEach(item => {
+            tableBody.push([
+                { content: item.description || '-', styles: {} },
+                { content: String(item.quantity || 1), styles: { halign: 'center' } },
+                { content: pdfFormatCurrency(item.unit_price), styles: { halign: 'right' } },
+                { content: pdfFormatCurrency(item.amount), styles: { halign: 'right' } }
+            ]);
+        });
+
+        // ② 小計行
+        tableBody.push([
+            { content: '小計', colSpan: 3, styles: { halign: 'right', fontStyle: 'normal', fillColor: [245, 247, 250], textColor: [60, 60, 60] } },
+            { content: pdfFormatCurrency(data.taxableSubtotal), styles: { halign: 'right', fillColor: [245, 247, 250], textColor: [30, 41, 59] } }
+        ]);
+
+        // ③ 消費税行
+        tableBody.push([
+            { content: '消費税（10%）', colSpan: 3, styles: { halign: 'right', fontStyle: 'normal', fillColor: [245, 247, 250], textColor: [60, 60, 60] } },
+            { content: pdfFormatCurrency(data.taxAmount), styles: { halign: 'right', fillColor: [245, 247, 250], textColor: [30, 41, 59] } }
+        ]);
+
+        // ④ 非課税項目（ある場合）
+        if (nontaxableItems.length > 0) {
+            // 非課税セクションヘッダー
+            tableBody.push([
+                { content: '【非課税項目】', colSpan: 4, styles: { halign: 'left', fillColor: [250, 250, 252], textColor: [100, 100, 120], fontSize: 8 } }
+            ]);
+            nontaxableItems.forEach(item => {
+                tableBody.push([
+                    { content: item.description || '-', styles: {} },
+                    { content: String(item.quantity || 1), styles: { halign: 'center' } },
+                    { content: pdfFormatCurrency(item.unit_price), styles: { halign: 'right' } },
+                    { content: pdfFormatCurrency(item.amount), styles: { halign: 'right' } }
+                ]);
+            });
+        }
+
+        // ⑤ 合計金額行
+        tableBody.push([
+            { content: '合計金額', colSpan: 3, styles: { halign: 'right', fontStyle: 'normal', fillColor: [30, 41, 59], textColor: [255, 255, 255], fontSize: 10 } },
+            { content: pdfFormatCurrency(data.totalAmount), styles: { halign: 'right', fillColor: [30, 41, 59], textColor: [255, 255, 255], fontSize: 10 } }
+        ]);
+
+        // --- autoTable描画 ---
         doc.autoTable({
             startY: y,
-            columns: tableColumns,
-            body: tableRows,
+            head: [['内容', '数量', '単価', '金額']],
+            body: tableBody,
             theme: 'grid',
             styles: {
                 font: 'NotoSansJP',
                 fontSize: 9,
                 textColor: [30, 41, 59],
-                cellPadding: 3,
-                lineColor: [226, 232, 240],
-                lineWidth: 0.3
+                cellPadding: { top: 2.5, right: 3, bottom: 2.5, left: 3 },
+                lineColor: [200, 205, 215],
+                lineWidth: 0.2
             },
             headStyles: {
-                fillColor: [59, 130, 246],
+                fillColor: [50, 60, 80],
                 textColor: [255, 255, 255],
                 fontStyle: 'normal',
                 fontSize: 9,
                 halign: 'center'
             },
             columnStyles: {
-                type: { cellWidth: 22, halign: 'center' },
-                desc: { cellWidth: 'auto' },
-                price: { cellWidth: 28, halign: 'right' },
-                qty: { cellWidth: 16, halign: 'center' },
-                amount: { cellWidth: 30, halign: 'right' },
-                tax: { cellWidth: 16, halign: 'center' }
+                0: { cellWidth: 'auto' },
+                1: { cellWidth: 20, halign: 'center' },
+                2: { cellWidth: 30, halign: 'right' },
+                3: { cellWidth: 35, halign: 'right' }
             },
-            margin: { left: marginL, right: marginR },
-            didDrawPage: function (hookData) {
-                // ヘッダーリピート対応
-            }
+            margin: { left: marginL, right: marginR }
         });
 
-        y = doc.lastAutoTable.finalY + 8;
+        y = doc.lastAutoTable.finalY + 10;
 
-        // ===== 9. 小計・消費税・合計 (右寄せ) =====
-        const sumX = pageW - marginR - 80;
-        const sumW = 80;
-
+        // ============================================================
+        // ===== 9. 振込先情報 =====
+        // ============================================================
         doc.setFontSize(9);
-        doc.setTextColor(100, 116, 139);
-
-        // 課税対象額
-        doc.text('課税対象額', sumX, y);
         doc.setTextColor(30, 41, 59);
-        doc.text(pdfFormatCurrency(data.taxableSubtotal), rightX, y, { align: 'right' });
-        y += 5.5;
-
-        // 消費税
-        doc.setTextColor(100, 116, 139);
-        doc.text('消費税(10%)', sumX, y);
-        doc.setTextColor(30, 41, 59);
-        doc.text(pdfFormatCurrency(data.taxAmount), rightX, y, { align: 'right' });
-        y += 5.5;
-
-        // 非課税額
-        doc.setTextColor(100, 116, 139);
-        doc.text('非課税額', sumX, y);
-        doc.setTextColor(30, 41, 59);
-        doc.text(pdfFormatCurrency(data.nontaxableSubtotal), rightX, y, { align: 'right' });
-        y += 3;
-
-        // 合計線
-        doc.setDrawColor(59, 130, 246);
-        doc.setLineWidth(0.6);
-        doc.line(sumX, y, rightX, y);
+        doc.text('【お振込先】', marginL, y);
         y += 5;
+        doc.setFontSize(8.5);
+        doc.setTextColor(50, 50, 50);
+        doc.text(BANK_INFO.bankName + '  ' + BANK_INFO.branchName + '  ' + BANK_INFO.accountType + '  ' + BANK_INFO.accountNumber, marginL + 4, y);
+        y += 4;
+        doc.text('口座名義: ' + BANK_INFO.accountHolder, marginL + 4, y);
+        y += 8;
 
-        // 合計
-        doc.setFontSize(11);
-        doc.setTextColor(59, 130, 246);
-        doc.text('合計金額', sumX, y);
-        doc.text(pdfFormatCurrency(data.totalAmount), rightX, y, { align: 'right' });
-        y += 14;
+        // ============================================================
+        // ===== 10. 備考欄 =====
+        // ============================================================
+        doc.setFontSize(9);
+        doc.setTextColor(30, 41, 59);
+        doc.text('【備考】', marginL, y);
+        y += 5;
+        doc.setFontSize(8);
+        doc.setTextColor(60, 60, 60);
 
-        // ===== 10. 備考 =====
+        // ユーザー入力の備考
         if (data.remarks) {
-            doc.setFontSize(9);
-            doc.setTextColor(100, 116, 139);
-            doc.text('【備考】', marginL, y);
-            y += 5;
-            doc.setTextColor(30, 41, 59);
             const remarkLines = doc.splitTextToSize(data.remarks, contentW - 10);
             doc.text(remarkLines, marginL + 4, y);
-            y += remarkLines.length * 4.5 + 6;
+            y += remarkLines.length * 3.8 + 3;
         }
 
-        // ===== 11. 事務所情報 (右下) + ロゴ + 職印 =====
-        // ページの残りスペースをチェック（最低60mm必要）
-        if (y > pageH - 70) {
-            doc.addPage();
-            y = 30;
-        }
+        // 法的免責事項（定型文）
+        const disclaimerLines = doc.splitTextToSize(LEGAL_DISCLAIMER, contentW - 10);
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 100, 100);
+        doc.text(disclaimerLines, marginL + 4, y);
+        y += disclaimerLines.length * 3.5 + 4;
 
-        // 事務所情報テキスト
-        const infoBlockX = pageW - marginR - 80;
-        const infoBlockY = Math.max(y, pageH - 65);
-
-        // ロゴ画像
-        try {
-            doc.addImage(LOGO_OFFICE_B64, 'PNG', infoBlockX, infoBlockY, 70, 18);
-        } catch (e) {
-            console.warn('Logo image error:', e);
-            // フォールバック: テキストで表示
-            doc.setFontSize(12);
-            doc.setTextColor(30, 41, 59);
-            doc.text(OFFICE_INFO.name, infoBlockX, infoBlockY + 8);
-        }
-
-        // 事務所名テキスト (ロゴの下)
-        const textY = infoBlockY + 22;
-        doc.setFontSize(8);
-        doc.setTextColor(100, 116, 139);
-        doc.text(OFFICE_INFO.postal + ' ' + OFFICE_INFO.address, infoBlockX, textY);
-        doc.text(OFFICE_INFO.tel + '  ' + OFFICE_INFO.fax, infoBlockX, textY + 4);
-
-        // 職印画像 (事務所テキスト右上に重ねて配置)
-        const hankoSize = 25; // 25mm × 25mm
-        const hankoX = pageW - marginR - hankoSize - 5;
-        const hankoY = infoBlockY + 2;
-
-        try {
-            // 透過PNGで追加
-            doc.addImage(HANKO_SYOKUIN_B64, 'PNG', hankoX, hankoY, hankoSize, hankoSize);
-        } catch (e) {
-            console.warn('Hanko image error:', e);
-        }
-
-        // ===== 12. フッター =====
+        // ============================================================
+        // ===== 11. フッター =====
+        // ============================================================
         const totalPages = doc.internal.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
             doc.setPage(i);
@@ -335,7 +380,9 @@ async function generateInvoicePDF(data) {
             doc.text('Page ' + i + ' / ' + totalPages, pageW / 2, pageH - 8, { align: 'center' });
         }
 
-        // ===== 13. ダウンロード =====
+        // ============================================================
+        // ===== 12. ダウンロード =====
+        // ============================================================
         const fileName = '請求書_' + (data.invoiceNumber || 'draft') + '.pdf';
         doc.save(fileName);
 
