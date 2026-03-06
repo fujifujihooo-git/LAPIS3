@@ -40,6 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const importItemList = document.getElementById('import-item-list');
     const btnExecuteImport = document.getElementById('btn-execute-import');
     const importCheckAll = document.getElementById('import-check-all');
+    // --- Constants ---
+    // 案件プルダウンから除外するステータス（完了・取下げは請求不要）
+    const EXCLUDED_CASE_STATUSES = ['完了', '取下げ'];
+
     // --- State ---
     let isSaving = false;
     let formState = {
@@ -310,10 +314,22 @@ document.addEventListener('DOMContentLoaded', () => {
         select.innerHTML = '<option value="">-- 選択してください --</option>';
 
         const snap = await db.collection('cases').where('customer_id', '==', Number(custId)).get();
-        // Update cache
+        // Update cache (全件保持：getCaseName等で使用)
         casesCache = snap.docs.map(d => d.data());
 
-        casesCache.forEach(c => {
+        // 完了・取下げを除外した請求可能な案件のみプルダウンに表示
+        const billableCases = casesCache.filter(c => !EXCLUDED_CASE_STATUSES.includes(c.status));
+
+        if (billableCases.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '選択可能な未請求案件がありません';
+            opt.disabled = true;
+            select.appendChild(opt);
+            return;
+        }
+
+        billableCases.forEach(c => {
             const opt = document.createElement('option');
             opt.value = c.case_id;
             opt.textContent = c.procedure_name || `案件 #${c.case_id}`;
@@ -800,7 +816,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             casesCache = snap.docs.map(d => d.data()); // Update cache
-            casesCache.forEach(c => {
+
+            // 完了・取下げを除外した請求可能な案件のみ表示
+            const billableCases = casesCache.filter(c => !EXCLUDED_CASE_STATUSES.includes(c.status));
+            if (billableCases.length === 0) {
+                alert('選択可能な未請求案件がありません。\nすべての案件が完了または取下げ済みです。');
+                return;
+            }
+
+            billableCases.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.case_id;
                 opt.textContent = c.procedure_name || `案件 #${c.case_id}`;
