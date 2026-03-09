@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>バックアップ管理 - LAPIS2</title>
+    <title>インポート（復元） - LAPIS2</title>
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
@@ -19,7 +19,7 @@
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             padding: 32px;
-            max-width: 600px;
+            max-width: 700px;
             margin: 0 auto;
             text-align: center;
         }
@@ -79,7 +79,7 @@
         }
 
         .btn-export:disabled {
-            background: #cbd5e1;
+            background: #cbd5e1 !important;
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
@@ -127,6 +127,15 @@
             max-width: 600px;
             margin: 0 auto;
         }
+
+        .file-upload-wrapper {
+            margin-bottom: 24px;
+            text-align: left;
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
     </style>
 </head>
 
@@ -148,7 +157,6 @@
                         <span class="nav-label">案件管理</span>
                     </a>
                 </li>
-
                 <li class="nav-header">Management</li>
                 <li class="nav-item">
                     <a href="customer_list.html">
@@ -174,7 +182,6 @@
                         <span class="nav-label">売上管理</span>
                     </a>
                 </li>
-
                 <li class="nav-header">Settings</li>
                 <li class="nav-item">
                     <a href="license_washout.html">
@@ -201,15 +208,15 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="import.html" class="nav-link">
-                        <i data-lucide="upload-cloud"></i>
-                        <span class="nav-label">インポート（復元）</span>
+                    <a href="backup.html">
+                        <span class="nav-icon">💾</span>
+                        <span class="nav-label">バックアップ管理</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="backup.html" class="active">
-                        <span class="nav-icon">💾</span>
-                        <span class="nav-label">バックアップ管理</span>
+                    <a href="import.html" class="active">
+                        <span class="nav-icon">☁️</span>
+                        <span class="nav-label">インポート（復元）</span>
                     </a>
                 </li>
             </ul>
@@ -223,7 +230,7 @@
                 <div class="header-left">
                     <button id="mobile-toggle"
                         style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-muted);">☰</button>
-                    <h1 class="page-title">バックアップ管理</h1>
+                    <h1 class="page-title">インポート（復元）</h1>
                 </div>
                 <div class="header-right" id="header-right">
                     <!-- User Status injected here -->
@@ -238,55 +245,48 @@
                     <i data-lucide="alert-triangle"
                         style="width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.8;"></i>
                     <h2 style="margin: 0 0 8px 0; font-size: 1.2rem;">アクセス権限がありません</h2>
-                    <p style="margin: 0; font-size: 13pt;">バックアップ機能は「管理者」権限を持つユーザーのみ利用可能です。<br>3秒後にトップページへ移動します。</p>
+                    <p style="margin: 0; font-size: 13pt;">インポート機能は「管理者」権限を持つユーザーのみ利用可能です。<br>3秒後にトップページへ移動します。</p>
                 </div>
 
-                <div class="backup-card" id="backup-card" style="display: none;">
+                <div class="backup-card" id="import-card" style="display: none;">
                     <div class="backup-icon-wrapper">
-                        <i data-lucide="database-backup"></i>
+                        <i data-lucide="upload-cloud"></i>
                     </div>
-                    <h2 class="backup-title">全データエクスポート</h2>
+                    <h2 class="backup-title">データの復元とインポート</h2>
                     <p class="backup-desc">
-                        LAPIS2システムのすべてのデータをJSON形式でダウンロードします。<br>
-                        今後のシステム移行や、万が一のデータ復旧の際に必要となります。<br>
+                        出力したバックアップファイル（JSON / ZIP / xlsx）を読み込んでデータを復元します。<br>
                         <span
                             style="font-size: 0.85em; color: #ef4444; font-weight: 500; display: block; margin-top: 8px;">
-                            ※データ量によってはダウンロード準備に数分かかる場合があります。
+                            ※同一IDの既存データがある場合は上書きされます。<br>まずはファイルを読み込み「シミュレーション（Dry Run）」を実行して下さい。
                         </span>
                     </p>
 
-                    <div class="format-selection"
-                        style="margin-bottom: 24px; text-align: left; background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                        <h3 style="font-size: 1rem; margin-top: 0; margin-bottom: 12px; color: #334155;">出力フォーマットを選択
+                    <div class="file-upload-wrapper">
+                        <h3 style="font-size: 1rem; margin-top: 0; margin-bottom: 12px; color: #334155;">バックアップファイルを選択
                         </h3>
-                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="radio" name="export-format" value="json" checked
-                                    style="margin-right: 8px; width: 1.2rem; height: 1.2rem; accent-color: var(--primary);">
-                                <span style="font-size: 1.05rem; font-weight: 500;">JSON <span
-                                        style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">(推奨・バックアップ用)</span></span>
-                            </label>
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="radio" name="export-format" value="csv"
-                                    style="margin-right: 8px; width: 1.2rem; height: 1.2rem; accent-color: var(--primary);">
-                                <span style="font-size: 1.05rem; font-weight: 500;">CSV <span
-                                        style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">(ZIP圧縮)</span></span>
-                            </label>
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="radio" name="export-format" value="excel"
-                                    style="margin-right: 8px; width: 1.2rem; height: 1.2rem; accent-color: var(--primary);">
-                                <span style="font-size: 1.05rem; font-weight: 500;">Excel <span
-                                        style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">(.xlsx)</span></span>
-                            </label>
-                        </div>
+                        <input type="file" id="file-input" accept=".json, .zip, .xlsx, .csv"
+                            style="display: block; width: 100%; border: 1px solid #ccc; padding: 10px; border-radius: 6px; box-sizing: border-box;">
                     </div>
 
-                    <button class="btn-export" id="btn-run-export">
-                        <i data-lucide="download-cloud"></i> JSONファイルを生成してダウンロード
+                    <button class="btn-export" id="btn-simulate" style="margin-bottom: 24px; background: #64748b;">
+                        <i data-lucide="flask-conical"></i> シミュレーション（Dry Run）実行
+                    </button>
+
+                    <div id="summary-area"
+                        style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: left; max-height: 250px; overflow-y: auto;">
+                        <h3
+                            style="font-size: 1rem; color: #334155; margin-top:0; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                            解析レポート (Dry Run)</h3>
+                        <pre id="summary-text"
+                            style="font-size: 0.9rem; color: #475569; white-space: pre-wrap; margin:0; line-height: 1.5;"></pre>
+                    </div>
+
+                    <button class="btn-export" id="btn-run-import" style="background: #dc2626;" disabled>
+                        <i data-lucide="alert-triangle"></i> 本番インポートを実行
                     </button>
 
                     <div class="progress-area" id="progress-area">
-                        <div class="progress-text" id="progress-text">エクスポートを準備中...</div>
+                        <div class="progress-text" id="progress-text">処理中...</div>
                         <div class="progress-bar-bg">
                             <div class="progress-bar-fill" id="progress-fill"></div>
                         </div>
@@ -307,13 +307,14 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <!-- Export Libraries -->
+    <!-- Export Libraries for Import Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
-    <script src="backup.js"></script>
+    <script src="import.js"></script>
 </body>
 
 </html>

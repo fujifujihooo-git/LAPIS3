@@ -1,0 +1,447 @@
+document.addEventListener('DOMContentLoaded', async () => {
+    // UI Elements
+    const btnSimulate = document.getElementById('btn-simulate');
+    const btnExecute = document.getElementById('btn-run-import');
+    const fileInput = document.getElementById('file-input');
+    const importCard = document.getElementById('import-card');
+    const errorAccess = document.getElementById('error-access');
+    const summaryArea = document.getElementById('summary-area');
+    const summaryText = document.getElementById('summary-text');
+    const progressArea = document.getElementById('progress-area');
+    const progressText = document.getElementById('progress-text');
+    const progressFill = document.getElementById('progress-fill');
+
+    let parsedDataStore = null; // { collectionName: [docs...] }
+    let simulationResult = null; // Store dry-run results
+
+    // Tier Loading Order (Master -> Parent -> Child -> Grandchild -> ...)
+    const TIER_ORDER = [
+        // Tier 1: System Masters
+        'staff', 'government_offices', 'license_types',
+        // Tier 2: Parent entities
+        'customers',
+        // Tier 3: Depend on Customer
+        'offices', 'contacts', 'cases', 'licenses',
+        // Tier 4: Depend on Case
+        'invoices', 'payments',
+        // Tier 5: Depend on Case/Invoice
+        'invoice_items'
+    ];
+
+    // Collections that require customer_id
+    const REQUIRES_CUSTOMER = ['offices', 'contacts', 'cases', 'licenses'];
+    // Collections that require case_id
+    const REQUIRES_CASE = ['invoices', 'payments', 'invoice_items'];
+
+    // 1. Authentication & Role Check
+    const checkRoleAndInit = async () => {
+        setTimeout(async () => {
+            const sessionData = localStorage.getItem('lapis2_session');
+            if (!sessionData) return;
+
+            try {
+                const session = JSON.parse(sessionData);
+                if (!session || !session.email) throw new Error("Invalid session");
+
+                const staffData = await getDocFromFirestore('staff', 'email', session.email);
+                if (staffData && staffData.authority === 'admin') {
+                    importCard.style.display = 'block';
+                    btnSimulate.addEventListener('click', handleSimulate);
+                    btnExecute.addEventListener('click', handleExecute);
+                } else {
+                    errorAccess.style.display = 'block';
+                    setTimeout(() => { window.location.href = 'index.html'; }, 3000);
+                }
+            } catch (err) {
+                console.error("Auth role check failed:", err);
+                errorAccess.style.display = 'block';
+                setTimeout(() => { window.location.href = 'index.html'; }, 3000);
+            }
+        }, 1000);
+    };
+
+    checkRoleAndInit();
+
+    // 2. Parsers
+    const parseJSON = (text) => {
+        const obj = JSON.parse(text);
+        if (!obj.data) throw new Error("不正なバックアップファイルフォーマットです (dataオブジェクトが見つかりません)");
+
+        const result = {};
+        for (const [colName, docs] of Object.entries(obj.data)) {
+            // Un-serialize timestamps for JSON only
+            result[colName] = Object.entries(docs).map(([id, data]) => {
+                data._docId = id; // Preserve ID
+                return restoreFirestoreDatatypes(data);
+            });
+        }
+        return result;
+    };
+
+    const restoreFirestoreDatatypes = (data) => {
+        if (data === null || data === undefined) return data;
+
+        if (Array.isArray(data)) {
+            return data.map(restoreFirestoreDatatypes);
+        }
+
+        if (typeof data === 'object') {
+            if (data.__datatype__ === 'timestamp' && data.value) {
+                return firebase.firestore.Timestamp.fromDate(new Date(data.value));
+            }
+            const newObj = {};
+            for (const key in data) {
+                newObj[key] = restoreFirestoreDatatypes(data[key]);
+            }
+            return newObj;
+        }
+        return data;
+    };
+
+    const parseCSVFile = (csvText) => {
+        return new Promise((resolve, reject) => {
+            Papa.parse(csvText.trim(), {
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => {
+                    resolve(results.data.map(heuristicsCast));
+                },
+                error: (error) => {
+                    reject(error);
+                }
+            });
+        });
+    };
+
+    const heuristicsCast = (row) => {
+        const casted = {};
+        for (let key in row) {
+            let val = row[key];
+            if (val === '') {
+                casted[key] = null;
+                continue;
+            }
+            // Try parse JSON array
+            if (val.startsWith('[') && val.endsWith(']')) {
+                try { casted[key] = JSON.parse(val); continue; } catch (e) { }
+            }
+            // Number casting (ignore phone numbers/zip codes starting with 0)
+            if (!isNaN(val) && !(typeof val === 'string' && val.startsWith('0') && val.length > 1)) {
+                casted[key] = Number(val);
+                continue;
+            }
+            // ISO Date casting
+            if (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) {
+                casted[key] = firebase.firestore.Timestamp.fromDate(new Date(val));
+                continue;
+            }
+            casted[key] = val;
+        }
+        return casted;
+    };
+
+    const handleFileParse = async (file) => {
+        updateProgress('ファイルを読み込み中...', 10);
+        return new Promise((resolve, reject) => {
+            const ext = file.name.split('.').pop().toLowerCase();
+            const reader = new FileReader();
+
+            reader.onload = async (e) => {
+                try {
+                    let result = {};
+                    if (ext === 'json') {
+                        result = parseJSON(e.target.result);
+                    }
+                    else if (ext === 'zip') {
+                        updateProgress('ZIP展開中...', 30);
+                        const zip = await JSZip.loadAsync(e.target.result);
+                        for (const filename of Object.keys(zip.files)) {
+                            if (!filename.endsWith('.csv')) continue;
+                            const colName = filename.replace('.csv', '');
+                            const csvText = await zip.files[filename].async('string');
+                            if (csvText.trim().length > 0) {
+                                result[colName] = await parseCSVFile(csvText);
+                            } else {
+                                result[colName] = [];
+                            }
+                        }
+                    }
+                    else if (ext === 'xlsx') {
+                        updateProgress('Excel展開中...', 30);
+                        const wb = XLSX.read(e.target.result, { type: 'array' });
+                        for (const sheetName of wb.SheetNames) {
+                            const ws = wb.Sheets[sheetName];
+                            const rows = XLSX.utils.sheet_to_json(ws);
+                            result[sheetName] = rows.map(heuristicsCast);
+                        }
+                    }
+                    else {
+                        throw new Error('未対応のファイル型式です。JSON, ZIP(CSV), a Excelを選択してください。');
+                    }
+                    resolve(result);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            reader.onerror = () => reject(new Error('ファイル読み込みエラー'));
+
+            if (ext === 'zip' || ext === 'xlsx') {
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.readAsText(file); // JSON
+            }
+        });
+    };
+
+    // 3. Dry Run Engine
+    const handleSimulate = async () => {
+        const file = fileInput.files[0];
+        if (!file) {
+            alert("バックアップファイルを選択してください。");
+            return;
+        }
+
+        btnSimulate.disabled = true;
+        btnExecute.disabled = true;
+        summaryArea.style.display = 'none';
+        progressArea.style.display = 'block';
+
+        try {
+            parsedDataStore = await handleFileParse(file);
+
+            updateProgress('データベースと照合中 (シミュレーション)...', 50);
+
+            simulationResult = {
+                collections: {},
+                totalNew: 0,
+                totalOverwritten: 0,
+                totalErrors: 0,
+                errorsList: []
+            };
+
+            // Pre-fetch all current DB IDs for fast check
+            const dbRefStore = {};
+            for (const colName of Object.keys(parsedDataStore)) {
+                const snap = await db.collection(colName).get();
+                dbRefStore[colName] = new Set(snap.docs.map(d => d.id));
+            }
+
+            // In-Memory Virtual Stores for dependency validation
+            const virtualIds = {
+                customers: new Set(dbRefStore['customers'] || []),
+                cases: new Set(dbRefStore['cases'] || [])
+            };
+
+            // Verify in Tier Order
+            const processedCols = new Set();
+            for (const col of TIER_ORDER) {
+                if (!parsedDataStore[col]) continue;
+                processedCols.add(col);
+                evaluateCollection(col, parsedDataStore[col], dbRefStore[col], virtualIds);
+            }
+            // Evaluate any custom collections not in TIER_ORDER
+            for (const col of Object.keys(parsedDataStore)) {
+                if (!processedCols.has(col)) {
+                    evaluateCollection(col, parsedDataStore[col], dbRefStore[col], virtualIds);
+                }
+            }
+
+            renderSummary();
+            updateProgress('シミュレーション完了', 100);
+
+            if (simulationResult.totalErrors === 0 && Object.keys(parsedDataStore).length > 0) {
+                btnExecute.disabled = false; // Enable if no errors
+            }
+
+        } catch (err) {
+            console.error(err);
+            alert("シミュレーション中にエラーが発生しました。\n" + err.message);
+        } finally {
+            btnSimulate.disabled = false;
+            setTimeout(() => {
+                if (progressArea) progressArea.style.display = 'none';
+                if (progressFill) progressFill.style.width = '0%';
+            }, 1500);
+        }
+    };
+
+    const evaluateCollection = (colName, docs, existingIdsSet, virtualIds) => {
+        simulationResult.collections[colName] = { new: 0, overwritten: 0, errors: 0 };
+        const safeExistingSet = existingIdsSet || new Set();
+
+        for (const doc of docs) {
+            let docId = doc._docId;
+
+            // Try reconstruct ID if missing (_docId is usually present from JSON)
+            if (!docId) {
+                if (colName === 'customers' && doc.customer_id) docId = `cust_${doc.customer_id}`;
+                else if (colName === 'cases' && doc.case_id) docId = `case_${doc.case_id}`;
+                else if (colName === 'staff' && doc.staff_id) docId = `stf_${doc.staff_id}`;
+                else if (colName === 'licenses' && doc.license_id) docId = `lic_${doc.license_id}`;
+                else if (colName === 'invoices' && doc.invoice_id) docId = `inv_${doc.invoice_id}`;
+                else if (colName === 'payments' && doc.payment_id) docId = `pay_${doc.payment_id}`;
+                else if (colName === 'offices' && doc.office_id) docId = `off_${doc.office_id}`;
+                else if (colName === 'contacts' && doc.contact_id) docId = `cnt_${doc.contact_id}`;
+                else if (colName === 'government_offices' && doc.id) docId = `gov_${doc.id}`;
+                else docId = db.collection(colName).doc().id; // auto id
+            }
+            doc._docId = docId;
+
+            let hasError = false;
+
+            // Orphan Check
+            if (REQUIRES_CUSTOMER.includes(colName) && doc.customer_id) {
+                const targetId = `cust_${doc.customer_id}`;
+                if (!virtualIds.customers.has(targetId)) {
+                    simulationResult.errorsList.push(`[${colName}] 親の顧客が存在しません (customer_id: ${doc.customer_id})`);
+                    hasError = true;
+                }
+            }
+
+            if (REQUIRES_CASE.includes(colName) && doc.case_id) {
+                const targetId = `case_${doc.case_id}`;
+                if (!virtualIds.cases.has(targetId)) {
+                    simulationResult.errorsList.push(`[${colName}] 親の案件が存在しません (case_id: ${doc.case_id})`);
+                    hasError = true;
+                }
+            }
+
+            if (hasError) {
+                simulationResult.collections[colName].errors++;
+                simulationResult.totalErrors++;
+            } else {
+                // Upsert detection
+                if (safeExistingSet.has(docId)) {
+                    simulationResult.collections[colName].overwritten++;
+                    simulationResult.totalOverwritten++;
+                } else {
+                    simulationResult.collections[colName].new++;
+                    simulationResult.totalNew++;
+                }
+
+                // Register to virtual IDs for children to find
+                if (colName === 'customers') virtualIds.customers.add(docId);
+                if (colName === 'cases') virtualIds.cases.add(docId);
+            }
+        }
+    };
+
+    const renderSummary = () => {
+        let text = `【総合結果】\n新規登録: ${simulationResult.totalNew} 件\n上書き: ${simulationResult.totalOverwritten} 件\nエラー: ${simulationResult.totalErrors} 件\n\n`;
+        text += `【コレクション別】\n`;
+        for (const [col, stats] of Object.entries(simulationResult.collections)) {
+            if (stats.new > 0 || stats.overwritten > 0 || stats.errors > 0) {
+                text += `- ${col}: 新規 ${stats.new}, 上書き ${stats.overwritten}, エラー ${stats.errors}\n`;
+            }
+        }
+
+        if (simulationResult.errorsList.length > 0) {
+            text += `\n【エラー詳細 (最大10件)】\n`;
+            text += simulationResult.errorsList.slice(0, 10).join('\n');
+            if (simulationResult.errorsList.length > 10) text += `\n...他 ${simulationResult.errorsList.length - 10} 件`;
+            text += `\n\n⚠️ エラーを解消するまでインポートは実行できません。`;
+            summaryText.style.color = "#b91c1c";
+        } else if (simulationResult.totalNew === 0 && simulationResult.totalOverwritten === 0) {
+            text += `\nインポート対象のデータが含まれていません。`;
+            summaryText.style.color = "#0f172a";
+        } else {
+            text += `\n✅ 依存関係エラーなし。このままインポートを実行できます。`;
+            summaryText.style.color = "#15803d";
+        }
+
+        summaryText.textContent = text;
+        summaryArea.style.display = 'block';
+    };
+
+    // 4. Execute Import
+    const handleExecute = async () => {
+        if (!parsedDataStore || simulationResult.totalErrors > 0) return;
+
+        const confirmMsg = `計 ${simulationResult.totalNew + simulationResult.totalOverwritten} 件のデータをインポート（上書き含む）します。\nよろしいですか？`;
+        if (!confirm(confirmMsg)) return;
+
+        btnSimulate.disabled = true;
+        btnExecute.disabled = true;
+        progressArea.style.display = 'block';
+        updateProgress('バッチ書き込み準備中...', 10);
+
+        try {
+            const BATCH_LIMIT = 400; // Safe limit below 500
+            let currentBatch = db.batch();
+            let batchCount = 0;
+            let totalProcessed = 0;
+
+            const totalDocs = simulationResult.totalNew + simulationResult.totalOverwritten;
+
+            // Strict Tier Order Insert
+            const processedCols = new Set();
+            for (const col of TIER_ORDER) {
+                if (!parsedDataStore[col]) continue;
+                processedCols.add(col);
+
+                for (const doc of parsedDataStore[col]) {
+                    // Skip errors (already prevented by Execute disable, but safe guard)
+                    let docId = doc._docId;
+                    let cleanDoc = { ...doc };
+                    delete cleanDoc._docId;
+
+                    const ref = db.collection(col).doc(docId);
+                    currentBatch.set(ref, cleanDoc);
+                    batchCount++;
+                    totalProcessed++;
+
+                    if (batchCount >= BATCH_LIMIT) {
+                        updateProgress(`書き込み中... (${totalProcessed} / ${totalDocs} 件)`, 10 + (totalProcessed / totalDocs) * 80);
+                        await currentBatch.commit();
+                        currentBatch = db.batch(); // New batch
+                        batchCount = 0;
+                    }
+                }
+            }
+
+            // Un-ordered cols
+            for (const col of Object.keys(parsedDataStore)) {
+                if (processedCols.has(col)) continue;
+                for (const doc of parsedDataStore[col]) {
+                    let docId = doc._docId;
+                    let cleanDoc = { ...doc };
+                    delete cleanDoc._docId;
+
+                    const ref = db.collection(col).doc(docId);
+                    currentBatch.set(ref, cleanDoc);
+                    batchCount++;
+                    totalProcessed++;
+
+                    if (batchCount >= BATCH_LIMIT) {
+                        updateProgress(`書き込み中... (${totalProcessed} / ${totalDocs} 件)`, 10 + (totalProcessed / totalDocs) * 80);
+                        await currentBatch.commit();
+                        currentBatch = db.batch();
+                        batchCount = 0;
+                    }
+                }
+            }
+
+            // Commit remainder
+            if (batchCount > 0) {
+                updateProgress(`最終バッチの書き込み中...`, 95);
+                await currentBatch.commit();
+            }
+
+            updateProgress('インポート完了！', 100);
+            alert("データのインポートが完了しました。");
+
+        } catch (err) {
+            console.error("Import Error:", err);
+            alert("インポート実行中にエラーが発生しました。\n" + err.message);
+        } finally {
+            setTimeout(() => {
+                window.location.reload(); // Reload to clear states and refresh UI
+            }, 1000);
+        }
+    };
+
+    const updateProgress = (text, percent) => {
+        if (progressText) progressText.textContent = text;
+        if (progressFill) progressFill.style.width = `${percent}%`;
+    };
+});

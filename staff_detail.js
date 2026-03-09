@@ -109,6 +109,60 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.removeAttribute('disabled');
             }
         }
+
+        // --- Role Permission Control (UI) ---
+        const sessionData = localStorage.getItem('lapis2_session');
+        if (sessionData) {
+            const session = JSON.parse(sessionData);
+            const authSelect = document.getElementById('authority');
+            if (session.authority !== 'admin') {
+                // Non-admins cannot change any role
+                authSelect.setAttribute('disabled', 'disabled');
+                authSelect.title = "権限の変更は管理者のみ可能です";
+            } else {
+                authSelect.removeAttribute('disabled');
+                authSelect.removeAttribute('title');
+            }
+
+            // --- Privacy Masking Control (案B) ---
+            // 本人(Email一致)でも管理者でもない場合は、プライバシー情報をマスクし編集を禁止する
+            const isSelf = session.email === data.email;
+            const isAdmin = session.authority === 'admin';
+
+            // 新規作成時('new')は自分自身として扱う
+            if (!isSelf && !isAdmin && staffId !== 'new') {
+                const privateFields = [
+                    'postal_code', 'address', 'building_name',
+                    'qualification', 'hire_date', 'status', 'remarks'
+                ];
+
+                privateFields.forEach(fieldId => {
+                    const el = document.getElementById(fieldId);
+                    if (el) {
+                        el.value = (el.tagName === 'SELECT' || el.type === 'date') ? "" : "********";
+                        el.setAttribute('disabled', 'disabled');
+                        // visually obscure the field
+                        el.style.color = "transparent";
+                        el.style.textShadow = "0 0 5px rgba(0,0,0,0.5)";
+                    }
+                });
+
+                // Disable address search button
+                const btnSearch = document.getElementById('btn-search-address');
+                if (btnSearch) btnSearch.style.display = 'none';
+
+                // Prevent saving dummy values back to DB
+                const btnSave = document.getElementById('btn-save');
+                if (btnSave) btnSave.style.display = 'none';
+
+                const btnDelete = document.getElementById('btn-delete');
+                if (btnDelete) btnDelete.style.display = 'none';
+            } else {
+                // Ensure buttons are visible for authorized users
+                const btnSave = document.getElementById('btn-save');
+                if (btnSave) btnSave.style.display = 'inline-flex';
+            }
+        }
     }
 
     async function handleSave(e) {
@@ -155,6 +209,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const now = new Date().toISOString();
+        const selectedAuthority = document.getElementById('authority').value; // System Permission
+
+        // --- Self Lockout Prevention ---
+        const sessionData = localStorage.getItem('lapis2_session');
+        if (sessionData) {
+            const session = JSON.parse(sessionData);
+            // If the user is currently an admin, editing their own profile, and changing to 'staff'
+            if (session.email === document.getElementById('email').value.trim() && session.authority === 'admin' && selectedAuthority === 'staff') {
+                const confirmMsg = "⚠️ 警告\n\nあなた自身の権限を「一般」に変更しようとしています。\n実行すると以降、管理者メニュー（インポートやバックアップ等）にアクセスできなくなります。\n\n本当に自身の権限を変更して保存しますか？";
+                if (!confirm(confirmMsg)) {
+                    return; // Cancel save
+                }
+            }
+        }
+
         const updatedData = {
             staff_id: newId,
             staff_name: document.getElementById('staff_name').value.trim(),
@@ -166,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
             building_name: document.getElementById('building_name').value.trim(), // Added
             department: document.getElementById('department').value.trim(),
             role: document.getElementById('role').value, // Job Title
-            authority: document.getElementById('authority').value, // System Permission
+            authority: selectedAuthority, // Modifed to use variable
             qualification: document.getElementById('qualification').value.trim(), // Added
             hire_date: document.getElementById('hire_date').value, // Added
             status: document.getElementById('status').value,
