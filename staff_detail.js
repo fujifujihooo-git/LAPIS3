@@ -202,6 +202,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 await saveToFirestore('staff', docId, { ...currentStaff, ...updatedData });
                 showToast('保存しました', 'success');
             }
+
+            // --- Update Local Session if editing own profile ---
+            const sessionData = localStorage.getItem('lapis2_session');
+            if (sessionData) {
+                const session = JSON.parse(sessionData);
+                if (session.email === updatedData.email) {
+                    session.authority = updatedData.authority;
+                    session.staff_name = updatedData.staff_name;
+                    localStorage.setItem('lapis2_session', JSON.stringify(session));
+                    // Reflect changes in UI immediately
+                    if (typeof renderUserStatus === 'function') renderUserStatus(session);
+                    if (typeof applyPermissions === 'function') applyPermissions(session);
+                }
+            }
             // setTimeout(() => {
             //     window.location.href = 'staff_list.html';
             // }, 1000);

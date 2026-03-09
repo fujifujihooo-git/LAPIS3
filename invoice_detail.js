@@ -561,6 +561,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 tax_amount: tax,
                 subtotal_nontaxable: nontaxable,
                 total_amount: total,
+                paid_amount: payTotal,
+                balance: balance,
                 status: formState.status,
                 remarks: formState.remarks,
                 last_updated: serverTimestamp

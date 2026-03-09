@@ -81,6 +81,37 @@
             font-weight: 500;
         }
 
+        /* Autocomplete for jurisdiction filter */
+        .filter-item.autocomplete-wrapper {
+            position: relative;
+        }
+
+        .filter-item .autocomplete-items {
+            position: absolute;
+            border: 1px solid #d4d4d4;
+            border-top: none;
+            z-index: 99;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #fff;
+            border-radius: 0 0 6px 6px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .filter-item .autocomplete-items div {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #d4d4d4;
+            font-size: 13pt;
+        }
+
+        .filter-item .autocomplete-items div:hover {
+            background-color: #e9e9e9;
+        }
+
         /* Sortable table header */
         th.sortable {
             cursor: pointer;
@@ -88,14 +119,17 @@
             position: relative;
             transition: background-color 0.15s;
         }
+
         th.sortable:hover {
             background-color: rgba(99, 102, 241, 0.08);
         }
+
         .sort-indicator {
             font-size: 10pt;
             color: #94a3b8;
             margin-left: 4px;
         }
+
         .sort-indicator.active {
             color: var(--primary, #6366f1);
             font-weight: 700;
@@ -173,6 +207,12 @@
                         <span class="nav-label">許認可マスタ</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="backup.html">
+                        <span class="nav-icon">💾</span>
+                        <span class="nav-label">バックアップ管理</span>
+                    </a>
+                </li>
             </ul>
         </nav>
         <!-- END Sidebar -->
@@ -211,16 +251,16 @@
                         <h3 class="block-title">検索条件</h3>
                     </div>
                     <div class="block-content">
+                        <!-- Row 1: 顧客名 / 外務担当者 / 状態 -->
                         <div class="filter-bar">
                             <div class="filter-item">
                                 <label for="filter-customer">顧客名</label>
                                 <input type="text" id="filter-customer" class="form-control" placeholder="顧客名で検索...">
                             </div>
                             <div class="filter-item">
-                                <label for="filter-license-type">許認可種別</label>
-                                <select id="filter-license-type" class="form-select">
+                                <label for="filter-field-staff">外務担当者</label>
+                                <select id="filter-field-staff" class="form-select">
                                     <option value="">すべて</option>
-                                    <!-- JSで動的に追加 -->
                                 </select>
                             </div>
                             <div class="filter-item">
@@ -232,6 +272,23 @@
                                     <option value="取消">取消</option>
                                 </select>
                             </div>
+                        </div>
+
+                        <!-- Row 2: 管轄官公庁 / 許認可種別 / 案内日が今日以前 -->
+                        <div class="filter-bar" style="margin-top: 12px;">
+                            <div class="filter-item autocomplete-wrapper">
+                                <label for="filter-jurisdiction">管轄官公庁</label>
+                                <input type="text" id="filter-jurisdiction" class="form-control" placeholder="入力して検索..."
+                                    autocomplete="off">
+                                <div id="filter-jurisdiction-list" class="autocomplete-items"></div>
+                            </div>
+                            <div class="filter-item">
+                                <label for="filter-license-type">許認可種別</label>
+                                <select id="filter-license-type" class="form-select">
+                                    <option value="">すべて</option>
+                                    <!-- JSで動的に追加 -->
+                                </select>
+                            </div>
                             <div class="filter-item" style="display: flex; align-items: center; padding-bottom: 2px;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <input type="checkbox" id="filter-notice-due" style="width: 18px; height: 18px;">
@@ -241,7 +298,7 @@
                             </div>
                         </div>
 
-                                                <!-- Extended Filters Row 2 -->
+                        <!-- Row 3: 期限（満了日） / 案内日 -->
                         <div class="filter-bar" style="margin-top: 12px;">
                             <div class="filter-item">
                                 <label>期限（満了日）</label>
@@ -259,14 +316,9 @@
                                     <input type="date" id="filter-notice-end" class="form-control">
                                 </div>
                             </div>
-                            <div class="filter-item">
-                                <label for="filter-field-staff">外務担当者</label>
-                                <select id="filter-field-staff" class="form-select">
-                                    <option value="">すべて</option>
-                                </select>
-                            </div>
                         </div>
-                        <!-- Button grouping aligned with Government Office Master -->
+
+                        <!-- Row 4: Buttons -->
                         <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
                             <button class="btn btn-reset" id="btn-reset">
                                 <i data-lucide="rotate-ccw"></i> リセット
@@ -329,17 +381,17 @@
     <script src="license_list.js"></script>
 
     <script>
-    const btnTop = document.getElementById('back-to-top');
-    window.addEventListener('scroll', () => {
-    if (window.scrollY > 300) {
-    btnTop.style.opacity = '1';
-    btnTop.style.pointerEvents = 'auto';
-    } else {
-    btnTop.style.opacity = '0';
-    btnTop.style.pointerEvents = 'none';
-    }
-    });
-    btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        const btnTop = document.getElementById('back-to-top');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                btnTop.style.opacity = '1';
+                btnTop.style.pointerEvents = 'auto';
+            } else {
+                btnTop.style.opacity = '0';
+                btnTop.style.pointerEvents = 'none';
+            }
+        });
+        btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     </script>
 </body>
 

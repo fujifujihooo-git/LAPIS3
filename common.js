@@ -224,13 +224,16 @@ function checkAuth() {
                         staff_id: staffData.staff_id,
                         staff_name: staffData.staff_name,
                         email: staffData.email,
+                        authority: staffData.authority || 'staff',
                         login_at: new Date().toISOString()
                     };
                     localStorage.setItem('lapis2_session', JSON.stringify(newSession));
                     renderUserStatus(newSession);
+                    applyPermissions(newSession);
                 }
             } else if (session && !is2faPending) {
                 renderUserStatus(session);
+                applyPermissions(session);
             }
 
             if (isLoginPage) {
@@ -246,6 +249,22 @@ function checkAuth() {
             }
         }
     });
+}
+
+function applyPermissions(session) {
+    console.log("Current User Role:", session.authority);
+    // サイドバーのバックアップ管理リンク制御
+    const backupLink = document.querySelector('a[href="backup.html"]');
+    if (backupLink) {
+        const parentLi = backupLink.closest('li');
+        if (parentLi) {
+            if (session.authority === 'admin') {
+                parentLi.style.display = 'block';
+            } else {
+                parentLi.style.display = 'none';
+            }
+        }
+    }
 }
 
 function renderUserStatus(session) {

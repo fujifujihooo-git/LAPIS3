@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAPIS2 開発費用の概算メモ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --navy: #1B2A4A;
+            --primary: #3B82F6;
+            --primary-light: #EFF6FF;
+            --accent: #F59E0B;
+            --accent-light: #FFFBEB;
+            --success: #10B981;
+            --danger: #EF4444;
+            --text-main: #1E293B;
+            --text-muted: #64748B;
+            --border: #E2E8F0;
+            --bg: #F8FAFC;
+            --card-bg: #FFFFFF;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            line-height: 1.7;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--navy) 0%, #2D4A7A 100%);
+            color: #fff;
+            padding: 40px 48px;
+            border-radius: 16px;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 32px rgba(27, 42, 74, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 400px;
+            height: 400px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 50%;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .header .subtitle {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .header .badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 12px;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .card h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--navy);
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h2 .icon {
+            font-size: 22px;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        thead th {
+            background: var(--navy);
+            color: #fff;
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        thead th:first-child {
+            border-radius: 8px 0 0 0;
+        }
+
+        thead th:last-child {
+            border-radius: 0 8px 0 0;
+        }
+
+        tbody td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody tr:nth-child(even) {
+            background: #F8FAFC;
+        }
+
+        tbody tr:hover {
+            background: var(--primary-light);
+            transition: background 0.2s;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .fw-600 {
+            font-weight: 600;
+        }
+
+        /* Highlight Box */
+        .highlight-box {
+            background: linear-gradient(135deg, var(--primary-light) 0%, #DBEAFE 100%);
+            border: 2px solid var(--primary);
+            border-radius: 12px;
+            padding: 28px 32px;
+            margin: 28px 0;
+            text-align: center;
+        }
+
+        .highlight-box .label {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .highlight-box .amount {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--navy);
+            letter-spacing: 1px;
+        }
+
+        .highlight-box .note {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Summary Grid */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .summary-item {
+            background: var(--bg);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .summary-item .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--navy);
+        }
+
+        .summary-item .desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Notes */
+        .note-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        .note-item:last-child {
+            border-bottom: none;
+        }
+
+        .note-item .dot {
+            flex-shrink: 0;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+            margin-top: 8px;
+        }
+
+        .note-item strong {
+            color: var(--navy);
+        }
+
+        /* Warning Box */
+        .warning-box {
+            background: var(--accent-light);
+            border-left: 4px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 16px 20px;
+            margin: 16px 0;
+            font-size: 13px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+                background: #fff;
+            }
+
+            .card {
+                box-shadow: none;
+                break-inside: avoid;
+            }
+
+            .header {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 LAPIS2 開発費用の概算メモ</h1>
+            <div class="subtitle">日本国内の専門業者に依頼した場合の開発費用の目安</div>
+            <div class="badge">📅 作成日: 2026年3月6日</div>
+        </div>
+
+        <!-- 前提条件 -->
+        <div class="card">
+            <h2><span class="icon">⚙️</span> 前提条件</h2>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="value">¥80～120万</div>
+                    <div class="desc">人月単価（中堅SIer・Web制作会社）</div>
+                </div>
+                <div class="summary-item">
+                    <div class="value">14～20人月</div>
+                    <div class="desc">想定合計工数</div>
+                </div>
+                <div class="summary-item">
+                    <div class="value">中規模</div>
+                    <div class="desc">プロジェクト規模の評価</div>
+                </div>
+            </div>
+            <div class="warning-box">
+                ※ 要件定義・設計・テスト込みの工数で算出。運用保守費は含みません。
+            </div>
+        </div>
+
+        <!-- 機能別見積 -->
+        <div class="card">
+            <h2><span class="icon">📋</span> 機能別の工数見積</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>機能モジュール</th>
+                        <th>主な画面・機能</th>
+                        <th class="text-center">工数（人月）</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="fw-600">認証・ログイン</td>
+                        <td>Firebase Auth, 2FA(OTP), ユーザー管理</td>
+                        <td class="text-center">0.5～1.0</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-600">ダッシュボード</td>
+                        <td>案件一覧、ステータスフィルタ、残日数表示、ソート</td>
+                        <td class="text-center">1.0～1.5</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-600">顧客管理</td>
+                        <td>一覧・詳細・CRUD、オートコンプリート、PDF/Excel出力</td>
+                        <td class="text-center">1.5～2.0</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-600">案件管理</td>
+                        <td>詳細・CRUD、ステータス履歴、見積明細、役所検索</td>
+                        <td class="text-center">2.0～2.5</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-600">請求書管理</td>
+                        <td>一覧・詳細・CRUD、案件取込、入金管理、PDF生成(jsPDF)</td>
+                        <td class="text-center">2.5～3.0</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-600">売上管理</td>
+                        <td>月次集計、フィルタリング、サマリ</td>
+                        <td class="text-center">0.5～1.0</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-600">マスタ管理</td>
+                        <td>スタッフ、役所、許認可種別、拠点、担当者</td>
+                        <td class="text-center">1.5～2.0</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-600">許認可管理</td>
+                        <td>一覧・詳細、期限管理、洗出し画面</td>
+                        <td class="text-center">1.0～1.5</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-600">自社情報</td>
+                        <td>事務所設定、ロゴ・印影アップロード</td>
+                        <td class="text-center">0.5</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-600">共通基盤</td>
+                        <td>Firebase設定、Firestore設計、共通JS、レスポンシブCSS</td>
+                        <td class="text-center">1.5～2.0</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-600">UI/UXデザイン</td>
+                        <td>モダンUI設計、モバイル対応</td>
+                        <td class="text-center">1.0～1.5</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-600">テスト・デプロイ</td>
+                        <td>結合テスト、UAT、Firebase Hosting設定</td>
+                        <td class="text-center">1.0～1.5</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 合計費用 -->
+        <div class="card">
+            <h2><span class="icon">💰</span> 合計費用</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th class="text-right">最小見積</th>
+                        <th class="text-right">最大見積</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="fw-600">合計工数</td>
+                        <td class="text-right fw-600">約14人月</td>
+                        <td class="text-right fw-600">約20人月</td>
+                    </tr>
+                    <tr>
+                        <td>単価80万/人月の場合</td>
+                        <td class="text-right">¥1,120万</td>
+                        <td class="text-right">¥1,600万</td>
+                    </tr>
+                    <tr>
+                        <td>単価120万/人月の場合</td>
+                        <td class="text-right">¥1,680万</td>
+                        <td class="text-right">¥2,400万</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="highlight-box">
+                <div class="label">📌 現実的なレンジ</div>
+                <div class="amount">約1,200万～2,000万円</div>
+                <div class="note">（税別）</div>
+            </div>
+        </div>
+
+        <!-- 補足 -->
+        <div class="card">
+            <h2><span class="icon">📝</span> 補足情報</h2>
+            <div class="note-item">
+                <div class="dot"></div>
+                <div><strong>大手SIer</strong>に依頼した場合は人月単価が¥150万以上になるため、<strong>2,500万～4,000万円</strong>に膨らむ可能性あり</div>
+            </div>
+            <div class="note-item">
+                <div class="dot"></div>
+                <div><strong>フリーランス</strong>に直接依頼する場合は人月¥50～70万で、<strong>700万～1,200万円</strong>程度に抑えられる場合あり</div>
+            </div>
+            <div class="note-item">
+                <div class="dot"></div>
+                <div>上記には<strong>運用保守費</strong>（月額5～15万程度が一般的）は含まれていない</div>
+            </div>
+            <div class="note-item">
+                <div class="dot"></div>
+                <div>Firebase Sparkプランでの構成は比較的低コストだが、<strong>設計の質</strong>（Firestoreのスキーマ設計やセキュリティルール）で工数が大きく変わる</div>
+            </div>
+            <div class="note-item">
+                <div class="dot"></div>
+                <div>現状のLAPIS2は、画面数・機能の深さともに<strong>中規模の業務Webアプリ</strong>と評価できる</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            LAPIS2 案件管理システム — 開発費用概算メモ — 2026年3月6日作成
+        </div>
+
+    </div>
+
+</body>
+
+</html>

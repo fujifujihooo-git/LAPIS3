@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterStatus = document.getElementById('filter-status');
     const filterDateStart = document.getElementById('filter-date-start');
     const filterDateEnd = document.getElementById('filter-date-end');
-    const includePaid = document.getElementById('include-paid');
+    const filterUnpaid = document.getElementById('filter-unpaid'); // Changed from includePaid
     const allPeriods = document.getElementById('all-periods');
     const countDisplay = document.getElementById('count-display');
     const countDisplayArea = document.getElementById('count-display-area');
@@ -43,8 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
         filterCustomer.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') searchData();
         });
-
-        // Delete "searchData();" to enforce Lazy-Loading as requested
     }
 
     function setDefaultFilters() {
@@ -57,8 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // 終了日は今日
         filterDateEnd.value = today.toISOString().split('T')[0];
 
-        // 「入金済を含む」はデフォルトOFF
-        if (includePaid) includePaid.checked = false;
+        // 「残高ありのみ表示」はデフォルトON
+        if (filterUnpaid) filterUnpaid.checked = true;
         // 「すべての期間」はデフォルトOFF
         if (allPeriods) allPeriods.checked = false;
     }
@@ -76,8 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const sVal = filterStatus.value;
         const dStart = filterDateStart.value;
         const dEnd = filterDateEnd.value;
-        const isIncludePaid = includePaid ? includePaid.checked : false;
+        const isUnpaidOnly = filterUnpaid ? filterUnpaid.checked : true;
         const isAllPeriods = allPeriods ? allPeriods.checked : false;
+
+        // 期間指定が有効かどうか判定
+        const hasDateFilter = !isAllPeriods && (dStart || dEnd);
 
         try {
             let query = db.collection('invoices');
@@ -87,14 +88,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 query = query.where('status', '==', sVal);
             }
 
-            // 2. Date Range Filter
-            if (!isAllPeriods) {
-                if (dStart) query = query.where('invoice_date', '>=', dStart);
-                if (dEnd) query = query.where('invoice_date', '<=', dEnd);
+            // 2. Hybrid Server-side Filtering: 期間指定がない場合はFirestore側で残高フィルタを適用し、読み取り回数を節約
+            if (isUnpaidOnly && !hasDateFilter) {
+                query = query.where('balance', '>', 0).orderBy('balance').orderBy('invoice_date', 'desc');
+            } else {
+                // 通常の期間フィルタとソート
+                if (hasDateFilter) {
+                    if (dStart) query = query.where('invoice_date', '>=', dStart);
+                    if (dEnd) query = query.where('invoice_date', '<=', dEnd);
+                }
+                query = query.orderBy('invoice_date', 'desc');
             }
-
-            // Ordering
-            query = query.orderBy('invoice_date', 'desc');
 
             const snapshot = await query.get();
             invoices = snapshot.docs.map(doc => ({
@@ -102,18 +106,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 doc_id: doc.id
             }));
 
-            // 3. Client-side Status Filtering (for "exclude Paid" when no specific status selected)
-            if (!sVal && !isIncludePaid) {
-                invoices = invoices.filter(inv => inv.status !== '入金済');
-            }
-
             if (invoices.length === 0) {
                 fetchedData = [];
                 renderTable();
                 return;
             }
 
-            // 4. Fetch Related Data (Customers, Payments)
+            // 3. Fetch Related Data (Customers, Payments)
             const customerIds = [...new Set(invoices.map(inv => inv.customer_id))];
             const invoiceIds = invoices.map(inv => inv.invoice_id);
 
@@ -164,20 +163,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const invPayments = paymentsMap[inv.invoice_id] || [];
                 const paidAmount = invPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
+                // Firestoreから取得したbalanceが存在すればそれを優先、なければ計算値を使用(後方互換性)
+                const calcBalance = (inv.total_amount || 0) - paidAmount;
+
                 return {
                     ...inv,
                     customer_name: customer ? customer.customer_name : '',
                     paid_amount: paidAmount,
-                    balance: (inv.total_amount || 0) - paidAmount
+                    balance: inv.balance !== undefined ? inv.balance : calcBalance
                 };
             });
 
-            // 5. Client-side Balance Filtering
-            // "入金済みを含む" がOFF かつ 検索ステータスが "入金済" ではない場合のみ、残高0を除外する。
-            // （ステータスを意図的に「入金済」で検索した場合は、チェックOFFでも残高0を表示する）
-            if (!isIncludePaid && sVal !== '入金済') {
+            // 4. Client-side Balance Filtering
+            // 期間指定がある場合は、Firestore側で残高フィルタがかけられないためクライアント側でフィルタする
+            if (isUnpaidOnly && hasDateFilter) {
                 mappedData = mappedData.filter(inv => inv.balance > 0);
             }
+
+            // もしステータス指定がない＆未収のみチェックもない場合、デフォルトで「入金済」を除外するかについて:
+            // 今回の要件で「残高あり・なしで切り替える」となったため、未収チェックが「OFF」の場合は全て表示する仕様に統一。
 
             fetchedData = mappedData;
 
@@ -225,8 +229,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = `invoice_detail.html?id=${inv.doc_id}`;
             });
 
-            const balanceColor = inv.balance > 0 ? '#dc2626' : '#64748b';
-            const balanceWeight = inv.balance > 0 ? '600' : 'normal';
+            const hasBalance = inv.balance > 0;
+            // 未収行のUI強調
+            if (hasBalance) {
+                row.style.backgroundColor = 'rgba(239, 68, 68, 0.05)'; // 非常に薄い赤背景 (bg-red-50相当)
+            }
+
+            const balanceColor = hasBalance ? '#dc2626' : '#64748b';
+            const balanceWeight = hasBalance ? 'bold' : 'normal';
 
             row.innerHTML = `
                 <td><strong>${inv.invoice_number || '-'}</strong></td>

@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const filterNoticeStart = document.getElementById('filter-notice-start');
     const filterNoticeEnd = document.getElementById('filter-notice-end');
     const filterFieldStaff = document.getElementById('filter-field-staff');
+    const filterJurisdiction = document.getElementById('filter-jurisdiction');
+    const filterJurisdictionList = document.getElementById('filter-jurisdiction-list');
     const btnNewLicense = document.getElementById('btn-new-license');
     const btnReset = document.getElementById('btn-reset');
     const btnSearch = document.getElementById('btn-search-execute');
@@ -21,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let customers = [];
     let licenseTypes = [];
     let staffMembers = [];
+    let governmentOffices = [];
     let filteredData = [];
     let currentSort = { column: 'expiry_date', direction: 'asc' };
 
@@ -125,17 +128,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         return staff ? staff.staff_name : '';
     }
 
+    // Initialize jurisdiction autocomplete (combobox style, like license_detail)
+    function initJurisdictionAutocomplete() {
+        if (!filterJurisdiction || !filterJurisdictionList) return;
+
+        filterJurisdiction.addEventListener('input', function () {
+            const val = this.value.trim().toLowerCase();
+            filterJurisdictionList.innerHTML = '';
+            if (!val) return;
+
+            const matches = governmentOffices
+                .filter(o => o.status === '\u6709\u52b9' && o.office_name && o.office_name.toLowerCase().includes(val))
+                .slice(0, 15);
+
+            // Deduplicate by office_name
+            const seen = new Set();
+            matches.forEach(o => {
+                if (seen.has(o.office_name)) return;
+                seen.add(o.office_name);
+                const div = document.createElement('div');
+                div.textContent = o.office_name;
+                div.addEventListener('click', () => {
+                    filterJurisdiction.value = o.office_name;
+                    filterJurisdictionList.innerHTML = '';
+                });
+                filterJurisdictionList.appendChild(div);
+            });
+        });
+
+        // Close autocomplete on outside click
+        document.addEventListener('click', function (e) {
+            if (e.target !== filterJurisdiction) {
+                filterJurisdictionList.innerHTML = '';
+            }
+        });
+    }
+
     // Initialize Data from Firestore
     async function init() {
         console.log('Fetching master data for License List...');
         try {
-            // Fetch Masters: license_types + staff
-            const [lt, st] = await Promise.all([
+            // Fetch Masters: license_types + staff + government_offices
+            const [lt, st, go] = await Promise.all([
                 getAllFromFirestore('license_types'),
-                getAllFromFirestore('staff')
+                getAllFromFirestore('staff'),
+                getAllFromFirestore('government_offices')
             ]);
             licenseTypes = lt;
             staffMembers = st;
+            governmentOffices = go;
 
             // Populate license type filter
             if (filterLicenseType) {
@@ -161,6 +202,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
             }
 
+            // Initialize jurisdiction autocomplete
+            initJurisdictionAutocomplete();
+
             // Initial view: EMPTY (Save Quota)
             licenseListBody.innerHTML = '<tr><td colspan="7" class="no-data-cell" style="padding: 40px 0; color: #888;">検索条件を入力して検索を実行してください。</td></tr>';
 
@@ -181,6 +225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const noticeStart = filterNoticeStart ? filterNoticeStart.value : '';
         const noticeEnd = filterNoticeEnd ? filterNoticeEnd.value : '';
         const fieldStaffVal = filterFieldStaff ? filterFieldStaff.value : '';
+        const jurisdictionVal = filterJurisdiction ? filterJurisdiction.value.trim() : '';
 
         licenseListBody.innerHTML = '<tr><td colspan="7" style="text-align:center">検索中...</td></tr>';
 
@@ -188,7 +233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let results = [];
 
             // Quota optimization: Validation
-            if (!custName && !licType && !statusVal && !noticeDue && !expiryStart && !expiryEnd && !noticeStart && !noticeEnd && !fieldStaffVal) {
+            if (!custName && !licType && !statusVal && !noticeDue && !expiryStart && !expiryEnd && !noticeStart && !noticeEnd && !fieldStaffVal && !jurisdictionVal) {
                 // If NO search conditions, ask for confirmation or return all with strict limit
                 const proceed = confirm('検索条件が指定されていません。最新の許認可情報を表示しますか？');
                 if (!proceed) {
@@ -349,6 +394,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 results = results.filter(l => matchingCustIds.includes(l.customer_id));
             }
 
+            // Government Office (Jurisdiction) filter
+            if (jurisdictionVal) {
+                results = results.filter(l => l.government_office === jurisdictionVal);
+            }
+
             licenses = results;
             filteredData = results;
             sortData(currentSort.column, currentSort.direction);
@@ -451,9 +501,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <strong>${formatDisplayValue(customer ? customer.customer_name : null)}</strong>
                     ${fieldStaffName ? `<span class="staff-name-sub">${fieldStaffName}</span>` : ''}
                 </td>
-                <td>
-                    ${formatDisplayValue(licenseType ? licenseType.license_type_name : null)}
-                    <span class="license-number-sub">${formatLicenseNumber(item)}</span>
+                <td style="max-width: 220px;" title="${item.government_office ? item.government_office + ' ' : ''}${formatDisplayValue(licenseType ? licenseType.license_type_name : null)}">
+                    <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13pt;">
+                        ${item.government_office ? `<span style="font-weight: 500;">${item.government_office}</span> ` : ''}${formatDisplayValue(licenseType ? licenseType.license_type_name : null)}
+                    </div>
+                    <span class="license-number-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${formatLicenseNumber(item)}</span>
                 </td>
                 <td>
                     ${formatDate(item.expiry_date)}
@@ -494,6 +546,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         if (filterFieldStaff) filterFieldStaff.value = '';
+        if (filterJurisdiction) filterJurisdiction.value = '';
+        if (filterJurisdictionList) filterJurisdictionList.innerHTML = '';
 
         // Return to initial display (Recent 50)
         await init();

@@ -807,6 +807,33 @@ body {
     color: #334155;
 }
 
+/* Invoice Status Badges */
+.status-draft {
+    background-color: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.status-issued {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.status-partial {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.status-paid {
+    background-color: #d1fae5;
+    color: #059669;
+}
+
+.status-overdue {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
 /* Remaining Days Badges */
 .days-none {
     color: #ccc;
