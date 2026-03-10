@@ -253,9 +253,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         licenseNumber1.value = l.license_number_1 || '';
         licenseNumber2.value = l.license_number_2 || '';
         status.value = l.status || '有効';
-        startDate.value = formatDateForInput(l.start_date);
-        expiryDate.value = formatDateForInput(l.expiry_date);
-        noticeDate.value = formatDateForInput(l.notice_date);
+        const sDateStr = formatDateForInput(l.start_date);
+        if (startDate._flatpickr) startDate._flatpickr.setDate(sDateStr);
+        else startDate.value = sDateStr;
+
+        const eDateStr = formatDateForInput(l.expiry_date);
+        if (expiryDate._flatpickr) expiryDate._flatpickr.setDate(eDateStr);
+        else expiryDate.value = eDateStr;
+
+        const nDateStr = formatDateForInput(l.notice_date);
+        if (noticeDate._flatpickr) noticeDate._flatpickr.setDate(nDateStr);
+        else noticeDate.value = nDateStr;
+
         remarks.value = l.remarks || '';
         createdDateDisplay.textContent = l.created_date || '-';
         lastUpdatedDisplay.textContent = formatToJST(l.last_updated);
