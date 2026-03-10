@@ -27,12 +27,12 @@ const BANK_INFO = {
     bankName: '三菱UFJ銀行',
     branchName: '新宿中央支店',
     accountType: '普通',
-    accountNumber: 'XXXXXXX',
-    accountHolder: 'ナカムラ ヒロアキ'
+    accountNumber: '４８４７０４４',
+    accountHolder: 'ナカムラヒトシ（中村仁司）'
 };
 
-// ===== 法的免責事項（所得税法第204条） =====
-const LEGAL_DISCLAIMER = '※源泉所得税につきましては、所得税法第204条の規定により貴社にてお取り扱いくださいますようお願い申し上げます。';
+// ===== 法的免責事項（所得税法等） =====
+const LEGAL_DISCLAIMER = '※行政書士の業務に関する報酬については、所得税法第204条第1項に規定する報酬には該当しませんので、「報酬、料金、契約金及び賞金の支払調書」を提出する必要はありません。所得税法第204条第1項第2号、第225条第1項第3号、所得税法施行令第320条第2項';
 
 // ===== フォントキャッシュ =====
 let fontLoaded = false;
@@ -65,11 +65,11 @@ async function loadJapaneseFont() {
 }
 
 /**
- * 通貨フォーマット (¥1,234,567)
+ * 通貨フォーマット (¥1,234,567-)
  */
 function pdfFormatCurrency(val) {
     const n = Number(val) || 0;
-    return '¥' + n.toLocaleString('ja-JP');
+    return '¥' + n.toLocaleString('ja-JP') + '-'; // 改ざん防止ハイフン付与
 }
 
 /**
@@ -132,9 +132,12 @@ async function generateInvoicePDF(data) {
         // ============================================================
         // ===== 4. タイトル: 請 求 書 =====
         // ============================================================
-        doc.setFontSize(20);
+        doc.setFontSize(26); // サイズを現状より2回り大きく
         doc.setTextColor(30, 41, 59);
+        // NotoSansJPで疑似太字とするためにストロークを描画
         doc.text('請  求  書', pageW / 2, y, { align: 'center' });
+        doc.setLineWidth(0.3);
+        doc.text('請  求  書', pageW / 2, y, { align: 'center', renderingMode: 'fillThenStroke' });
         y += 4;
 
         // タイトル下線（ダークネイビー）
@@ -164,6 +167,9 @@ async function generateInvoicePDF(data) {
         doc.setTextColor(30, 41, 59);
         const custName = (data.customerName || '') + '　' + (data.customerTitle || '御中');
         doc.text(custName, marginL, headerTopY + 2);
+        // 宛名も太字化（fillThenStrokeで枠線描画を足して疑似太枠）
+        doc.setLineWidth(0.2);
+        doc.text(custName, marginL, headerTopY + 2, { renderingMode: 'fillThenStroke' });
 
         // 宛名下線
         doc.setDrawColor(30, 41, 59);
@@ -199,7 +205,17 @@ async function generateInvoicePDF(data) {
 
         // ロゴ画像
         try {
-            doc.addImage(LOGO_OFFICE_B64, 'PNG', issuerBlockX, issuerTopY, 65, 16);
+            // アスペクト比を固定（Preserve Aspect Ratio）し、不自然な横伸びを防ぐ
+            // 元画像の比率を基に、最大幅65mm または 最大高さ16mmの制限内に収めるようスケーリング
+            const imgProps = doc.getImageProperties(LOGO_OFFICE_B64);
+            const ratio = imgProps.width / imgProps.height;
+            let drawW = 65;
+            let drawH = 65 / ratio;
+            if (drawH > 16) {
+                drawH = 16;
+                drawW = 16 * ratio;
+            }
+            doc.addImage(LOGO_OFFICE_B64, 'PNG', issuerBlockX, issuerTopY, drawW, drawH);
         } catch (e) {
             console.warn('Logo image error:', e);
             doc.setFontSize(11);
@@ -207,19 +223,19 @@ async function generateInvoicePDF(data) {
             doc.text(OFFICE_INFO.name, issuerBlockX, issuerTopY + 8);
         }
 
-        // 事務所住所・TEL/FAX（ロゴの下）
+        // ロゴの下: 顧客側の「担当者」を表示（事務所住所は削除）
         let issuerY = issuerTopY + 19;
-        doc.setFontSize(7.5);
-        doc.setTextColor(80, 80, 80);
-        doc.text(OFFICE_INFO.postal + ' ' + OFFICE_INFO.address, issuerBlockX, issuerY);
-        issuerY += 3.5;
-        doc.text(OFFICE_INFO.tel + '  ' + OFFICE_INFO.fax, issuerBlockX, issuerY);
-        issuerY += 3.5;
+        doc.setFontSize(9);
+        doc.setTextColor(30, 41, 59);
+        const salesRepText = data.salesRep ? '担当者: ' + data.salesRep : '担当者: 未設定';
+        // 約3文字分(約4~5mm)右方向へオフセット
+        doc.text(salesRepText, issuerBlockX + 5, issuerY);
+        issuerY += 5;
 
         // 職印画像（事務所ブロック右上に重ねて配置）
         const hankoSize = 22;
         const hankoX = rightX - hankoSize - 2;
-        const hankoY = issuerTopY + 1;
+        const hankoY = issuerTopY - 4; // さらに2mm上方へオフセット移動
         try {
             doc.addImage(HANKO_SYOKUIN_B64, 'PNG', hankoX, hankoY, hankoSize, hankoSize);
         } catch (e) {
@@ -232,16 +248,18 @@ async function generateInvoicePDF(data) {
         // ===== 7. ご請求金額ハイライトボックス =====
         // ============================================================
         const boxY = y;
-        doc.setFillColor(240, 242, 245);
-        doc.setDrawColor(30, 41, 59);
-        doc.setLineWidth(0.3);
+        doc.setFillColor(230, 243, 230); // 薄い緑色 (#E6F3E6)
+        doc.setDrawColor(0, 100, 0);     // 濃い緑色 (#006400)
+        doc.setLineWidth(0.4);
         doc.roundedRect(marginL, boxY, contentW, 14, 2, 2, 'FD');
         doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
-        doc.text('ご請求金額（税込）', marginL + 6, boxY + 6);
+        doc.setTextColor(0, 0, 0);       // 黒色指定
+        doc.setLineWidth(0.15);          // 太文字化（細めのストローク加算）
+        doc.text('ご請求金額（税込）', marginL + 6, boxY + 6, { renderingMode: 'fillThenStroke' });
         doc.setFontSize(16);
-        doc.setTextColor(30, 41, 59);
-        doc.text(pdfFormatCurrency(data.totalAmount), rightX - 6, boxY + 9.5, { align: 'right' });
+        doc.setTextColor(0, 0, 0);       // 黒色指定
+        doc.setLineWidth(0.25);          // 数値の太文字化
+        doc.text(pdfFormatCurrency(data.totalAmount), rightX - 6, boxY + 9.5, { align: 'right', renderingMode: 'fillThenStroke' });
         y = boxY + 20;
 
         // ============================================================
@@ -267,21 +285,21 @@ async function generateInvoicePDF(data) {
 
         // ② 小計行
         tableBody.push([
-            { content: '小計', colSpan: 3, styles: { halign: 'right', fontStyle: 'normal', fillColor: [245, 247, 250], textColor: [60, 60, 60] } },
-            { content: pdfFormatCurrency(data.taxableSubtotal), styles: { halign: 'right', fillColor: [245, 247, 250], textColor: [30, 41, 59] } }
+            { content: '小計', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [60, 60, 60] } },
+            { content: pdfFormatCurrency(data.taxableSubtotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [30, 41, 59] } }
         ]);
 
         // ③ 消費税行
         tableBody.push([
-            { content: '消費税（10%）', colSpan: 3, styles: { halign: 'right', fontStyle: 'normal', fillColor: [245, 247, 250], textColor: [60, 60, 60] } },
-            { content: pdfFormatCurrency(data.taxAmount), styles: { halign: 'right', fillColor: [245, 247, 250], textColor: [30, 41, 59] } }
+            { content: '消費税（10%）', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [60, 60, 60] } },
+            { content: pdfFormatCurrency(data.taxAmount), styles: { halign: 'right', fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [30, 41, 59] } }
         ]);
 
         // ④ 非課税項目（ある場合）
         if (nontaxableItems.length > 0) {
-            // 非課税セクションヘッダー
+            // 非課税セクションヘッダー（こちらも薄緑色・太字に）
             tableBody.push([
-                { content: '【非課税項目】', colSpan: 4, styles: { halign: 'left', fillColor: [250, 250, 252], textColor: [100, 100, 120], fontSize: 8 } }
+                { content: '【非課税項目】', colSpan: 4, styles: { halign: 'left', fillColor: [230, 243, 230], textColor: [30, 41, 59], fontSize: 9, fontStyle: 'bold' } }
             ]);
             nontaxableItems.forEach(item => {
                 tableBody.push([
@@ -295,11 +313,13 @@ async function generateInvoicePDF(data) {
 
         // ⑤ 合計金額行
         tableBody.push([
-            { content: '合計金額', colSpan: 3, styles: { halign: 'right', fontStyle: 'normal', fillColor: [30, 41, 59], textColor: [255, 255, 255], fontSize: 10 } },
-            { content: pdfFormatCurrency(data.totalAmount), styles: { halign: 'right', fillColor: [30, 41, 59], textColor: [255, 255, 255], fontSize: 10 } }
+            { content: '合計金額', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold', fillColor: [230, 243, 230], textColor: [30, 41, 59], fontSize: 11 } },
+            { content: pdfFormatCurrency(data.totalAmount), styles: { halign: 'right', fontStyle: 'bold', fillColor: [230, 243, 230], textColor: [30, 41, 59], fontSize: 13 } }
         ]);
 
         // --- autoTable描画 ---
+        // 金額などの数値は等幅として揃えるため、右詰め（halign: 'right'）および
+        // セル幅やパディングの計算でNotoSansを利用しつつきれいに配置されるように調整済
         doc.autoTable({
             startY: y,
             head: [['内容', '数量', '単価', '金額']],
@@ -307,24 +327,25 @@ async function generateInvoicePDF(data) {
             theme: 'grid',
             styles: {
                 font: 'NotoSansJP',
-                fontSize: 9,
+                fontSize: 10,
+                fontStyle: 'bold',
                 textColor: [30, 41, 59],
                 cellPadding: { top: 2.5, right: 3, bottom: 2.5, left: 3 },
-                lineColor: [200, 205, 215],
+                lineColor: [0, 100, 0], // テーブル枠線および内側罫線を濃い緑色 (#006400)
                 lineWidth: 0.2
             },
             headStyles: {
-                fillColor: [50, 60, 80],
-                textColor: [255, 255, 255],
-                fontStyle: 'normal',
-                fontSize: 9,
+                fillColor: [230, 243, 230], // 薄い緑色 (#E6F3E6)
+                textColor: [30, 41, 59],    // 濃紺色
+                fontStyle: 'bold',
+                fontSize: 10,
                 halign: 'center'
             },
             columnStyles: {
                 0: { cellWidth: 'auto' },
-                1: { cellWidth: 20, halign: 'center' },
-                2: { cellWidth: 30, halign: 'right' },
-                3: { cellWidth: 35, halign: 'right' }
+                1: { cellWidth: 20, halign: 'center', fontSize: 11 },
+                2: { cellWidth: 30, halign: 'right', fontSize: 11 },
+                3: { cellWidth: 35, halign: 'right', fontSize: 12 } // 金額列はさらに一回り大きく
             },
             margin: { left: marginL, right: marginR }
         });
@@ -332,42 +353,59 @@ async function generateInvoicePDF(data) {
         y = doc.lastAutoTable.finalY + 10;
 
         // ============================================================
-        // ===== 9. 振込先情報 =====
+        // ===== 9. フッターエリア（振込先・備考を2カラム配置） =====
         // ============================================================
-        doc.setFontSize(9);
-        doc.setTextColor(30, 41, 59);
-        doc.text('【お振込先】', marginL, y);
-        y += 5;
-        doc.setFontSize(8.5);
-        doc.setTextColor(50, 50, 50);
-        doc.text(BANK_INFO.bankName + '  ' + BANK_INFO.branchName + '  ' + BANK_INFO.accountType + '  ' + BANK_INFO.accountNumber, marginL + 4, y);
-        y += 4;
-        doc.text('口座名義: ' + BANK_INFO.accountHolder, marginL + 4, y);
-        y += 8;
+        // コンテンツ幅を半分に分割
+        const colWidth = contentW / 2;
+        const footerY = y;
 
-        // ============================================================
-        // ===== 10. 備考欄 =====
-        // ============================================================
+        // --- 左カラム：振込先情報 ---
+        let leftY = footerY;
         doc.setFontSize(9);
         doc.setTextColor(30, 41, 59);
-        doc.text('【備考】', marginL, y);
-        y += 5;
-        doc.setFontSize(8);
+        doc.text('【お振込先】', marginL, leftY);
+        leftY += 5;
+
+        doc.setFontSize(9);
+        doc.setTextColor(50, 50, 50);
+        doc.text(`銀行名称：${BANK_INFO.bankName}　${BANK_INFO.branchName}`, marginL + 4, leftY);
+        leftY += 5;
+        doc.text(`口座番号：${BANK_INFO.accountType} ${BANK_INFO.accountNumber}`, marginL + 4, leftY);
+        leftY += 5;
+        doc.text(`口座名義：${BANK_INFO.accountHolder}`, marginL + 4, leftY);
+        leftY += 7;
+
+        doc.setFontSize(8.5);
+        doc.text('※ 振込手数料はご負担をお願いいたします。', marginL + 4, leftY);
+
+        // --- 右カラム：備考欄 ---
+        let rightColX = marginL + colWidth;
+        let rightY = footerY;
+
+        doc.setFontSize(9);
+        doc.setTextColor(30, 41, 59);
+        doc.text('【備考】', rightColX, rightY);
+        rightY += 5;
+
+        doc.setFontSize(8.5);
         doc.setTextColor(60, 60, 60);
 
         // ユーザー入力の備考
         if (data.remarks) {
-            const remarkLines = doc.splitTextToSize(data.remarks, contentW - 10);
-            doc.text(remarkLines, marginL + 4, y);
-            y += remarkLines.length * 3.8 + 3;
+            const remarkLines = doc.splitTextToSize(data.remarks, colWidth - 5);
+            doc.text(remarkLines, rightColX + 2, rightY);
+            rightY += remarkLines.length * 4 + 3;
         }
 
         // 法的免責事項（定型文）
-        const disclaimerLines = doc.splitTextToSize(LEGAL_DISCLAIMER, contentW - 10);
+        const disclaimerLines = doc.splitTextToSize(LEGAL_DISCLAIMER, colWidth - 5);
         doc.setFontSize(7.5);
         doc.setTextColor(100, 100, 100);
-        doc.text(disclaimerLines, marginL + 4, y);
-        y += disclaimerLines.length * 3.5 + 4;
+        doc.text(disclaimerLines, rightColX + 2, rightY);
+        rightY += disclaimerLines.length * 3.5 + 4;
+
+        // Y位置を左右の深い方に合わせる
+        y = Math.max(leftY, rightY) + 12;
 
         // ============================================================
         // ===== 11. フッター =====
@@ -444,6 +482,15 @@ function exportInvoicePDF() {
 
     const remarks = document.getElementById('remarks')?.value || '';
 
+    // 外務担当者の取得
+    let salesRep = '';
+    if (typeof window.getCurrentCustomerSnapshot === 'function') {
+        const snap = window.getCurrentCustomerSnapshot();
+        if (snap && snap.sales_representative) {
+            salesRep = snap.sales_representative;
+        }
+    }
+
     generateInvoicePDF({
         invoiceNumber,
         invoiceDate,
@@ -458,6 +505,7 @@ function exportInvoicePDF() {
         taxAmount,
         nontaxableSubtotal,
         totalAmount,
-        remarks
+        remarks,
+        salesRep
     });
 }
