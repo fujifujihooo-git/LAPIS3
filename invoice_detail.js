@@ -44,6 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // 案件プルダウンから除外するステータス（完了・取下げは請求不要）
     const EXCLUDED_CASE_STATUSES = ['完了', '取下げ'];
 
+    // PDF出力などに現在の顧客スナップショットを渡すためのGetter
+    window.getCurrentCustomerSnapshot = function () {
+        return currentCustomerSnapshot;
+    };
+
     // --- State ---
     let isSaving = false;
     let formState = {
