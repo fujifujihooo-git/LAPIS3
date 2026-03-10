@@ -807,6 +807,25 @@ body {
     color: #334155;
 }
 
+/* --- Staff Status Badges --- */
+.status-active {
+    background-color: #E8F5E9; /* 極薄い緑 */
+    color: #1B5E20;            /* 濃い緑 (WCAG 2.1 AA準拠) */
+    border: 1px solid #A5D6A7;
+}
+
+.status-warning {
+    background-color: #FFF3E0; /* 極薄いオレンジ */
+    color: #E65100;            /* 濃いオレンジ (WCAG 2.1 AA準拠) */
+    border: 1px solid #FFCC80;
+}
+
+.status-inactive {
+    background-color: #F5F5F5; /* 極薄いグレー */
+    color: #424242;            /* ダークグレー (WCAG 2.1 AA準拠) */
+    border: 1px solid #E0E0E0;
+}
+
 /* Invoice Status Badges */
 .status-draft {
     background-color: #f1f5f9;
