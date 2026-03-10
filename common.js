@@ -192,6 +192,16 @@ function initStaffData() {
 }
 
 // --- Authentication Functions ---
+// --- RBAC Helpers ---
+function isUserAdmin() {
+    try {
+        const session = JSON.parse(localStorage.getItem('lapis2_session'));
+        return session && session.authority === 'admin';
+    } catch (e) {
+        return false;
+    }
+}
+
 function checkAuth() {
     // Guard: firebase.auth may not be loaded yet
     if (typeof firebase === 'undefined' || typeof firebase.auth !== 'function') {

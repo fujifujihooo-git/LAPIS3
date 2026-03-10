@@ -63,7 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const data = doc.data();
                     currentData = data;
                     loadData(data);
-                    btnDelete.style.display = 'inline-block';
+                    if (btnDelete) {
+                        btnDelete.style.display = isUserAdmin() ? 'inline-block' : 'none';
+                    }
                 } else {
                     alert('許認可種別が見つかりません。');
                     window.location.href = 'license_types_list.html';
@@ -161,6 +163,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Delete Data
     async function deleteData() {
+        if (!isUserAdmin()) {
+            alert('削除権限がありません。');
+            return;
+        }
         if (currentIdParam === 'new') return;
 
         const oldId = parseInt(currentIdParam);

@@ -75,8 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     pageTitle.textContent = '官公庁詳細';
                     officeIdDisplay.textContent = `Office ID: ${currentOffice.office_id}`;
                     populateForm(currentOffice);
-                    btnDelete.style.display = 'block';
-                    btnDelete.addEventListener('click', handleDelete);
+                    if (btnDelete) {
+                        btnDelete.style.display = isUserAdmin() ? 'block' : 'none';
+                        btnDelete.addEventListener('click', handleDelete);
+                    }
                 } else {
                     alert('官公庁が見つかりません。');
                     window.location.href = 'government_office_list.html';
@@ -185,6 +187,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // function updateRelatedData(oldId, newId) { ... }
 
     async function handleDelete() {
+        if (!isUserAdmin()) {
+            alert('削除権限がありません。');
+            return;
+        }
         if (!officeId) return;
 
         // F1. Deletion Restrictions - Query Firestore

@@ -114,6 +114,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     headerTitle.textContent = `顧客詳細：${e.target.value.trim()}`;
                 });
             }
+
+            // RBAC: 削除ボタンの表示制御（管理者のみ）
+            if (btnDelete && !isUserAdmin()) {
+                btnDelete.style.display = 'none';
+            }
         } catch (err) {
             console.error('Init failed:', err);
             // alert('初期化エラー: ' + err.message); 
@@ -419,6 +424,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function handleDelete() {
+        if (!isUserAdmin()) {
+            alert('削除権限がありません。');
+            return;
+        }
         if (customerIdParam === 'new') return;
         if (confirm('本当に削除しますか？')) {
             try {
