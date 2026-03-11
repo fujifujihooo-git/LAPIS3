@@ -64,6 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentItems = []; // Work items in memory
     let currentPayments = []; // Work payments in memory
 
+    let deletedItemDocIds = []; // Deleted items doc_ids
+    let deletedPaymentDocIds = []; // Deleted payments doc_ids
+
     // Cache for Customers/Cases (fetched on demand)
     let customersCache = [];
     let casesCache = []; // Cases for current customer
@@ -152,8 +155,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 db.collection('invoice_items').where('invoice_id', '==', iId).get(),
                 db.collection('payments').where('invoice_id', '==', iId).get()
             ]);
-            currentItems = itemsSnap.docs.map(d => d.data()).sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-            currentPayments = paysSnap.docs.map(d => d.data());
+            
+            deletedItemDocIds = [];
+            deletedPaymentDocIds = [];
+
+            currentItems = itemsSnap.docs.map(d => {
+                const data = d.data();
+                return { ...data, doc_id: d.id, _original: { ...data } };
+            }).sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+            
+            currentPayments = paysSnap.docs.map(d => {
+                const data = d.data();
+                return { ...data, doc_id: d.id, _original: { ...data } };
+            }).sort((a, b) => (a.payment_date > b.payment_date ? 1 : -1));
 
             // Fetch Customer Name and Snapshot
             let customerName = '不明';
@@ -461,6 +475,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.deleteLocalPayment = function (index) {
+        const item = currentPayments[index];
+        if (item && item.doc_id) {
+            deletedPaymentDocIds.push(item.doc_id);
+        }
         currentPayments.splice(index, 1);
         renderPayments();
         calculateTotals();
@@ -490,6 +508,34 @@ document.addEventListener('DOMContentLoaded', () => {
         statusEl.value = formState.status;
     }
 
+    function isItemChanged(item, newOrder) {
+        if (!item.doc_id) return true;
+        const orig = item._original;
+        if (!orig) return true;
+        return (
+            item.item_type !== orig.item_type ||
+            item.case_id !== orig.case_id ||
+            item.description !== orig.description ||
+            Number(item.unit_price) !== Number(orig.unit_price) ||
+            Number(item.quantity) !== Number(orig.quantity) ||
+            Number(item.amount) !== Number(orig.amount) ||
+            item.is_taxable !== orig.is_taxable ||
+            newOrder !== orig.display_order
+        );
+    }
+
+    function isPaymentChanged(p) {
+        if (!p.doc_id) return true;
+        const orig = p._original;
+        if (!orig) return true;
+        return (
+            p.payment_date !== orig.payment_date ||
+            Number(p.amount) !== Number(orig.amount) ||
+            p.payment_method !== orig.payment_method ||
+            p.remarks !== orig.remarks
+        );
+    }
+
     async function handleSave() {
         if (isSaving) return;
 
@@ -517,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const { taxable, tax, nontaxable, total } = calculateTotals();
+        const { taxable, tax, nontaxable, total, payTotal, balance } = calculateTotals();
 
         isSaving = true;
         btnSave.disabled = true;
@@ -565,11 +611,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 subtotal_taxable: taxable,
                 tax_amount: tax,
                 subtotal_nontaxable: nontaxable,
-                total_amount: total,
-                paid_amount: payTotal,
-                balance: balance,
-                status: formState.status,
-                remarks: formState.remarks,
+                total_amount: total ?? 0,
+                paid_amount: payTotal ?? 0,
+                balance: balance ?? 0,
+                status: formState.status || '下書き',
+                remarks: formState.remarks || '',
                 last_updated: serverTimestamp
             };
 
@@ -579,49 +625,81 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (currentInvoiceId) {
                 batch.update(invRef, invoiceData);
-
-                // Cleanup old Sub-collections
-                const oldItems = await db.collection('invoice_items').where('invoice_id', '==', iId).get();
-                oldItems.forEach(d => batch.delete(d.ref));
-
-                const oldPays = await db.collection('payments').where('invoice_id', '==', iId).get();
-                oldPays.forEach(d => batch.delete(d.ref));
-
             } else {
                 batch.set(invRef, invoiceData);
             }
 
-            // Save Items
+            // Save Items (Differential)
             currentItems.forEach((item, idx) => {
-                const itemRef = db.collection('invoice_items').doc(); // Auto
-                batch.set(itemRef, {
+                const newOrder = idx + 1;
+                if (!isItemChanged(item, newOrder)) return;
+
+                const itemData = {
                     invoice_id: iId,
                     item_type: item.item_type,
                     case_id: item.case_id || null,
-                    description: item.description,
+                    description: item.description || '',
                     unit_price: Number(item.unit_price),
                     quantity: Number(item.quantity),
                     amount: Number(item.amount),
-                    is_taxable: item.is_taxable,
-                    display_order: idx + 1,
-                    created_date: serverTimestamp
-                });
+                    is_taxable: !!item.is_taxable,
+                    display_order: newOrder
+                };
+
+                if (item.doc_id) {
+                    itemData.last_updated = serverTimestamp;
+                    batch.update(db.collection('invoice_items').doc(item.doc_id), itemData);
+                } else {
+                    itemData.created_date = serverTimestamp;
+                    itemData.last_updated = serverTimestamp;
+                    batch.set(db.collection('invoice_items').doc(), itemData);
+                }
             });
 
-            // Save Payments
+            // Delete Items
+            deletedItemDocIds.forEach(docId => {
+                batch.delete(db.collection('invoice_items').doc(docId));
+            });
+
+            // Save Payments (Differential)
             currentPayments.forEach(p => {
-                const payRef = db.collection('payments').doc(); // Auto
-                batch.set(payRef, {
+                if (!isPaymentChanged(p)) return;
+
+                const payData = {
                     invoice_id: iId,
                     payment_date: p.payment_date,
                     amount: Number(p.amount),
                     payment_method: p.payment_method,
-                    remarks: p.remarks || '',
-                    created_date: serverTimestamp
-                });
+                    remarks: p.remarks || ''
+                };
+
+                if (p.doc_id) {
+                    payData.last_updated = serverTimestamp;
+                    batch.update(db.collection('payments').doc(p.doc_id), payData);
+                } else {
+                    payData.created_date = serverTimestamp;
+                    payData.last_updated = serverTimestamp;
+                    batch.set(db.collection('payments').doc(), payData);
+                }
+            });
+
+            // Delete Payments
+            deletedPaymentDocIds.forEach(docId => {
+                batch.delete(db.collection('payments').doc(docId));
             });
 
             await batch.commit();
+
+            // 成功後にフラグ等のリセット
+            deletedItemDocIds = [];
+            deletedPaymentDocIds = [];
+
+            // 現在のステートを _original として更新（リロードせず継続編集する場合への備え）
+            currentItems.forEach((item, idx) => {
+                item.display_order = idx + 1;
+                item._original = { ...item };
+            });
+            currentPayments.forEach(p => p._original = { ...p });
 
             if (typeof showToast === 'function') {
                 showToast('請求データを保存しました', 'success');
@@ -762,6 +840,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-modal-delete-item').addEventListener('click', () => {
         if (editingItemIndex >= 0) {
             if (confirm('この明細を削除しますか？')) {
+                const item = currentItems[editingItemIndex];
+                if (item && item.doc_id) {
+                    deletedItemDocIds.push(item.doc_id);
+                }
                 currentItems.splice(editingItemIndex, 1);
                 renderItems();
                 calculateTotals();
