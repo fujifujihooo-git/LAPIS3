@@ -878,3 +878,177 @@ async function getNextSequence(counterName) {
         return newCount;
     });
 }
+
+// --- Payment Allocation Helpers (Phase B) ---
+/**
+ * 入金消込を実行するトランザクション処理
+ * @param {string} receiptId - 対象の入金ドキュメントID
+ * @param {string} invoiceId - 充当先の請求書ドキュメントID
+ * @param {number} allocateAmount - 充当する金額
+ * @returns {Promise<string>} 作成された allocationId
+ */
+async function allocateReceiptToInvoice(receiptId, invoiceId, allocateAmount) {
+    if (!receiptId || !invoiceId || typeof allocateAmount !== 'number' || allocateAmount <= 0) {
+        throw new Error("Invalid parameters for allocation");
+    }
+
+    const receiptRef = db.collection('receipts').doc(receiptId);
+    const invoiceRef = db.collection('invoices').doc(invoiceId);
+    const allocationRef = db.collection('receiptAllocations').doc(); // 新規ID生成
+
+    return db.runTransaction(async (transaction) => {
+        const [receiptSnap, invoiceSnap] = await Promise.all([
+            transaction.get(receiptRef),
+            transaction.get(invoiceRef)
+        ]);
+
+        if (!receiptSnap.exists) throw new Error("Receipt does not exist.");
+        if (!invoiceSnap.exists) throw new Error("Invoice does not exist.");
+
+        const receiptData = receiptSnap.data();
+        const invoiceData = invoiceSnap.data();
+
+        if (receiptData.status !== 'active') throw new Error("Cannot allocate a cancelled receipt.");
+        if (invoiceData.status === 'cancelled') throw new Error("Cannot allocate to a cancelled invoice.");
+
+        // 残額チェック
+        const currentReceiptBalance = receiptData.balance || 0;
+        const currentInvoiceBalance = invoiceData.balance !== undefined ? invoiceData.balance : (invoiceData.totalAmount || 0);
+
+        if (currentReceiptBalance < allocateAmount) {
+            throw new Error(`Insufficient receipt balance. Requested: ${allocateAmount}, Available: ${currentReceiptBalance}`);
+        }
+        if (currentInvoiceBalance < allocateAmount) {
+            throw new Error(`Allocation amount exceeds invoice balance. Requested: ${allocateAmount}, Balance: ${currentInvoiceBalance}`);
+        }
+
+        // --- 更新値の計算 ---
+        // 請求書
+        const newInvoiceAllocated = (invoiceData.allocatedAmount || 0) + allocateAmount;
+        const newInvoiceBalance = currentInvoiceBalance - allocateAmount;
+        
+        let newInvoiceStatus = invoiceData.status;
+        if (newInvoiceStatus === 'issued' || newInvoiceStatus === '一部入金') {
+            if (newInvoiceBalance === 0) {
+                newInvoiceStatus = '入金済';
+            } else if (newInvoiceAllocated > 0) {
+                newInvoiceStatus = '一部入金';
+            }
+        }
+
+        // 入金データ
+        const newReceiptAllocated = (receiptData.allocatedAmount || 0) + allocateAmount;
+        const newReceiptBalance = currentReceiptBalance - allocateAmount;
+
+        // --- 書き込み ---
+        const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp();
+
+        // 1. レシート更新
+        transaction.update(receiptRef, {
+            allocatedAmount: newReceiptAllocated,
+            balance: newReceiptBalance,
+            lastUpdatedAt: serverTimestamp
+        });
+
+        // 2. 請求書更新
+        transaction.update(invoiceRef, {
+            allocatedAmount: newInvoiceAllocated,
+            balance: newInvoiceBalance,
+            status: newInvoiceStatus,
+            lastUpdatedAt: serverTimestamp
+        });
+
+        // 3. 消込履歴作成
+        // ※ invoicesコレクションのフィールド名は customer_id (snake_case)
+        const resolvedCustomerId = invoiceData.customer_id || invoiceData.customerId || null;
+        if (!resolvedCustomerId) {
+            console.warn('[WARN] customerId could not be resolved from invoice data. Using null.');
+        }
+
+        transaction.set(allocationRef, {
+            allocationId: allocationRef.id,
+            receiptId: receiptId,
+            invoiceId: invoiceId,
+            amount: allocateAmount,
+            status: 'active', // 'active' or 'cancelled'
+            customerId: resolvedCustomerId,
+            createdAt: serverTimestamp,
+            lastUpdatedAt: serverTimestamp
+        });
+
+        return allocationRef.id;
+    });
+}
+
+/**
+ * 入金消込を取り消すトランザクション処理
+ * @param {string} allocationId - 取消対象の Allocation ドキュメントID
+ * @returns {Promise<void>}
+ */
+async function cancelReceiptAllocation(allocationId) {
+    if (!allocationId) throw new Error("allocationId is required");
+
+    const allocationRef = db.collection('receiptAllocations').doc(allocationId);
+
+    return db.runTransaction(async (transaction) => {
+        const allocSnap = await transaction.get(allocationRef);
+        if (!allocSnap.exists) throw new Error("Allocation does not exist.");
+
+        const allocData = allocSnap.data();
+        if (allocData.status === 'cancelled') throw new Error("Allocation is already cancelled.");
+
+        const receiptRef = db.collection('receipts').doc(allocData.receiptId);
+        const invoiceRef = db.collection('invoices').doc(allocData.invoiceId);
+
+        const [receiptSnap, invoiceSnap] = await Promise.all([
+            transaction.get(receiptRef),
+            transaction.get(invoiceRef)
+        ]);
+
+        if (!receiptSnap.exists) throw new Error("Associated receipt not found during cancellation.");
+        if (!invoiceSnap.exists) throw new Error("Associated invoice not found during cancellation.");
+
+        const receiptData = receiptSnap.data();
+        const invoiceData = invoiceSnap.data();
+        const amountToRestore = allocData.amount;
+
+        // --- 状態復元計算 ---
+        const newReceiptAllocated = Math.max(0, (receiptData.allocatedAmount || 0) - amountToRestore);
+        const newReceiptBalance = (receiptData.balance || 0) + amountToRestore;
+
+        const newInvoiceAllocated = Math.max(0, (invoiceData.allocatedAmount || 0) - amountToRestore);
+        const newInvoiceBalance = (invoiceData.balance !== undefined ? invoiceData.balance : (invoiceData.totalAmount || 0)) + amountToRestore;
+
+        let newInvoiceStatus = invoiceData.status;
+        if (newInvoiceStatus === '入金済' || newInvoiceStatus === '一部入金') {
+            if (newInvoiceAllocated === 0) {
+                newInvoiceStatus = '発行済'; // 一部入金も無くなった場合
+            } else {
+                newInvoiceStatus = '一部入金';
+            }
+        }
+
+        const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp();
+
+        // 1. レシート復元
+        transaction.update(receiptRef, {
+            allocatedAmount: newReceiptAllocated,
+            balance: newReceiptBalance,
+            lastUpdatedAt: serverTimestamp
+        });
+
+        // 2. 請求書復元
+        transaction.update(invoiceRef, {
+            allocatedAmount: newInvoiceAllocated,
+            balance: newInvoiceBalance,
+            status: newInvoiceStatus,
+            lastUpdatedAt: serverTimestamp
+        });
+
+        // 3. Allocationの論理削除
+        transaction.update(allocationRef, {
+            status: 'cancelled',
+            lastUpdatedAt: serverTimestamp
+        });
+    });
+}
