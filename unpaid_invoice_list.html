@@ -109,6 +109,100 @@
             border-bottom: 2px solid #e2e8f0;
             padding-bottom: 8px;
         }
+        .block-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            background-color: transparent;
+        }
+        
+        /* Transition utility for smooth background color changes */
+        .transition-colors {
+            transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
+        }
+
+        /* --- Mode Specific Styles --- */
+        /* Default (Detailed Mode) is standard white/gray #ffffff */
+        .block.mode-container {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+        }
+        
+        /* Batch Mode Active Styles */
+        .block.mode-container.batch-mode-active {
+            background-color: #f0f9ff; /* sky-50: Very subtle blue tint */
+            border-color: #bae6fd; /* sky-200: Slightly stronger border */
+            box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.1), 0 2px 4px -1px rgba(14, 165, 233, 0.06);
+        }
+        
+        /* Table headers need transparent background to inherit the container's color */
+        .batch-mode-active .table th {
+            background-color: transparent;
+            border-bottom-color: #bae6fd;
+        }
+        
+        .batch-mode-active .table td {
+            border-bottom-color: #e0f2fe; /* sky-100 */
+        }
+        
+        /* Conditional Zebra Striping for Bulk Mode */
+        .batch-mode-active #unpaid-list-body tr:nth-child(odd) {
+            background-color: #f0f9ff; /* sky-50: 非常に淡いブルー */
+        }
+        .batch-mode-active #unpaid-list-body tr:nth-child(even) {
+            background-color: #ffffff; /* pure white */
+        }
+        .batch-mode-active #unpaid-list-body tr {
+            transition: background-color 0.2s ease-in-out;
+        }
+        .batch-mode-active #unpaid-list-body tr:hover {
+            background-color: #e0f2fe !important; /* sky-100: ホバー時の微弱な強調 */
+        }
+        
+        /* Subtle indicator badge */
+        .batch-mode-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #0369a1; /* sky-700 */
+            background-color: #e0f2fe; /* sky-100 */
+            border-radius: 9999px;
+            margin-left: 12px;
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        
+        .batch-mode-active .batch-mode-badge {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #unpaid-table th.sortable {
+            cursor: pointer;
+            position: relative;
+            padding-right: 25px; /* Space for sort icon */
+        }
+
+        #unpaid-table th.sortable::after {
+            content: '';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 4px solid transparent;
+        }
+
+        #unpaid-table th.sortable.asc::after {
+            border-bottom-color: var(--text-main);
+            top: 40%;
+        }
+
+        #unpaid-table th.sortable.desc::after {
+            border-top-color: var(--text-main);
+            top: 60%;
+        }
 
         .info-card {
             background: white;
@@ -320,9 +414,20 @@
                 </div>
 
                 <!-- Results Table -->
-                <div class="block" id="table-wrapper" style="display: none;">
-                    <div class="block-header" style="border-bottom: none; padding-bottom: 0;">
-                        <div style="flex: 1;"></div>
+                <div class="block mode-container transition-colors" id="table-wrapper" style="display: none;">
+                    <div class="block-header" style="border-bottom: none; padding-bottom: 12px; display:flex; justify-content:space-between; align-items:flex-end;">
+                        <div style="display:flex; flex-direction: column; gap: 8px; align-items: flex-start;">
+                            <div class="segment-control" style="background:#e2e8f0; padding:4px; border-radius:8px; display:inline-flex; gap: 4px; align-items: center;">
+                                <button type="button" id="tab-mode-detail" class="btn btn-sm" style="background:#fff; border:none; box-shadow:0 1px 3px rgba(0,0,0,0.1); border-radius:6px; font-weight:600; padding: 6px 16px; color:#0f172a; transition:0.2s;">詳細消込モード</button>
+                                <button type="button" id="tab-mode-batch" class="btn btn-sm" style="background:transparent; border:none; color:#64748b; font-weight:500; padding: 6px 16px; border-radius:6px; transition:0.2s;">一括消込モード</button>
+                                <span class="batch-mode-badge"><i data-lucide="zap" style="width:12px; height:12px; margin-right:4px;"></i>一括操作中</span>
+                            </div>
+                            <div id="batch-date-selector" style="display:none; align-items:center; gap:8px;">
+                                <label style="font-size:0.85rem; font-weight:600; color:#475569;">一括入金日:</label>
+                                <input type="date" id="batch-receipt-date" class="form-control" style="font-size:0.9rem; padding:4px 8px; min-height:32px; height:32px; width:140px;">
+                                <span style="font-size:0.8rem; color:#94a3b8;">※ 全行の入金日として記録されます</span>
+                            </div>
+                        </div>
                         <div id="count-display-area" style="font-size: 0.9rem; color: var(--text-muted);">
                             <span id="count-display">表示件数：0件</span>
                         </div>
@@ -345,6 +450,18 @@
                                     <!-- JS Populated -->
                                 </tbody>
                             </table>
+                        </div>
+                        
+                        <!-- Batch Action Area -->
+                        <div id="batch-action-bar" class="transition-colors" style="display:none; background:transparent; padding:16px 24px; border-top:1px dashed #bae6fd; justify-content:space-between; align-items:center; border-radius:0 0 10px 10px;">
+                            <div style="font-size:0.95rem; color:#0369a1;">
+                                選択件数: <strong id="batch-selected-count" style="font-size:1.2rem; color:#0f172a;">0</strong> 件
+                                <span style="margin:0 12px; color:#bae6fd;">|</span>
+                                消込総額: <strong id="batch-total-amount" style="font-size:1.2rem; color:#0284c7;">¥0</strong>
+                            </div>
+                            <button id="btn-batch-execute" class="btn btn-primary" style="padding:0 24px; min-height:44px; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);" disabled>
+                                <i data-lucide="check-circle" style="margin-right:8px; width:18px; height:18px;"></i>一括消込を実行
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -390,7 +507,49 @@
             <div class="allocation-container">
                 <!-- 左ペイン: 入金(Receipt)選択 -->
                 <div class="pane">
-                    <div class="pane-title">1. 対象の入金を選択</div>
+                    <div class="pane-title" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px; gap: 8px;">
+                        <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); white-space: nowrap;">1. 対象の入金を選択</span>
+                        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: nowrap;">
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem; color: #475569; cursor: pointer; white-space: nowrap;">
+                                <input type="checkbox" id="toggle-show-all-receipts" style="width: 14px; height: 14px; accent-color: var(--primary);">
+                                全顧客を表示
+                            </label>
+                            <button type="button" class="btn btn-sm btn-primary" id="btn-inline-receipt-toggle-header" style="padding: 4px 8px; font-size: 0.8rem; white-space: nowrap;">
+                                <i data-lucide="plus" style="width: 14px; height: 14px; margin-right: 2px;"></i> 入金登録
+                            </button>
+                        </div>
+                    </div>
+                    <!-- インライン入金登録フォーム (ヘッダーのすぐ下に移動) -->
+                    <div id="inline-receipt-form" style="display: none; background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 16px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); position: relative;">
+                        <h4 style="font-size: 0.95rem; margin: 0 0 12px 0; color: #92400e; display: flex; align-items: center; gap: 4px;">
+                            <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i> 簡易入金登録
+                        </h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div>
+                                <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; font-weight: 500;">入金日 <span style="color:#ef4444">*</span></label>
+                                <input type="date" id="inline-receipt-date" class="form-control" style="min-height: 36px; height: 36px; padding: 4px 8px; font-size: 0.9rem;">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; font-weight: 500;">金額 <span style="color:#ef4444">*</span></label>
+                                <input type="number" id="inline-receipt-amount" class="form-control" placeholder="0" min="1" style="min-height: 36px; height: 36px; padding: 4px 8px; font-size: 0.9rem; text-align: right;">
+                            </div>
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; font-weight: 500;">振込人名 <span style="color:#ef4444">*</span></label>
+                            <input type="text" id="inline-receipt-payer" class="form-control" style="min-height: 36px; height: 36px; padding: 4px 8px; font-size: 0.9rem;">
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; font-weight: 500;">メモ</label>
+                            <input type="text" id="inline-receipt-memo" class="form-control" placeholder="任意" style="min-height: 36px; height: 36px; padding: 4px 8px; font-size: 0.9rem;">
+                        </div>
+                        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+                            <button type="button" class="btn btn-sm btn-secondary" id="btn-inline-receipt-cancel" style="padding: 4px 12px; font-size: 0.85rem;">キャンセル</button>
+                            <button type="button" class="btn btn-sm btn-primary" id="btn-inline-receipt-save" style="padding: 4px 16px; font-size: 0.85rem; min-width: 100px;">
+                                <i data-lucide="save" style="width: 14px; height: 14px; margin-right: 4px;"></i> 保存して選択
+                            </button>
+                        </div>
+                    </div>
+
                     <div id="receipts-loading" style="text-align: center; color: #64748b; padding: 20px;">
                         <i data-lucide="loader" class="spin"></i> 読み込み中...
                     </div>
@@ -401,39 +560,9 @@
                         <p style="font-weight: 600; margin-bottom: 8px;">有効な未消込入金がありません</p>
                         <p style="font-size: 0.85rem; margin-bottom: 12px;">消込を行うには、先に入金データを登録する必要があります。</p>
                         <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
-                            <button type="button" class="btn btn-sm btn-primary" id="btn-inline-receipt-toggle" style="padding: 6px 16px; font-size: 0.9rem;">
-                                ➕ この場で入金を登録
-                            </button>
                             <a href="receipt_list.html" target="_blank" class="btn btn-sm btn-secondary" style="padding: 6px 16px; font-size: 0.9rem;">
                                 🏦 入金管理画面を開く
                             </a>
-                        </div>
-                    </div>
-
-                    <!-- インライン入金登録フォーム -->
-                    <div id="inline-receipt-form" style="display: none; background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 16px; margin-top: 12px;">
-                        <h4 style="font-size: 0.95rem; margin: 0 0 12px 0; color: #92400e;">📝 簡易入金登録</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                            <div>
-                                <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; font-weight: 500;">入金日 *</label>
-                                <input type="date" id="inline-receipt-date" class="form-control" style="min-height: 36px; font-size: 0.9rem;">
-                            </div>
-                            <div>
-                                <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; font-weight: 500;">金額 *</label>
-                                <input type="number" id="inline-receipt-amount" class="form-control" placeholder="0" min="1" style="min-height: 36px; font-size: 0.9rem; text-align: right;">
-                            </div>
-                        </div>
-                        <div style="margin-top: 12px;">
-                            <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; font-weight: 500;">振込人名 *</label>
-                            <input type="text" id="inline-receipt-payer" class="form-control" style="min-height: 36px; font-size: 0.9rem;">
-                        </div>
-                        <div style="margin-top: 12px;">
-                            <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; font-weight: 500;">メモ</label>
-                            <input type="text" id="inline-receipt-memo" class="form-control" placeholder="任意" style="min-height: 36px; font-size: 0.9rem;">
-                        </div>
-                        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px;">
-                            <button type="button" class="btn btn-sm btn-secondary" id="btn-inline-receipt-cancel">キャンセル</button>
-                            <button type="button" class="btn btn-sm btn-primary" id="btn-inline-receipt-save" style="min-width: 100px;">保存して選択</button>
                         </div>
                     </div>
                     <!-- Receipt List -->
