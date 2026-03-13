@@ -154,13 +154,18 @@
                         <h3 class="block-title">集計条件</h3>
                     </div>
                     <div class="block-content">
-                        <div class="filter-bar">
+                        <div class="filter-bar" style="align-items: flex-end; gap: 1rem;">
                             <div class="filter-item">
-                                <label for="filter-year-month">対象月</label>
-                                <input type="month" id="filter-year-month" class="form-control">
+                                <label for="filter-date-start">開始年月日</label>
+                                <input type="date" id="filter-date-start" class="form-control" style="width: auto;">
                             </div>
-                            <!-- Future expansion: Customer filter, Staff filter etc. -->
-                            <!-- Current sales_list.js mainly uses month filter -->
+                            <div class="filter-item" style="padding-bottom: 8px; color: var(--text-muted);">
+                                〜
+                            </div>
+                            <div class="filter-item">
+                                <label for="filter-date-end">終了年月日</label>
+                                <input type="date" id="filter-date-end" class="form-control" style="width: auto;">
+                            </div>
                             <div class="filter-item" style="padding-bottom: 2px;">
                                 <button id="btn-search-execute" class="btn btn-search" style="width: 100%;">
                                     <i data-lucide="search"></i> 集計実行
