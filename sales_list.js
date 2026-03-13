@@ -12,7 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Selectors ---
     const listBody = document.getElementById('sales-list-body');
-    const filterYearMonth = document.getElementById('filter-year-month');
+    const filterDateStart = document.getElementById('filter-date-start');
+    const filterDateEnd = document.getElementById('filter-date-end');
     const filterCustomer = document.getElementById('filter-customer');
     const filterStaff = document.getElementById('filter-staff');
     const btnExcelExport = document.getElementById('btn-export-csv');
@@ -56,11 +57,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupFilterOptions() {
-        if (!filterYearMonth) return;
+        if (!filterDateStart || !filterDateEnd) return;
         const now = new Date();
         const y = now.getFullYear();
         const m = String(now.getMonth() + 1).padStart(2, '0');
-        filterYearMonth.value = `${y}-${m}`;
+        // デフォルトを今月の月初〜末日に設定
+        const lastDay = new Date(y, Number(m), 0).getDate();
+        filterDateStart.value = `${y}-${m}-01`;
+        filterDateEnd.value = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
     }
 
     async function fetchMasters() {
@@ -105,16 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // ── フィルタ値の取得 ──
-        // UnifiedMonthPicker は hidden input (filter-year-month) に YYYY-MM を保持
-        const dateVal = filterYearMonth?.value || '';
-        let dateFrom = '';
-        let dateTo = '';
-        if (dateVal) {
-            const [y, m] = dateVal.split('-');
-            const lastDay = new Date(Number(y), Number(m), 0);
-            dateFrom = `${y}-${m}-01`;
-            dateTo = `${y}-${m}-${String(lastDay.getDate()).padStart(2, '0')}`;
-        }
+        const dateFrom = filterDateStart?.value || '';
+        const dateTo = filterDateEnd?.value || '';
 
         console.log(`[Sales List] ========== 集計開始 ==========`);
         console.log(`[Sales List] 検索期間: ${dateFrom || '指定なし'} ～ ${dateTo || '指定なし'}`);
@@ -259,6 +255,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     reimbursement = Number(c.suspense_receipt_amount) || Number(c.reimbursement_fee) || 0;
                 }
 
+                const feeTaxIncluded = fee + tax;
+                const totalAmount = feeTaxIncluded + reimbursement;
+
                 const entry = {
                     case_id: c.case_id,
                     contract_date: c.contract_date || '',
@@ -266,16 +265,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     case_name: `${c.procedure_name || ''} (${c.license_type || ''})`,
                     fee,
                     tax,
-                    total_sales: fee + tax,
+                    fee_tax_included: feeTaxIncluded,
+                    total_sales: feeTaxIncluded, // 既存ロジック互換用
                     reimbursement,
+                    total_amount: totalAmount,
                     staff_id: c.field_staff_id,
                     staff_name: staffMap[c.field_staff_id]?.staff_name || '',
                     status
                 };
-
-                console.log(`[Sales List] salesData: case_id=${entry.case_id}, ` +
-                    `date=${entry.contract_date}, fee=${entry.fee}, ` +
-                    `customer=${entry.customer_name}, case=${entry.case_name}`);
 
                 return entry;
             });
@@ -347,7 +344,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${formatDate(item.contract_date)}</td>
                     <td>${formatDisplayValue(item.customer_name)}</td>
                     <td>${formatDisplayValue(item.case_name)}</td>
-                    <td class="text-right">${formatCurrency(item.fee)}</td>
+                    <td class="text-right">${formatCurrency(item.reimbursement)}</td>
+                    <td class="text-right">${formatCurrency(item.fee_tax_included)}</td>
+                    <td class="text-right" style="font-weight: 600; color: var(--primary);">${formatCurrency(item.total_amount)}</td>
                     <td>${formatDisplayValue(item.staff_name)}</td>
                 `;
                 listBody.appendChild(tr);
@@ -360,10 +359,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalSales = totalFee + totalTax;
         const totalReimbursement = filtered.reduce((s, i) => s + (Number(i.reimbursement) || 0), 0);
 
-        const ym = filterYearMonth?.value || '';
-        const displayYm = ym ? ym.replace('-', '年') + '月' : '全期間';
+        const dateStart = filterDateStart?.value || '';
+        const dateEnd = filterDateEnd?.value || '';
+        const displayPeriod = (dateStart && dateEnd) ? `${dateStart} 〜 ${dateEnd}` : '全期間';
 
-        if (aggTitle) aggTitle.textContent = `${displayYm} 集計 (表示分)`;
+        if (aggTitle) aggTitle.textContent = `${displayPeriod} 集計 (表示分)`;
 
         // サマリーカード
         const elTotalSales = document.getElementById('val-total-sales');
@@ -383,41 +383,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderSummaryView(data, fee, tax, sales, reimb, periodPaid) {
-        const summaryContent = document.getElementById('summary-content');
-        if (!summaryContent) return;
-
-        const unpaid = sales - (periodPaid || 0);
-
-        // 担当者別
-        const staffStats = {};
-        data.forEach(item => {
-            const sid = item.staff_id || 0;
-            if (!staffStats[sid]) {
-                const sName = staffMap[sid]?.staff_name || '（担当なし）';
-                staffStats[sid] = { name: sName, count: 0, sales: 0, reimb: 0 };
-            }
-            staffStats[sid].count++;
-            staffStats[sid].sales += item.total_sales;
-            staffStats[sid].reimb += item.reimbursement;
-        });
-
-        let staffHtml = '';
-        Object.values(staffStats).forEach(s => {
-            staffHtml += `
-            <tr>
-                <td>${s.name}</td>
-                <td>${s.count}件</td>
-                <td>${formatCurrency(s.sales)}</td>
-                <td>${formatCurrency(s.reimb)}</td>
-            </tr>`;
-        });
-
-        const ym = filterYearMonth?.value || '';
-        const displayYm = ym ? ym.replace('-', '年') + '月' : '全期間';
+        const dateStart = filterDateStart?.value || '';
+        const dateEnd = filterDateEnd?.value || '';
+        const displayPeriod = (dateStart && dateEnd) ? `${dateStart} 〜 ${dateEnd}` : '全期間';
 
         summaryContent.innerHTML = `
-            <div class="summary-header">売上サマリー：${displayYm}</div>
+            <div class="summary-header">売上サマリー：${displayPeriod}</div>
 
             <h3 style="margin-top: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">■ 売上</h3>
             <div class="summary-row"><span>手数料（税抜）</span><span>${formatCurrency(fee)}</span></div>
@@ -521,7 +492,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- イベントバインディング ---
-    if (filterYearMonth) filterYearMonth.addEventListener('change', searchData);
+    [filterDateStart, filterDateEnd].forEach(el => {
+        if (el) el.addEventListener('change', searchData);
+    });
     if (btnSearchExecute) btnSearchExecute.addEventListener('click', searchData);
     [filterCustomer, filterStaff].forEach(el => {
         if (el) el.addEventListener('input', render);
