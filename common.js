@@ -193,6 +193,15 @@ function initStaffData() {
 
 // --- Authentication Functions ---
 // --- RBAC Helpers ---
+function canAccessAccounting() {
+    try {
+        const session = JSON.parse(localStorage.getItem('lapis2_session'));
+        return session && (session.authority === 'admin' || session.authority === 'accounting');
+    } catch (e) {
+        return false;
+    }
+}
+
 function isUserAdmin() {
     try {
         const session = JSON.parse(localStorage.getItem('lapis2_session'));
@@ -287,6 +296,23 @@ function applyPermissions(session) {
             const parentLi = link.closest('li');
             if (parentLi) {
                 if (session.authority === 'admin') {
+                    parentLi.style.display = 'block';
+                } else {
+                    parentLi.style.display = 'none';
+                }
+            }
+        }
+    });
+
+    // 経理系リンク（未収一覧・入金消込）の制御
+    const accountingLinks = [
+        document.querySelector('a[href="unpaid_invoice_list.html"]')
+    ];
+    accountingLinks.forEach(link => {
+        if (link) {
+            const parentLi = link.closest('li');
+            if (parentLi) {
+                if (session.authority === 'admin' || session.authority === 'accounting') {
                     parentLi.style.display = 'block';
                 } else {
                     parentLi.style.display = 'none';

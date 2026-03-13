@@ -1,6 +1,13 @@
 // unpaid_invoice_list.js
 document.addEventListener('DOMContentLoaded', () => {
 
+    // --- Access Control Guard ---
+    if (typeof canAccessAccounting === 'function' && !canAccessAccounting()) {
+        alert('アクセス権限がありません。');
+        window.location.href = 'index.html';
+        return;
+    }
+
     const customerInput = document.getElementById('input-customer-search');
     const customerIdInput = document.getElementById('filter-customer-id');
     const autocompleteList = document.getElementById('autocomplete-list');
