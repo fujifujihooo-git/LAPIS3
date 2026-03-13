@@ -729,34 +729,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function deleteInvoice() {
         if (!currentInvoiceId) return;
-        if (!confirm('この請求データを削除しますか？付随する明細と入金記録も削除されます。')) return;
+        if (!confirm('この請求データを無効化（取消）しますか？\n消込記録等はそのまま残りますが、一覧からは除外（または取消表示）されます。')) return;
 
         try {
-            const batch = db.batch();
             const invRef = db.collection('invoices').doc(currentInvoiceId);
             const invDoc = await invRef.get();
 
             if (invDoc.exists) {
-                const iId = invDoc.data().invoice_id;
-                batch.delete(invRef);
-
-                // Items
-                const itemsSnap = await db.collection('invoice_items').where('invoice_id', '==', iId).get();
-                itemsSnap.forEach(d => batch.delete(d.ref));
-
-                // Payments
-                const paySnap = await db.collection('payments').where('invoice_id', '==', iId).get();
-                paySnap.forEach(d => batch.delete(d.ref));
+                // 論理削除（ステータス変更）として処理
+                // 残高は 0 またはそのままにする運用がありますが、今回は無効化として balance=0 にして未収計算から外す処理も考えられます。
+                // 安全のため、status のみを cancelled にし、残高ロジックはクエリ側(status != cancelled)で除外する前提とします。
+                await invRef.update({
+                    status: 'cancelled',
+                    last_updated: firebase.firestore.FieldValue.serverTimestamp()
+                });
             }
 
-            await batch.commit();
-            showToast('削除が完了しました', 'success');
+            showToast('無効化が完了しました', 'success');
             setTimeout(() => {
                 window.location.href = 'invoice_list.html';
             }, 1000);
         } catch (err) {
-            console.error('Delete failed:', err);
-            alert('削除に失敗しました');
+            console.error('Delete/Cancel failed:', err);
+            alert('無効化処理に失敗しました');
         }
     }
 
@@ -784,7 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnModalAddItem.textContent = '追加';
 
         // Reset fields
-        document.getElementById('modal-item-type').value = '報酬';
+        document.getElementById('modal-item-type').value = '手数料';
         document.getElementById('modal-case-id').value = '';
         document.getElementById('modal-description').value = '';
         document.getElementById('modal-unit-price').value = 0;
@@ -941,9 +936,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 items = JSON.parse(JSON.stringify(selectedCase.estimate_items));
             } else {
                 const fee = Number(selectedCase.estimated_fee) || 0;
-                const reimbursement = Number(selectedCase.reimbursement_fee) || 0;
-                if (fee > 0) items.push({ type: '報酬', description: '報酬', unit_price: fee, quantity: 1, amount: fee, is_taxable: true });
-                if (reimbursement > 0) items.push({ type: '立替金', description: '立替金', unit_price: reimbursement, quantity: 1, amount: reimbursement, is_taxable: false });
+                const reimbursement = Number(selectedCase.suspense_receipt_amount) || Number(selectedCase.reimbursement_fee) || 0;
+                if (fee > 0) items.push({ type: '手数料', description: '手数料', unit_price: fee, quantity: 1, amount: fee, is_taxable: true });
+                if (reimbursement > 0) items.push({ type: '仮受金', description: '仮受金', unit_price: reimbursement, quantity: 1, amount: reimbursement, is_taxable: false });
             }
 
             importCandidatesState.items = items;

@@ -310,7 +310,7 @@
                         <div style="margin-top: 24px;">
                             <div class="summary-box">
                                 <div class="summary-row">
-                                    <span>報酬（課税対象）</span>
+                                    <span>手数料（課税対象）</span>
                                     <span id="disp_taxable_amount">¥0</span>
                                 </div>
                                 <div class="summary-row">
@@ -318,7 +318,7 @@
                                     <span id="disp_tax_amount">¥0</span>
                                 </div>
                                 <div class="summary-row">
-                                    <span>立替金（非課税）</span>
+                                    <span>仮受金（非課税）</span>
                                     <span id="disp_nontaxable_amount">¥0</span>
                                 </div>
                                 <div class="summary-total">
@@ -330,7 +330,7 @@
 
                         <!-- Hidden inputs for legacy compatibility -->
                         <input type="hidden" id="estimated_fee">
-                        <input type="hidden" id="reimbursement_fee">
+                        <input type="hidden" id="suspense_receipt_amount">
                     </section>
 
                     <!-- ■ 請求・入金状況 -->
@@ -436,8 +436,8 @@
                 <div class="form-group">
                     <label>種別</label>
                     <select id="modal-item-type" class="form-select">
-                        <option value="報酬">報酬</option>
-                        <option value="立替金">立替金</option>
+                        <option value="手数料">手数料</option>
+                        <option value="仮受金">仮受金</option>
                         <option value="その他">その他</option>
                     </select>
                 </div>

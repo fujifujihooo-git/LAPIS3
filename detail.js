@@ -105,9 +105,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('disp_total_estimate').textContent = formatCurrency(total);
 
         const elEstimated = document.getElementById('estimated_fee');
-        const elReimbursement = document.getElementById('reimbursement_fee');
+        const elSuspenseReceipt = document.getElementById('suspense_receipt_amount');
         if (elEstimated) elEstimated.value = taxable;
-        if (elReimbursement) elReimbursement.value = nontaxable;
+        if (elSuspenseReceipt) elSuspenseReceipt.value = nontaxable;
     }
 
     let editingEstimateIndex = -1;
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function openModal() {
         editingEstimateIndex = -1;
-        document.getElementById('modal-item-type').value = '報酬';
+        document.getElementById('modal-item-type').value = '手数料';
         document.getElementById('modal-description').value = '';
         document.getElementById('modal-unit-price').value = '0';
         document.getElementById('modal-quantity').value = '1';

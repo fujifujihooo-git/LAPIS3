@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
             //    ※ Firestore上のフィールド名:
             //       受任日 = contract_date  (YYYY-MM-DD 文字列)
             //       見積金額(課税) = estimated_fee  (number)
-            //       立替金 = reimbursement_fee  (number)
+            //       仮受金 = suspense_receipt_amount (旧: reimbursement_fee)  (number)
             // ================================================================
             let cQuery = db.collection('cases');
             if (dateFrom) cQuery = cQuery.where('contract_date', '>=', dateFrom);
@@ -242,12 +242,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     status = '確定';
                     items.forEach(item => {
                         const amt = Number(item.amount) || 0;
-                        if (item.item_type === '報酬') {
+                        if (item.item_type === '手数料' || item.item_type === '報酬') {
                             fee += amt;
                             if (item.is_taxable) {
                                 tax += Math.floor(amt * 0.1);
                             }
-                        } else if (item.item_type === '立替金' || item.item_type === '実費') {
+                        } else if (item.item_type === '仮受金' || item.item_type === '立替金' || item.item_type === '実費') {
                             reimbursement += amt;
                         }
                     });
@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     status = '見込';
                     fee = Number(c.estimated_fee) || 0;
                     tax = Math.floor(fee * 0.1);
-                    reimbursement = Number(c.reimbursement_fee) || 0;
+                    reimbursement = Number(c.suspense_receipt_amount) || Number(c.reimbursement_fee) || 0;
                 }
 
                 const entry = {
@@ -420,12 +420,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="summary-header">売上サマリー：${displayYm}</div>
 
             <h3 style="margin-top: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">■ 売上</h3>
-            <div class="summary-row"><span>報酬（税抜）</span><span>${formatCurrency(fee)}</span></div>
+            <div class="summary-row"><span>手数料（税抜）</span><span>${formatCurrency(fee)}</span></div>
             <div class="summary-row"><span>消費税</span><span>${formatCurrency(tax)}</span></div>
             <div class="summary-row total"><span>売上合計</span><span>${formatCurrency(sales)}</span></div>
 
-            <h3 style="margin-top: 24px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">■ 立替金（参考）</h3>
-            <div class="summary-row"><span>立替金合計</span><span>${formatCurrency(reimb)}</span></div>
+            <h3 style="margin-top: 24px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">■ 仮受金（参考）</h3>
+            <div class="summary-row"><span>仮受金合計</span><span>${formatCurrency(reimb)}</span></div>
 
             <h3 style="margin-top: 24px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">■ 入金状況 (期間全体)</h3>
             <div class="summary-row"><span>期間内入金計</span><span>${formatCurrency(periodPaid || 0)}</span></div>
@@ -438,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <th style="padding: 8px; text-align: left; font-size: 0.85rem;">担当者</th>
                         <th style="padding: 8px; text-align: left; font-size: 0.85rem;">件数</th>
                         <th style="padding: 8px; text-align: left; font-size: 0.85rem;">売上合計</th>
-                        <th style="padding: 8px; text-align: left; font-size: 0.85rem;">立替金</th>
+                        <th style="padding: 8px; text-align: left; font-size: 0.85rem;">仮受金</th>
                     </tr>
                 </thead>
                 <tbody>${staffHtml}</tbody>
@@ -468,10 +468,10 @@ document.addEventListener('DOMContentLoaded', () => {
             "売上日(受任日)": item.contract_date,
             "顧客名": item.customer_name,
             "案件名": item.case_name,
-            "報酬(税抜)": item.fee,
+            "手数料(税抜)": item.fee,
             "消費税": item.tax,
             "売上計": item.total_sales,
-            "立替金": item.reimbursement,
+            "仮受金": item.reimbursement,
             "担当者": item.staff_name,
             "ステータス": item.status
         }));
@@ -488,10 +488,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const summaryRows = [
             ["項目", "金額", "備考"],
             ["集計期間", displayYm, ""],
-            ["報酬合計(税抜)", totalFee, ""],
+            ["手数料合計(税抜)", totalFee, ""],
             ["消費税", totalTax, ""],
-            ["売上合計", totalSales, "報酬+消費税"],
-            ["立替金合計", totalReimbursement, ""],
+            ["売上合計", totalSales, "手数料+消費税"],
+            ["仮受金合計", totalReimbursement, ""],
             ["期間内入金計", totalPeriodPaid, "期間内の全入金"],
             ["未回収(参考)", unpaid, "売上計 - 入金計"],
             ["", "", ""],
