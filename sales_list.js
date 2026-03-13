@@ -383,13 +383,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function renderSummaryView(data, fee, tax, sales, reimb, periodPaid) {
+        const summaryContent = document.getElementById('summary-content');
+        if (!summaryContent) return;
+
+        const unpaid = sales - (periodPaid || 0);
+
+        // 担当者別
+        const staffStats = {};
+        data.forEach(item => {
+            const sid = item.staff_id || 0;
+            if (!staffStats[sid]) {
+                const sName = staffMap[sid]?.staff_name || '（担当なし）';
+                staffStats[sid] = { name: sName, count: 0, sales: 0, reimb: 0 };
+            }
+            staffStats[sid].count++;
+            staffStats[sid].sales += item.total_sales;
+            staffStats[sid].reimb += item.reimbursement;
+        });
+
+        let staffHtml = '';
+        Object.values(staffStats).forEach(s => {
+            staffHtml += `
+            <tr>
+                <td>${s.name}</td>
+                <td>${s.count}件</td>
+                <td>${formatCurrency(s.sales)}</td>
+                <td>${formatCurrency(s.reimb)}</td>
+            </tr>`;
+        });
+
         const dateStart = filterDateStart?.value || '';
         const dateEnd = filterDateEnd?.value || '';
         const displayPeriod = (dateStart && dateEnd) ? `${dateStart} 〜 ${dateEnd}` : '全期間';
 
         summaryContent.innerHTML = `
             <div class="summary-header">売上サマリー：${displayPeriod}</div>
-
             <h3 style="margin-top: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">■ 売上</h3>
             <div class="summary-row"><span>手数料（税抜）</span><span>${formatCurrency(fee)}</span></div>
             <div class="summary-row"><span>消費税</span><span>${formatCurrency(tax)}</span></div>
@@ -430,9 +459,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const wb = XLSX.utils.book_new();
-        const ym = filterYearMonth?.value || 'all';
-        const displayYm = ym !== 'all' ? ym.replace('-', '年') + '月' : '全期間';
+        const dateStart = filterDateStart?.value || '';
+        const dateEnd = filterDateEnd?.value || '';
+        const displayPeriod = (dateStart && dateEnd) ? `${dateStart} 〜 ${dateEnd}` : '全期間';
 
         // Sheet 1: 売上明細
         const listData = filtered.map(item => ({
@@ -488,7 +517,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
         XLSX.utils.book_append_sheet(wb, wsSummary, "サマリー");
 
-        XLSX.writeFile(wb, `売上管理_${ym.replace(/-/g, '')}.xlsx`);
+        const fnDate = dateStart ? dateStart.replace(/-/g, '') : 'all';
+        XLSX.writeFile(wb, `売上管理_${fnDate}.xlsx`);
     }
 
     // --- イベントバインディング ---
