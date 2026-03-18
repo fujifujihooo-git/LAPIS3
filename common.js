@@ -998,6 +998,11 @@ async function allocateReceiptToInvoice(receiptId, invoiceId, allocateAmount) {
             amount: allocateAmount,
             status: 'active', // 'active' or 'cancelled'
             customerId: resolvedCustomerId,
+            // N+1クエリ回避用: 表示に必要なスナップショットを冗長保持
+            receiptDate: receiptData.receiptDate || '',
+            payerName: receiptData.payerName || '',
+            customerName: invoiceData.customer_name_snapshot || '',
+            invoiceNumber: invoiceData.invoice_number || '',
             createdAt: serverTimestamp,
             lastUpdatedAt: serverTimestamp
         });

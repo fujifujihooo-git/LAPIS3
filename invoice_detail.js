@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSave = document.getElementById('btn-save-invoice');
     const btnDelete = document.getElementById('btn-delete-invoice');
     const btnAddItem = document.getElementById('btn-add-item');
-    const btnAddPayment = document.getElementById('btn-add-payment');
+    // btnAddPayment は廃止（入金は消込画面で管理）
 
     const customerInput = document.getElementById('input-customer-search');
     const customerIdInput = document.getElementById('customer_id');
@@ -29,9 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modals
     const itemModal = document.getElementById('item-modal');
-    const paymentModal = document.getElementById('payment-modal');
+    // paymentModal は廃止（入金は消込画面で管理）
     const btnModalAddItem = document.getElementById('btn-modal-add-item');
-    const btnModalAddPayment = document.getElementById('btn-modal-add-payment');
+    // btnModalAddPayment は廃止（入金は消込画面で管理）
 
     // Import Modal
     const btnImport = document.getElementById('btn-import-estimate');
@@ -62,10 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentInvoiceId = new URLSearchParams(window.location.search).get('id');
     let currentInvoice = null;
     let currentItems = []; // Work items in memory
-    let currentPayments = []; // Work payments in memory
+    let currentAllocations = []; // 消込履歴（ReadOnly表示用）
 
     let deletedItemDocIds = []; // Deleted items doc_ids
-    let deletedPaymentDocIds = []; // Deleted payments doc_ids
 
     // Cache for Customers/Cases (fetched on demand)
     let customersCache = [];
@@ -151,23 +150,28 @@ document.addEventListener('DOMContentLoaded', () => {
             currentInvoice = invDoc.data();
             const iId = currentInvoice.invoice_id === undefined ? null : currentInvoice.invoice_id; // Prevent Firebase throw
 
-            const [itemsSnap, paysSnap] = await Promise.all([
+            // 明細と消込履歴を並列取得（paymentsコレクションは廃止）
+            const [itemsSnap, allocSnap] = await Promise.all([
                 db.collection('invoice_items').where('invoice_id', '==', iId).get(),
-                db.collection('payments').where('invoice_id', '==', iId).get()
+                db.collection('receiptAllocations').where('invoiceId', '==', currentInvoiceId).where('status', '==', 'active').get()
             ]);
             
             deletedItemDocIds = [];
-            deletedPaymentDocIds = [];
 
             currentItems = itemsSnap.docs.map(d => {
                 const data = d.data();
                 return { ...data, doc_id: d.id, _original: { ...data } };
             }).sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
             
-            currentPayments = paysSnap.docs.map(d => {
+            // 消込履歴はReadOnly（receiptAllocationsの表示用フィールドを使用、N+1回避）
+            currentAllocations = allocSnap.docs.map(d => {
                 const data = d.data();
-                return { ...data, doc_id: d.id, _original: { ...data } };
-            }).sort((a, b) => (a.payment_date > b.payment_date ? 1 : -1));
+                return { ...data, doc_id: d.id };
+            }).sort((a, b) => {
+                const dateA = a.receiptDate || a.createdAt || '';
+                const dateB = b.receiptDate || b.createdAt || '';
+                return dateA > dateB ? 1 : -1;
+            });
 
             // Fetch Customer Name and Snapshot
             let customerName = '不明';
@@ -254,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             renderItems();
-            renderPayments();
+            renderAllocations();
             calculateTotals();
 
         } catch (err) {
@@ -388,11 +392,11 @@ document.addEventListener('DOMContentLoaded', () => {
         dispSubtotalNontaxable.textContent = formatCurrency(nontaxable);
         dispTotalAmount.textContent = formatCurrency(total);
 
-        // Payments
-        const payTotal = currentPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-        const balance = total - payTotal;
+        // 入金合計・残高はinvoicesドキュメントのallocatedAmount/balanceを使用（SSoT）
+        const allocatedAmount = currentInvoice ? (currentInvoice.allocatedAmount || 0) : 0;
+        const balance = total - allocatedAmount;
 
-        dispPaymentTotal.textContent = formatCurrency(payTotal);
+        dispPaymentTotal.textContent = formatCurrency(allocatedAmount);
         dispBalance.textContent = formatCurrency(balance);
 
         // Balance Color + unpaid highlight
@@ -404,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dispBalance.classList.add('unpaid');
         }
 
-        return { taxable, tax, nontaxable, total, payTotal, balance };
+        return { taxable, tax, nontaxable, total, payTotal: allocatedAmount, balance };
     }
 
     // --- Rendering ---
@@ -427,16 +431,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function renderPayments() {
+    function renderAllocations() {
         paymentListBody.innerHTML = '';
-        currentPayments.forEach((p, index) => {
+        if (currentAllocations.length === 0) {
+            paymentListBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 16px;">消込履歴はありません</td></tr>';
+            return;
+        }
+        currentAllocations.forEach(a => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${formatDate(p.payment_date)}</td>
-                <td>${formatCurrency(p.amount)}</td>
-                <td>${p.payment_method}</td>
-                <td>${p.remarks || ''}</td>
-                <td><button class="danger-btn" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deleteLocalPayment(${index})">×</button></td>
+                <td>${formatDate(a.receiptDate || a.createdAt)}</td>
+                <td>${formatCurrency(a.amount)}</td>
+                <td>${a.payerName || 'ー'}</td>
+                <td><span class="badge status-paid" style="font-size: 0.75rem;">消込済</span></td>
             `;
             paymentListBody.appendChild(row);
         });
@@ -474,37 +481,21 @@ document.addEventListener('DOMContentLoaded', () => {
         itemModal.style.display = 'block';
     };
 
-    window.deleteLocalPayment = function (index) {
-        const item = currentPayments[index];
-        if (item && item.doc_id) {
-            deletedPaymentDocIds.push(item.doc_id);
-        }
-        currentPayments.splice(index, 1);
-        renderPayments();
-        calculateTotals();
-        autoUpdateStatus();
-    };
+    // deleteLocalPayment は廃止（入金は消込画面で管理）
 
+    // autoUpdateStatus: allocatedAmount ベースのステータス自動判定（ReadOnly参照）
+    // ※ 入金ステータスはcommon.jsのトランザクション関数が正規に更新するため、
+    //   ここでは明細変更時のtotal_amount変動に対する補助的な再計算に留める
     function autoUpdateStatus() {
         const { total, payTotal, balance } = calculateTotals();
-        const dueDate = document.getElementById('due_date').value; // Read directly from DOM
         const statusEl = document.getElementById('status');
-        const today = new Date().toISOString().split('T')[0];
-
-        // Only auto-update if not manually changed to specific override? 
-        // Usually safer to just suggest. But let's keep logic simple.
-        if (payTotal >= total && total > 0) {
-            formState.status = '入金済';
-        } else if (payTotal > 0) {
-            formState.status = '一部入金';
-        } else {
-            formState.status = '発行済'; // Default
+        // allocatedAmount（消込画面が正規管理）に基づくステータスは変更しない
+        // ただし明細変更で total が変わった場合のみ再計算
+        if (currentInvoice && currentInvoice.allocatedAmount > 0) {
+            // 消込済みデータがある場合はステータスを自動変更しない
+            return;
         }
-
-        if (dueDate && dueDate < today && balance > 0) {
-            formState.status = '延滞';
-        }
-
+        // 新規or消込なしの場合のみステータス自動設定
         statusEl.value = formState.status;
     }
 
@@ -524,17 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     }
 
-    function isPaymentChanged(p) {
-        if (!p.doc_id) return true;
-        const orig = p._original;
-        if (!orig) return true;
-        return (
-            p.payment_date !== orig.payment_date ||
-            Number(p.amount) !== Number(orig.amount) ||
-            p.payment_method !== orig.payment_method ||
-            p.remarks !== orig.remarks
-        );
-    }
+    // isPaymentChanged は廃止（payments コレクションへの書き込みは行わない）
 
     async function handleSave() {
         if (isSaving) return;
@@ -612,8 +593,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 tax_amount: tax,
                 subtotal_nontaxable: nontaxable,
                 total_amount: total ?? 0,
-                paid_amount: payTotal ?? 0,
-                balance: balance ?? 0,
+                // paid_amount は廃止（allocatedAmount に統一、common.jsトランザクション関数のみが更新）
+                // balance は保存時にtotal_amountベースで初期化（消込がない場合）
                 status: formState.status || '下書き',
                 remarks: formState.remarks || '',
                 last_updated: serverTimestamp
@@ -661,45 +642,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 batch.delete(db.collection('invoice_items').doc(docId));
             });
 
-            // Save Payments (Differential)
-            currentPayments.forEach(p => {
-                if (!isPaymentChanged(p)) return;
+            // payments コレクションへの保存は廃止（入金は消込画面で管理）
 
-                const payData = {
-                    invoice_id: iId,
-                    payment_date: p.payment_date,
-                    amount: Number(p.amount),
-                    payment_method: p.payment_method,
-                    remarks: p.remarks || ''
-                };
-
-                if (p.doc_id) {
-                    payData.last_updated = serverTimestamp;
-                    batch.update(db.collection('payments').doc(p.doc_id), payData);
-                } else {
-                    payData.created_date = serverTimestamp;
-                    payData.last_updated = serverTimestamp;
-                    batch.set(db.collection('payments').doc(), payData);
-                }
-            });
-
-            // Delete Payments
-            deletedPaymentDocIds.forEach(docId => {
-                batch.delete(db.collection('payments').doc(docId));
-            });
+            // 新規作成時のみ balance を初期設定（既存請求書のbalanceは消込トランザクションが管理）
+            if (!currentInvoiceId) {
+                batch.update(invRef, {
+                    balance: total ?? 0,
+                    allocatedAmount: 0
+                });
+            }
 
             await batch.commit();
 
             // 成功後にフラグ等のリセット
             deletedItemDocIds = [];
-            deletedPaymentDocIds = [];
 
             // 現在のステートを _original として更新（リロードせず継続編集する場合への備え）
             currentItems.forEach((item, idx) => {
                 item.display_order = idx + 1;
                 item._original = { ...item };
             });
-            currentPayments.forEach(p => p._original = { ...p });
 
             if (typeof showToast === 'function') {
                 showToast('請求データを保存しました', 'success');
@@ -789,10 +751,7 @@ document.addEventListener('DOMContentLoaded', () => {
         itemModal.style.display = 'block';
     });
 
-    btnAddPayment.addEventListener('click', () => {
-        document.getElementById('modal-payment-date').value = new Date().toISOString().split('T')[0];
-        paymentModal.style.display = 'block';
-    });
+    // btnAddPayment イベントリスナーは廃止（入金は消込画面で管理）
 
     // Save Item (Add or Update)
     btnModalAddItem.addEventListener('click', () => {
@@ -847,33 +806,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    btnModalAddPayment.addEventListener('click', () => {
-        const date = document.getElementById('modal-payment-date').value;
-        const amount = Number(document.getElementById('modal-payment-amount').value);
-        const method = document.getElementById('modal-payment-method').value;
-        const remarks = document.getElementById('modal-payment-remarks').value;
-
-        if (!date || amount <= 0) {
-            alert('正しい日付と金額を入力してください。');
-            return;
-        }
-
-        const newPayment = {
-            payment_date: date,
-            amount: amount,
-            payment_method: method,
-            remarks: remarks
-        };
-
-        currentPayments.push(newPayment);
-        renderPayments();
-        autoUpdateStatus();
-        closeModal('payment-modal');
-
-        // Reset fields
-        document.getElementById('modal-payment-amount').value = 0;
-        document.getElementById('modal-payment-remarks').value = '';
-    });
+    // btnModalAddPayment イベントリスナーは廃止（入金は消込画面で管理）
 
     // --- Estimate Import Logic ---
     const importCandidatesState = { items: [] }; // Using object for reference if needed, or just let var

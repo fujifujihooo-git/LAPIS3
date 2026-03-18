@@ -593,15 +593,18 @@
                     </div>
                 </div>
 
-                <!-- ===== Card 3: 入金記録 + 残高サマリー (2-col) ===== -->
+                <!-- ===== Card 3: 消込履歴 + 残高サマリー (2-col) ===== -->
                 <div class="inv-finance-grid">
-                    <!-- Left: 入金テーブル -->
+                    <!-- Left: 消込履歴テーブル（ReadOnly） -->
                     <div class="inv-card" style="margin-bottom: 0;">
                         <h3 class="inv-card-title">
-                            <span>入金記録</span>
+                            <span>入金・消込状況（参照のみ）</span>
                             <div class="card-actions">
-                                <button type="button" class="btn btn-secondary btn-sm" id="btn-add-payment">＋
-                                    入金追加</button>
+                                <button type="button" class="btn btn-secondary btn-sm" id="btn-go-allocation"
+                                    style="display: none;">
+                                    <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                                    消込画面で入金管理
+                                </button>
                             </div>
                         </h3>
                         <div class="table-responsive">
@@ -609,14 +612,13 @@
                                 <thead>
                                     <tr>
                                         <th>入金日</th>
-                                        <th>入金額</th>
-                                        <th>入金方法</th>
-                                        <th>備考</th>
-                                        <th>削除</th>
+                                        <th>消込額</th>
+                                        <th>入金元</th>
+                                        <th>状態</th>
                                     </tr>
                                 </thead>
                                 <tbody id="payment-list-body">
-                                    <!-- JS populated -->
+                                    <!-- JS populated (ReadOnly) -->
                                 </tbody>
                             </table>
                         </div>
@@ -624,15 +626,15 @@
 
                     <!-- Right: 残高サマリー -->
                     <div class="balance-card">
-                        <div class="balance-label">入金合計</div>
+                        <div class="balance-label">消込済合計</div>
                         <div class="balance-value" id="display-payment-total">¥0</div>
                         <div class="balance-separator"></div>
-                        <div class="balance-label">残高（未入金）</div>
+                        <div class="balance-label">残高（未収）</div>
                         <div class="balance-value" id="display-balance">¥0</div>
                     </div>
                 </div>
 
-                <!-- ===== Card 4: 備考 ===== -->
+<!-- ===== Card 4: 備考 ===== -->
                 <div class="inv-card">
                     <h3 class="inv-card-title">備考</h3>
                     <div class="form-group" style="margin: 0;">
@@ -753,41 +755,7 @@
         </div>
     </div>
 
-    <!-- Payment Modal -->
-    <div id="payment-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header"
-                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h3 style="margin: 0;">入金追加</h3>
-                <span class="close-modal" onclick="closeModal('payment-modal')">&times;</span>
-            </div>
-            <div class="form-group">
-                <label>入金日</label>
-                <input type="date" id="modal-payment-date" class="form-control">
-            </div>
-            <div class="form-group" style="margin-top: 12px;">
-                <label>入金額</label>
-                <input type="number" id="modal-payment-amount" class="form-control" value="0">
-            </div>
-            <div class="form-group" style="margin-top: 12px;">
-                <label>入金方法</label>
-                <select id="modal-payment-method" class="form-select">
-                    <option value="銀行振込">銀行振込</option>
-                    <option value="現金">現金</option>
-                    <option value="クレジットカード">クレジットカード</option>
-                    <option value="その他">その他</option>
-                </select>
-            </div>
-            <div class="form-group" style="margin-top: 12px;">
-                <label>備考</label>
-                <input type="text" id="modal-payment-remarks" class="form-control" placeholder="備考...">
-            </div>
-            <div class="modal-footer" style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('payment-modal')">キャンセル</button>
-                <button type="button" class="btn btn-primary" id="btn-modal-add-payment">追加</button>
-            </div>
-        </div>
-    </div>
+        <!-- Payment Modal は廃止（入金は消込画面で管理） -->
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>

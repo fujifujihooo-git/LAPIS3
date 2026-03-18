@@ -297,9 +297,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchPeriodPayments(dateFrom, dateTo) {
         try {
-            let pQuery = db.collection('payments');
-            if (dateFrom) pQuery = pQuery.where('payment_date', '>=', dateFrom);
-            if (dateTo) pQuery = pQuery.where('payment_date', '<=', dateTo);
+            // payments -> receiptAllocations に変更。
+            // 実際はreceipts自体を引く運用もあるが、売上対比の「消込済み」入金としてAllocationsを利用する
+            let pQuery = db.collection('receiptAllocations').where('status', '==', 'active');
+            if (dateFrom) pQuery = pQuery.where('receiptDate', '>=', dateFrom);
+            if (dateTo) pQuery = pQuery.where('receiptDate', '<=', dateTo);
 
             const pSnap = await pQuery.get();
             const periodPayments = pSnap.docs.map(d => d.data());

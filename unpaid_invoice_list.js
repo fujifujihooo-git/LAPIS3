@@ -436,38 +436,35 @@ document.addEventListener('DOMContentLoaded', () => {
             if(typeof lucide !== 'undefined') lucide.createIcons();
 
             try {
-                // 1回のバッチ制約（500 writesまで）に収まるよう、まとめて処理
-                // 各消込ごとに:
-                // 1. receipt ドキュメントを新規作成 (登録時即消込完了状態とする)
-                // 2. invoice を更新
-                // 3. receiptAllocations を作成
-                // つまり1件あたり 3 writes. 50件なら 150 writes < 500 で安全。
+                // 1回の処理で：
+                // 1. receipt ドキュメントを新規作成 (amount=消込額, allocatedAmount=0, balance=消込額)
+                // 2. allocateReceiptToInvoice トランザクションを実行 (内部で消込処理が行われる)
                 
-                const batch = db.batch();
                 const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp();
-                
-                // Map of doc_id to dataset for easy retrieval
                 const invoiceMap = {};
                 currentUnpaidData.forEach(inv => invoiceMap[inv.doc_id] = inv);
 
+                // レシート作成用バッチ（入金登録自体は独立Writeで行う）
+                const initialBatch = db.batch();
+                const targetReceipts = [];
+                
                 for (const [invId, amount] of entries) {
                     const inv = invoiceMap[invId];
                     if (!inv) continue;
                     
                     const receiptRef = db.collection('receipts').doc();
-                    const allocRef = db.collection('receiptAllocations').doc();
-                    const invoiceRef = db.collection('invoices').doc(invId);
-                    
                     const resolvedCustomerId = inv.customer_id || inv.customerId || null;
                     
-                    // 1. レシート作成 (即時消込済として扱う)
-                    batch.set(receiptRef, {
+                    // 1. レシート作成
+                    // allocatedAmount: 0, balance: amount としておくことで
+                    // 後の allocateReceiptToInvoice 関数が正しくこの金額を消込に充当できる
+                    initialBatch.set(receiptRef, {
                         receiptId: receiptRef.id,
                         receiptDate: rDate, // ユーザー指定の一括入金日
                         payerName: inv.customer_name_snapshot || '一括消込', // 請求先名または一括消込を使用
                         amount: amount,
-                        allocatedAmount: amount, // 全額消込済
-                        balance: 0,
+                        allocatedAmount: 0, 
+                        balance: amount,    
                         memo: '一括消込処理',
                         status: 'active',
                         customer_id: resolvedCustomerId,
@@ -475,43 +472,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         lastUpdatedAt: serverTimestamp
                     });
                     
-                    // 2. 請求書更新
-                    const currentInvoiceBalance = inv.balance !== undefined ? inv.balance : (inv.totalAmount || 0);
-                    const newAllocated = (inv.allocatedAmount || 0) + amount;
-                    const newBalance = currentInvoiceBalance - amount;
-                    
-                    let newStatus = inv.status;
-                    if (newStatus === 'issued' || newStatus === '一部入金' || newStatus === '発行済' || newStatus === '延滞') {
-                        if (newBalance === 0) {
-                            newStatus = '入金済';
-                        } else if (newAllocated > 0) {
-                            newStatus = '一部入金';
-                        }
-                    }
-                    
-                    batch.update(invoiceRef, {
-                        allocatedAmount: newAllocated,
-                        balance: newBalance,
-                        status: newStatus,
-                        lastUpdatedAt: serverTimestamp
-                    });
-                    
-                    // 3. 消込履歴作成
-                    batch.set(allocRef, {
-                        allocationId: allocRef.id,
-                        receiptId: receiptRef.id,
-                        invoiceId: invId,
-                        amount: amount,
-                        status: 'active',
-                        customerId: resolvedCustomerId,
-                        createdAt: serverTimestamp,
-                        lastUpdatedAt: serverTimestamp
-                    });
+                    targetReceipts.push({ receiptId: receiptRef.id, invoiceId: invId, amount: amount });
                 }
                 
-                await batch.commit();
+                // まずレシートの一括作成をコミット
+                await initialBatch.commit();
                 
-                console.log('[DEBUG] 🎊 バッチ一括消込完了: ' + entries.length + '件');
+                // 次に各レシートと請求書の消込トランザクションを並列実行
+                const allocPromises = targetReceipts.map(data => 
+                    window.allocateReceiptToInvoice(data.receiptId, data.invoiceId, data.amount)
+                );
+                
+                await Promise.all(allocPromises);
+                
+                console.log('[DEBUG] 🎊 バッチ一括消込完了: ' + targetReceipts.length + '件');
                 showToast(`${entries.length}件の消込処理が完了しました。`, 'success');
                 
                 // Reset State
@@ -1017,5 +991,24 @@ document.addEventListener('DOMContentLoaded', () => {
             window.openAllocationModal(selectedInvoiceData);
         }
     });
+
+    // --- URLパラメータによるディープリンク処理 ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const deepLinkInvoiceId = urlParams.get('invoiceId');
+    if (deepLinkInvoiceId) {
+        // パラメータがある場合、対象の請求書データを取得して直接モーダルを開く
+        db.collection('invoices').doc(deepLinkInvoiceId).get().then(doc => {
+            if (doc.exists) {
+                const invoiceData = { ...doc.data(), doc_id: doc.id };
+                console.log('[DEBUG] ディープリンク経由で消込モーダルを開きます:', deepLinkInvoiceId);
+                // 既存のリスト読み込み等を待たずに直接モーダルを開ける
+                window.openAllocationModal(invoiceData);
+            } else {
+                console.warn('[WARN] 指定された請求書が見つかりません:', deepLinkInvoiceId);
+            }
+        }).catch(e => {
+            console.error('[WARN] 請求書データ取得エラー:', e);
+        });
+    }
 
 });

@@ -127,19 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 db.collection('customers').where('customer_id', 'in', chunk).get()
             );
 
-            // Fetch Payments (Chunked IN query)
-            paymentsMap = {};
-            const invChunks = [];
-            for (let i = 0; i < invoiceIds.length; i += 10) {
-                invChunks.push(invoiceIds.slice(i, i + 10));
-            }
-            const payPromises = invChunks.map(chunk =>
-                db.collection('payments').where('invoice_id', 'in', chunk).get()
-            );
-
-            const [custSnapshots, paySnapshots] = await Promise.all([
-                Promise.all(custPromises),
-                Promise.all(payPromises)
+            const [custSnapshots] = await Promise.all([
+                Promise.all(custPromises)
             ]);
 
             custSnapshots.forEach(snap => {
@@ -149,27 +138,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
 
-            paySnapshots.forEach(snap => {
-                snap.forEach(doc => {
-                    const p = doc.data();
-                    if (!paymentsMap[p.invoice_id]) paymentsMap[p.invoice_id] = [];
-                    paymentsMap[p.invoice_id].push(p);
-                });
-            });
-
             // Join Data
             let mappedData = invoices.map(inv => {
                 const customer = customersMap[inv.customer_id];
-                const invPayments = paymentsMap[inv.invoice_id] || [];
-                const paidAmount = invPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+                // 入金済額はinvoicesのallocatedAmountを使用（非存在時は0）
+                const allocatedAmount = inv.allocatedAmount || 0;
 
-                // Firestoreから取得したbalanceが存在すればそれを優先、なければ計算値を使用(後方互換性)
-                const calcBalance = (inv.total_amount || 0) - paidAmount;
+                // 残高はinvoicesのbalanceを使用（非存在時は計算）
+                const calcBalance = (inv.total_amount || 0) - allocatedAmount;
 
                 return {
                     ...inv,
                     customer_name: customer ? customer.customer_name : '',
-                    paid_amount: paidAmount,
+                    allocatedAmount: allocatedAmount, // paid_amountを完全に廃止
                     balance: inv.balance !== undefined ? inv.balance : calcBalance
                 };
             });
@@ -244,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${formatDate(inv.invoice_date)}</td>
                 <td style="font-weight: 600;">${formatCurrency(inv.total_amount)}</td>
                 <td><span class="badge ${getInvoiceStatusClass(inv.status)}">${inv.status || '-'}</span></td>
-                <td style="color: #059669;">${formatCurrency(inv.paid_amount)}</td>
+                <td style="color: #059669;">${formatCurrency(inv.allocatedAmount)}</td>
                 <td style="color: ${balanceColor}; font-weight: ${balanceWeight};">${formatCurrency(inv.balance)}</td>
             `;
             invoiceListBody.appendChild(row);
