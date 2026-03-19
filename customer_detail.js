@@ -994,5 +994,201 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+
+    // --- Report Engine (Tax Certificate) ---
+    const btnOpenTaxCert = document.getElementById('btn-open-tax-cert-modal');
+    const reportModal = document.getElementById('report-modal');
+    const btnCloseReport = document.getElementById('btn-close-report-modal');
+    const btnPreviewReport = document.getElementById('btn-preview-report');
+    const btnPrintReport = document.getElementById('btn-print-report');
+    const selApplicantType = document.getElementById('report_applicant_type');
+    const groupStaffSelect = document.getElementById('group_staff_select');
+    const selReportStaff = document.getElementById('report_staff_id');
+
+    if (btnOpenTaxCert) {
+        btnOpenTaxCert.addEventListener('click', () => {
+            if (!currentCustomer) {
+                alert('顧客データが保存されていません。先に保存してください。');
+                return;
+            }
+            
+            // Populate staff dropdown if empty
+            if (selReportStaff && selReportStaff.options.length <= 1) {
+                const activeStaff = staffMembers
+                    .filter(s => s.status === '在籍')
+                    .sort((a, b) => (a.staff_id || 0) - (b.staff_id || 0));
+                activeStaff.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.staff_id;
+                    opt.textContent = s.staff_name;
+                    selReportStaff.appendChild(opt);
+                });
+            }
+
+            // Set default period
+            const periodStartInput = document.getElementById('report_period_start');
+            const periodEndInput = document.getElementById('report_period_end');
+            
+            function calculateStartDate(endDateStr) {
+                if (!endDateStr) return '';
+                const endDate = new Date(endDateStr);
+                if (isNaN(endDate.getTime())) return '';
+                // 1年前の翌日
+                const startDate = new Date(endDate);
+                startDate.setFullYear(startDate.getFullYear() - 1);
+                startDate.setDate(startDate.getDate() + 1);
+                return Math.max(startDate.getFullYear(), 1900) + '-' + String(startDate.getMonth() + 1).padStart(2, '0') + '-' + String(startDate.getDate()).padStart(2, '0');
+            }
+
+            if (periodEndInput && periodStartInput) {
+                if (!periodEndInput.value) {
+                    let initialEndDate = '';
+                    if (currentCustomer.settlement_date) {
+                        initialEndDate = currentCustomer.settlement_date;
+                    } else if (currentCustomer.fiscal_year_end_month && currentCustomer.fiscal_year_end_day) {
+                        const today = new Date();
+                        const m = String(currentCustomer.fiscal_year_end_month).padStart(2, '0');
+                        const d = String(currentCustomer.fiscal_year_end_day).padStart(2, '0');
+                        // 決算月が現在月より後なら去年の年を使用
+                        let y = today.getFullYear();
+                        if (today.getMonth() + 1 < currentCustomer.fiscal_year_end_month) {
+                            y -= 1;
+                        }
+                        initialEndDate = `${y}-${m}-${d}`;
+                    } else {
+                        const today = new Date();
+                        initialEndDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+                    }
+                    
+                    periodEndInput.value = initialEndDate;
+                    periodStartInput.value = calculateStartDate(initialEndDate);
+                }
+
+                if (!periodEndInput.dataset.listenerAttached) {
+                    periodEndInput.addEventListener('change', (e) => {
+                        periodStartInput.value = calculateStartDate(e.target.value);
+                    });
+                    periodEndInput.dataset.listenerAttached = 'true';
+                }
+            }
+
+            if(reportModal) reportModal.style.display = 'flex';
+        });
+    }
+
+    if (btnCloseReport) {
+        btnCloseReport.addEventListener('click', () => {
+            if(reportModal) reportModal.style.display = 'none';
+        });
+    }
+
+    if (selApplicantType) {
+        selApplicantType.addEventListener('change', (e) => {
+            if (e.target.value === '代理人') {
+                if(groupStaffSelect) groupStaffSelect.style.display = 'block';
+            } else {
+                if(groupStaffSelect) groupStaffSelect.style.display = 'none';
+                if(selReportStaff) selReportStaff.value = ''; // Reset
+            }
+        });
+        // Trigger initial state
+        setTimeout(()=>selApplicantType.dispatchEvent(new Event('change')), 100);
+    }
+
+    async function handleReportAction(actionType) {
+        if (!currentCustomer) return;
+
+        // Validation
+        const appType = selApplicantType ? selApplicantType.value : '本人';
+        const staffId = selReportStaff ? selReportStaff.value : '';
+        if (appType === '代理人' && !staffId) {
+            alert('代理人の担当者を選択してください。');
+            return;
+        }
+
+        // Gather form data
+        const taxTypes = Array.from(document.querySelectorAll('input[name="taxType"]:checked')).map(cb => cb.value);
+        const selectedStaff = staffMembers.find(s => String(s.staff_id) === String(staffId)) || null;
+        
+        const formData = {
+            taxTypes: taxTypes,
+            period_start: document.getElementById('report_period_start') ? document.getElementById('report_period_start').value : '',
+            period_end: document.getElementById('report_period_end') ? document.getElementById('report_period_end').value : '',
+            copies: document.getElementById('report_copies') ? document.getElementById('report_copies').value : '1',
+            submittedTo: document.getElementById('report_submitted_to') ? document.getElementById('report_submitted_to').value : '',
+            applicantType: appType,
+            staff: selectedStaff ? {
+                name: selectedStaff.staff_name,
+                kana: selectedStaff.staff_kana,
+                tel: selectedStaff.phone
+            } : null
+        };
+
+        try {
+            // Disable buttons
+            if (btnPreviewReport) btnPreviewReport.disabled = true;
+            if (btnPrintReport) btnPrintReport.disabled = true;
+            let btnOriginalText = '';
+            if (actionType === 'preview') {
+                btnOriginalText = btnPreviewReport.textContent;
+                btnPreviewReport.textContent = '生成中...';
+            } else {
+                btnOriginalText = btnPrintReport.textContent;
+                btnPrintReport.textContent = '生成中...';
+            }
+
+            // 1. Build View Data
+            const viewData = window.TaxCertificateView.buildData(currentCustomer, formData);
+
+            // 2. Load Mapping (相対パスから絶対URLを動的生成)
+            const getAbsoluteUrl = (relativePath) => {
+                const base = window.location.href.split('?')[0].replace(/\/[^\/]*$/, '/');
+                return new URL(relativePath, base).href;
+            };
+            
+            const mapUrl = getAbsoluteUrl('report-system/report-templates/tax_certificate_map.json');
+            const mapRes = await fetch(mapUrl);
+            if (!mapRes.ok) throw new Error('マッピング定義の読み込みに失敗しました');
+            const mappingJson = await mapRes.json();
+
+            // 3. URLs
+            let templateUrl = getAbsoluteUrl('report-system/report-templates/tax_certificate.pdf');
+            const templateRes = await fetch(templateUrl, {method: 'HEAD'});
+            if (!templateRes.ok) {
+                templateUrl = getAbsoluteUrl('report-system/report-templates/tax_certificate.pdf.pdf'); // User upload fallback
+            }
+            const fontUrl = getAbsoluteUrl('report-system/report-templates/NotoSansJP-Regular.ttf');
+
+            // 4. Generate
+            const pdfBytes = await window.ReportEngine.generateReport(templateUrl, fontUrl, mappingJson, viewData);
+
+            // 5. Output
+            if (actionType === 'preview') {
+                window.ReportEngine.previewPDF(pdfBytes);
+                if (btnPreviewReport) btnPreviewReport.textContent = btnOriginalText;
+            } else {
+                const filename = `納税証明書_${currentCustomer.customer_name}.pdf`;
+                window.ReportEngine.downloadPDF(pdfBytes, filename);
+                if(reportModal) reportModal.style.display = 'none'; // Close modal on download
+                if (btnPrintReport) btnPrintReport.textContent = btnOriginalText;
+            }
+        } catch (err) {
+            console.error('Report Generation Error:', err);
+            alert('帳票の生成に失敗しました: ' + err.message);
+            if (btnPreviewReport) btnPreviewReport.textContent = 'プレビュー';
+            if (btnPrintReport) btnPrintReport.textContent = '印刷（ダウンロード）';
+        } finally {
+            if (btnPreviewReport) btnPreviewReport.disabled = false;
+            if (btnPrintReport) btnPrintReport.disabled = false;
+        }
+    }
+
+    if (btnPreviewReport) {
+        btnPreviewReport.addEventListener('click', () => handleReportAction('preview'));
+    }
+    if (btnPrintReport) {
+        btnPrintReport.addEventListener('click', () => handleReportAction('download'));
+    }
+
     await init();
 });

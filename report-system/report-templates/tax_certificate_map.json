@@ -1,0 +1,25 @@
+{
+    "request_year": { "type": "text", "x": 405, "y": 750, "size": 11 },
+    "request_month": { "type": "text", "x": 455, "y": 750, "size": 11 },
+    "request_day": { "type": "text", "x": 490, "y": 750, "size": 11 },
+    
+    "taxpayer_address": { "type": "text", "x": 120, "y": 660, "size": 10, "maxWidth": 200 },
+    "taxpayer_kana": { "type": "text", "x": 120, "y": 640, "size": 8 },
+    "taxpayer_name": { "type": "text", "x": 120, "y": 625, "size": 11 },
+    "taxpayer_rep_name": { "type": "text", "x": 120, "y": 605, "size": 11 },
+    "taxpayer_phone": { "type": "text", "x": 120, "y": 585, "size": 11 },
+    
+    "applicant_address": { "type": "text", "x": 120, "y": 515, "size": 10, "maxWidth": 200 },
+    "applicant_kana": { "type": "text", "x": 120, "y": 495, "size": 8 },
+    "applicant_name": { "type": "text", "x": 120, "y": 480, "size": 11 },
+    "applicant_phone": { "type": "text", "x": 120, "y": 460, "size": 11 },
+    
+    "tax_checkbox_1": { "type": "checkbox", "x": 100, "y": 400, "size": 14, "check_mark": "○" },
+    "tax_checkbox_2": { "type": "checkbox", "x": 200, "y": 400, "size": 14, "check_mark": "○" },
+    "tax_checkbox_3": { "type": "checkbox", "x": 100, "y": 380, "size": 14, "check_mark": "○" },
+    "tax_checkbox_4": { "type": "checkbox", "x": 200, "y": 380, "size": 14, "check_mark": "○" },
+    
+    "year": { "type": "text", "x": 350, "y": 400, "size": 11 },
+    "copies": { "type": "text", "x": 450, "y": 400, "size": 11 },
+    "submitted_to": { "type": "text", "x": 120, "y": 320, "size": 11, "maxWidth": 300 }
+  }
