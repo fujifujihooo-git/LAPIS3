@@ -61,20 +61,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * 集計実行ボタンの活性/非活性を制御
+     * ★ 3層防御: disabled属性 + opacity/cursor + pointer-events
      */
     function updateSearchButtonState() {
         if (!btnSearchExecute) return;
-        const hasStart = filterDateStart && filterDateStart.value;
-        const hasEnd = filterDateEnd && filterDateEnd.value;
-        const isValid = hasStart && hasEnd;
+        const startVal = (filterDateStart && filterDateStart.value) ? filterDateStart.value.trim() : '';
+        const endVal = (filterDateEnd && filterDateEnd.value) ? filterDateEnd.value.trim() : '';
+        const isValid = startVal !== '' && endVal !== '';
         btnSearchExecute.disabled = !isValid;
         if (isValid) {
             btnSearchExecute.style.opacity = '1';
             btnSearchExecute.style.cursor = 'pointer';
+            btnSearchExecute.style.pointerEvents = 'auto';
         } else {
             btnSearchExecute.style.opacity = '0.5';
             btnSearchExecute.style.cursor = 'not-allowed';
+            btnSearchExecute.style.pointerEvents = 'none';
         }
+        console.log(`[Sales List] ボタン状態更新: isValid=${isValid}, start="${startVal}", end="${endVal}"`);
     }
 
     /**
@@ -100,6 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const lastDay = new Date(y, Number(m), 0).getDate();
         filterDateStart.value = `${y}-${m}-01`;
         filterDateEnd.value = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+        // ★ デフォルト値セット後にボタン状態を即更新
+        updateSearchButtonState();
     }
 
     async function fetchMasters() {
@@ -133,10 +139,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // searchData: メインのデータ取得・集約処理
     // ================================================================
     async function searchData() {
-        // ── ガード節: 日付未入力なら即return (全件取得を物理的に遮断) ──
-        const dateFrom = filterDateStart?.value || '';
-        const dateTo = filterDateEnd?.value || '';
-        if (!dateFrom || !dateTo) {
+        // ── ガード節: 厳格バリデーション (trim + 空文字チェック) ──
+        const dateFrom = (filterDateStart?.value || '').trim();
+        const dateTo = (filterDateEnd?.value || '').trim();
+        if (!dateFrom || dateFrom === '' || !dateTo || dateTo === '') {
             console.warn('[Sales List] ガード節: 日付が未入力のため集計を中止');
             if (typeof showToast === 'function') {
                 showToast('開始年月日と終了年月日を入力してください', 'warning');
@@ -572,11 +578,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- イベントバインディング ---
-    // ★ 日付変更時はボタン活性制御のみ (自動クエリ発行を廃止)
+    // ★ change + input 両方をリッスン (UnifiedDatePicker + 手入力の両方に対応)
     [filterDateStart, filterDateEnd].forEach(el => {
-        if (el) el.addEventListener('change', updateSearchButtonState);
+        if (el) {
+            el.addEventListener('change', updateSearchButtonState);
+            el.addEventListener('input', updateSearchButtonState);
+        }
     });
     if (btnSearchExecute) btnSearchExecute.addEventListener('click', searchData);
+
+    // ★ UnifiedDatePicker対応: DOMロード完了後に遅延でボタン状態を再評価
+    //   (UDPの自動初期化が完了してから正確に判定するため)
+    setTimeout(updateSearchButtonState, 300);
     [filterCustomer, filterStaff].forEach(el => {
         if (el) el.addEventListener('input', render);
     });
