@@ -13,11 +13,182 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=BIZ+UDGothic:wght@400;700&display=swap"
         rel="stylesheet">
+    <!-- UnifiedDatePicker (カスタムカレンダー) -->
+    <script src="unified_datepicker.js"></script>
     <style>
+        /* ── 13pt フォント統一 (入金管理画面準拠) ── */
+        .description-text {
+            font-size: 13pt !important;
+            color: var(--text-muted);
+            margin: 0;
+        }
+        .block-title,
+        .filter-item label,
+        .filter-item .form-select,
+        .filter-item .form-control {
+            font-size: 13pt !important;
+        }
+
         /* Local overrides */
         .summary-card {
             background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
             border-left: 4px solid var(--primary);
+        }
+
+        /* ── Snapshot Dashboard Styles ── */
+        .snapshot-section {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 2px solid var(--border-color);
+        }
+        .snapshot-section .section-title {
+            font-size: 13pt;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .snapshot-section .section-title::before {
+            content: '📊';
+            font-size: 13pt;
+        }
+        .snapshot-filter {
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .snapshot-filter .filter-item label {
+            font-size: 13pt !important;
+        }
+        .snapshot-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 900px) {
+            .snapshot-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 500px) {
+            .snapshot-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+        .snapshot-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 18px 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-top: 3px solid transparent;
+            position: relative;
+        }
+        .snapshot-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .snapshot-card.active {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(77, 144, 254, 0.25);
+        }
+        .snapshot-card.card-ar { border-top-color: #3b82f6; }
+        .snapshot-card.card-ar.active { background: #eff6ff; }
+        .snapshot-card.card-expense { border-top-color: #f59e0b; }
+        .snapshot-card.card-expense.active { background: #fffbeb; }
+        .snapshot-card.card-advance { border-top-color: #10b981; }
+        .snapshot-card.card-advance.active { background: #ecfdf5; }
+        .snapshot-card.card-prospect { border-top-color: #8b5cf6; }
+        .snapshot-card.card-prospect.active { background: #f5f3ff; }
+
+        .snapshot-card .card-icon {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13pt;
+        }
+        .card-ar .card-icon { background: #dbeafe; }
+        .card-expense .card-icon { background: #fef3c7; }
+        .card-advance .card-icon { background: #d1fae5; }
+        .card-prospect .card-icon { background: #ede9fe; }
+
+        .snapshot-card .card-label {
+            font-size: 13pt;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .snapshot-card .card-amount {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.2;
+        }
+        .snapshot-card .card-count {
+            font-size: 13pt;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .snapshot-detail-wrapper {
+            display: none;
+        }
+        .snapshot-detail-wrapper.visible {
+            display: block;
+        }
+        .snapshot-detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .snapshot-detail-header h4 {
+            margin: 0;
+            font-size: 13pt;
+            font-weight: 600;
+        }
+        .snapshot-detail-header .close-detail {
+            background: none;
+            border: none;
+            font-size: 13pt;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.15s;
+        }
+        .snapshot-detail-header .close-detail:hover {
+            background: #f1f5f9;
+        }
+
+        /* 初期メッセージ */
+        .snapshot-initial-msg {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            font-size: 13pt;
+        }
+        .snapshot-initial-msg .icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        /* テーブル内フォント統一 */
+        #snapshot-detail-table th,
+        #snapshot-detail-table td {
+            font-size: 13pt;
         }
     </style>
 </head>
@@ -142,7 +313,7 @@
 
                 <!-- Actions Bar -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">売上データの集計と分析を行います。</p>
+                    <p class="description-text">売上データの集計と分析を行います。</p>
                     <button class="btn btn-excel" id="btn-export-csv">
                         <i data-lucide="download"></i> CSVエクスポート
                     </button>
@@ -154,21 +325,28 @@
                         <h3 class="block-title">集計条件</h3>
                     </div>
                     <div class="block-content">
-                        <div class="filter-bar" style="align-items: flex-end; gap: 1rem;">
-                            <div class="filter-item">
-                                <label for="filter-date-start">開始年月日</label>
-                                <input type="date" id="filter-date-start" class="form-control" style="width: auto;">
+                        <!-- 入金管理画面準拠レイアウト -->
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+                                <div style="min-width: 200px;">
+                                    <label for="filter-date-start"
+                                        style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 13pt; color: var(--text-main);">開始年月日</label>
+                                    <input type="date" id="filter-date-start" class="form-control"
+                                        style="min-height: 44px; font-size: 13pt;">
+                                </div>
+                                <div style="font-size: 13pt; color: var(--text-muted); padding-bottom: 10px;">〜</div>
+                                <div style="min-width: 200px;">
+                                    <label for="filter-date-end"
+                                        style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 13pt; color: var(--text-main);">終了年月日</label>
+                                    <input type="date" id="filter-date-end" class="form-control"
+                                        style="min-height: 44px; font-size: 13pt;">
+                                </div>
                             </div>
-                            <div class="filter-item" style="padding-bottom: 8px; color: var(--text-muted);">
-                                〜
-                            </div>
-                            <div class="filter-item">
-                                <label for="filter-date-end">終了年月日</label>
-                                <input type="date" id="filter-date-end" class="form-control" style="width: auto;">
-                            </div>
-                            <div class="filter-item" style="padding-bottom: 2px;">
-                                <button id="btn-search-execute" class="btn btn-search" style="width: 100%;">
-                                    <i data-lucide="search"></i> 集計実行
+                            <!-- ボタン -->
+                            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                                <button id="btn-search-execute" class="btn btn-search"
+                                    style="padding: 0 24px; min-height: 44px; font-size: 13pt; display: inline-flex; align-items: center;">
+                                    <i data-lucide="search" style="margin-right: 8px;"></i> 集計実行
                                 </button>
                             </div>
                         </div>
@@ -221,6 +399,101 @@
                     </div>
                 </div>
 
+                <!-- ════════════════════════════════════════ -->
+                <!-- Financial Snapshot Dashboard -->
+                <!-- ════════════════════════════════════════ -->
+                <div class="snapshot-section" id="snapshot-section">
+                    <h3 class="section-title">財務スナップショット</h3>
+
+                    <!-- Snapshot Filter -->
+                    <div class="block">
+                        <div class="block-content">
+                            <div style="display: flex; flex-direction: column; gap: 20px;">
+                                <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+                                    <div style="min-width: 200px;">
+                                        <label for="snapshot-closing-date"
+                                            style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 13pt; color: var(--text-main);">決算日</label>
+                                        <input type="date" id="snapshot-closing-date" class="form-control"
+                                            style="min-height: 44px; font-size: 13pt;">
+                                    </div>
+                                </div>
+                                <!-- ボタン -->
+                                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                                    <button id="btn-snapshot-execute" class="btn btn-search"
+                                        style="padding: 0 24px; min-height: 44px; font-size: 13pt; display: inline-flex; align-items: center;">
+                                        <i data-lucide="camera" style="margin-right: 8px;"></i> スナップショット実行
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Snapshot Cards -->
+                    <div class="snapshot-cards" id="snapshot-cards" style="display: none;">
+                        <div class="snapshot-card card-ar" data-category="ar" id="card-ar">
+                            <div class="card-icon">📋</div>
+                            <div class="card-label">売掛金</div>
+                            <div class="card-amount" id="snapshot-ar-amount">¥0</div>
+                            <div class="card-count" id="snapshot-ar-count">0件</div>
+                        </div>
+                        <div class="snapshot-card card-expense" data-category="expenses" id="card-expenses">
+                            <div class="card-icon">📦</div>
+                            <div class="card-label">立替金</div>
+                            <div class="card-amount" id="snapshot-expenses-amount">¥0</div>
+                            <div class="card-count" id="snapshot-expenses-count">0件</div>
+                        </div>
+                        <div class="snapshot-card card-advance" data-category="advances" id="card-advances">
+                            <div class="card-icon">💰</div>
+                            <div class="card-label">前受金</div>
+                            <div class="card-amount" id="snapshot-advances-amount">¥0</div>
+                            <div class="card-count" id="snapshot-advances-count">0件</div>
+                        </div>
+                        <div class="snapshot-card card-prospect" data-category="prospects" id="card-prospects">
+                            <div class="card-icon">🔮</div>
+                            <div class="card-label">見込</div>
+                            <div class="card-amount" id="snapshot-prospects-amount">¥0</div>
+                            <div class="card-count" id="snapshot-prospects-count">0件</div>
+                        </div>
+                    </div>
+
+                    <!-- Initial Message -->
+                    <div id="snapshot-initial-msg" class="snapshot-initial-msg">
+                        <div class="icon">📅</div>
+                        <p>決算日を選択し「スナップショット実行」を押してください。<br>指定日時点での売掛金・立替金・前受金・見込の状況を再現します。</p>
+                    </div>
+
+                    <!-- Snapshot Detail Table -->
+                    <div class="snapshot-detail-wrapper" id="snapshot-detail-wrapper">
+                        <div class="block">
+                            <div class="block-header">
+                                <div class="snapshot-detail-header" style="width: 100%;">
+                                    <h4 id="snapshot-detail-title">明細</h4>
+                                    <button class="close-detail" id="btn-close-snapshot-detail" title="明細を閉じる">✕</button>
+                                </div>
+                            </div>
+                            <div class="block-content" style="padding: 0;">
+                                <div class="table-responsive">
+                                    <table class="table-modern" id="snapshot-detail-table">
+                                        <thead>
+                                            <tr>
+                                                <th>顧客名</th>
+                                                <th>案件名</th>
+                                                <th class="text-right">残高</th>
+                                                <th class="text-right">元金額</th>
+                                                <th class="text-right">消込額</th>
+                                                <th class="text-right">経過日数</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="snapshot-detail-body">
+                                            <!-- JS Populated -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <footer style="margin-top: 60px; text-align: center; color: #aaa; font-size: 0.8rem;">
                     &copy; 2026 LAPIS2 Project
                 </footer>
@@ -246,6 +519,7 @@
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
 
+    <script src="financial_service.js"></script>
     <script src="sales_list.js"></script>
 
     <script>

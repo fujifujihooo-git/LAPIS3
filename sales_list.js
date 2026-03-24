@@ -554,4 +554,201 @@ document.addEventListener('DOMContentLoaded', () => {
             if (viewSummary) viewSummary.style.display = 'block';
         });
     }
+
+    // ================================================================
+    // ■ 財務スナップショット ダッシュボード (疎結合セクション)
+    //   FinancialService モジュール (financial_service.js) と連携
+    // ================================================================
+
+    const DashboardUI = (() => {
+        // --- Selectors ---
+        const closingDateInput = document.getElementById('snapshot-closing-date');
+        const btnExecute = document.getElementById('btn-snapshot-execute');
+        const cardsContainer = document.getElementById('snapshot-cards');
+        const initialMsg = document.getElementById('snapshot-initial-msg');
+        const detailWrapper = document.getElementById('snapshot-detail-wrapper');
+        const detailTitle = document.getElementById('snapshot-detail-title');
+        const detailBody = document.getElementById('snapshot-detail-body');
+        const btnCloseDetail = document.getElementById('btn-close-snapshot-detail');
+
+        // --- State ---
+        let snapshotResult = null;
+        let activeCategory = null;
+
+        // --- Init ---
+        if (closingDateInput) {
+            // デフォルトを本日に設定
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            closingDateInput.value = `${y}-${m}-${d}`;
+        }
+
+        /**
+         * カードの数値を更新
+         */
+        function updateCards(summary) {
+            if (!summary) return;
+
+            const categories = ['ar', 'expenses', 'advances', 'prospects'];
+            categories.forEach(cat => {
+                const data = summary[cat];
+                const amountEl = document.getElementById(`snapshot-${cat}-amount`);
+                const countEl = document.getElementById(`snapshot-${cat}-count`);
+                if (amountEl) amountEl.textContent = formatCurrency(data.total);
+                if (countEl) countEl.textContent = `${data.count}件`;
+            });
+
+            // カードを表示
+            if (cardsContainer) cardsContainer.style.display = 'grid';
+            if (initialMsg) initialMsg.style.display = 'none';
+        }
+
+        /**
+         * 明細テーブルを描画
+         */
+        function renderDetailList(category, items) {
+            if (!detailBody || !detailWrapper) return;
+
+            const labels = {
+                ar: '売掛金',
+                expenses: '立替金',
+                advances: '前受金 (仮受金)',
+                prospects: '見込'
+            };
+
+            if (detailTitle) {
+                detailTitle.textContent = `${labels[category] || category} 明細 (${items.length}件)`;
+            }
+
+            detailBody.innerHTML = '';
+
+            if (items.length === 0) {
+                detailBody.innerHTML = '<tr><td colspan="6" class="no-data-cell">該当するデータはありません。</td></tr>';
+            } else {
+                items.forEach(item => {
+                    const tr = document.createElement('tr');
+                    const elapsedDisplay = item.elapsedDays !== undefined
+                        ? `${item.elapsedDays}日`
+                        : 'ー';
+                    const elapsedColor = item.elapsedDays > 90 ? 'color: #ef4444; font-weight: 600;'
+                        : item.elapsedDays > 30 ? 'color: #f59e0b; font-weight: 600;'
+                        : '';
+
+                    tr.innerHTML = `
+                        <td>${formatDisplayValue(item.customerName)}</td>
+                        <td>${formatDisplayValue(item.caseName)}</td>
+                        <td class="text-right" style="font-weight: 700; color: var(--primary);">${formatCurrency(item.amount)}</td>
+                        <td class="text-right">${formatCurrency(item.originalAmount)}</td>
+                        <td class="text-right">${formatCurrency(item.allocatedAmount)}</td>
+                        <td class="text-right" style="${elapsedColor}">${elapsedDisplay}</td>
+                    `;
+                    detailBody.appendChild(tr);
+                });
+
+                // 合計行
+                const totalAmount = items.reduce((s, i) => s + (i.amount || 0), 0);
+                const trTotal = document.createElement('tr');
+                trTotal.style.background = '#f8fafc';
+                trTotal.style.fontWeight = '700';
+                trTotal.innerHTML = `
+                    <td>合計</td>
+                    <td></td>
+                    <td class="text-right" style="color: var(--primary);">${formatCurrency(totalAmount)}</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                `;
+                detailBody.appendChild(trTotal);
+            }
+
+            // 表示切替
+            detailWrapper.classList.add('visible');
+
+            // スクロール
+            detailWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        /**
+         * カードの選択状態を更新
+         */
+        function setActiveCard(category) {
+            activeCategory = category;
+            const allCards = document.querySelectorAll('.snapshot-card');
+            allCards.forEach(card => card.classList.remove('active'));
+            const targetCard = document.getElementById(`card-${category}`);
+            if (targetCard) targetCard.classList.add('active');
+        }
+
+        /**
+         * スナップショット実行
+         */
+        async function executeSnapshot() {
+            const closingDate = closingDateInput?.value;
+            if (!closingDate) {
+                alert('決算日を入力してください。');
+                return;
+            }
+
+            // Loading state
+            if (btnExecute) {
+                btnExecute.disabled = true;
+                btnExecute.innerHTML = '<i data-lucide="loader-2" class="spin"></i> 集計中...';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+
+            try {
+                // FinancialService からデータ取得+集計
+                snapshotResult = await FinancialService.execute(closingDate);
+                updateCards(snapshotResult.summary);
+
+                // デフォルトで売掛金を選択
+                setActiveCard('ar');
+                renderDetailList('ar', snapshotResult.ar);
+
+                if (typeof showToast === 'function') {
+                    showToast(`${closingDate} 時点のスナップショットを生成しました`, 'success');
+                }
+
+            } catch (error) {
+                console.error('[DashboardUI] スナップショットエラー:', error);
+                alert('スナップショットの生成に失敗しました。\n' + error.message);
+            } finally {
+                if (btnExecute) {
+                    btnExecute.disabled = false;
+                    btnExecute.innerHTML = '<i data-lucide="camera"></i> スナップショット実行';
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }
+            }
+        }
+
+        // --- Event Binding ---
+        if (btnExecute) {
+            btnExecute.addEventListener('click', executeSnapshot);
+        }
+
+        // カードクリック
+        document.querySelectorAll('.snapshot-card').forEach(card => {
+            card.addEventListener('click', () => {
+                if (!snapshotResult) return;
+                const category = card.dataset.category;
+                setActiveCard(category);
+                renderDetailList(category, snapshotResult[category] || []);
+            });
+        });
+
+        // 明細閉じるボタン
+        if (btnCloseDetail) {
+            btnCloseDetail.addEventListener('click', () => {
+                if (detailWrapper) detailWrapper.classList.remove('visible');
+                const allCards = document.querySelectorAll('.snapshot-card');
+                allCards.forEach(card => card.classList.remove('active'));
+                activeCategory = null;
+            });
+        }
+
+        return { executeSnapshot, updateCards, renderDetailList };
+    })();
+
 });
