@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let cases = [];
     let salesData = [];
     let currentSort = { column: 'contract_date', direction: 'desc' };
+    let hasSearched = false; // 初期表示 vs 0件結果を区別するフラグ
 
     // Caches
     let customersMap = {};
@@ -53,7 +54,41 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        searchData();
+        // ★ 初期状態: データフェッチを行わず案内メッセージを表示
+        showInitialMessage();
+        updateSearchButtonState();
+    }
+
+    /**
+     * 集計実行ボタンの活性/非活性を制御
+     */
+    function updateSearchButtonState() {
+        if (!btnSearchExecute) return;
+        const hasStart = filterDateStart && filterDateStart.value;
+        const hasEnd = filterDateEnd && filterDateEnd.value;
+        const isValid = hasStart && hasEnd;
+        btnSearchExecute.disabled = !isValid;
+        if (isValid) {
+            btnSearchExecute.style.opacity = '1';
+            btnSearchExecute.style.cursor = 'pointer';
+        } else {
+            btnSearchExecute.style.opacity = '0.5';
+            btnSearchExecute.style.cursor = 'not-allowed';
+        }
+    }
+
+    /**
+     * 初期状態のプレースホルダーメッセージ表示
+     */
+    function showInitialMessage() {
+        if (listBody) {
+            listBody.innerHTML = '<tr><td colspan="7" class="no-data-cell" style="padding: 40px 20px; color: var(--text-muted); font-size: 13pt;">集計条件を指定して「集計実行」ボタンを押してください。</td></tr>';
+        }
+        // サマリーカードを初期値にリセット
+        const valTotalSales = document.getElementById('val-total-sales');
+        const valTotalCount = document.getElementById('val-total-count');
+        if (valTotalSales) valTotalSales.textContent = '¥0';
+        if (valTotalCount) valTotalCount.textContent = '0件';
     }
 
     function setupFilterOptions() {
@@ -98,9 +133,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // searchData: メインのデータ取得・集約処理
     // ================================================================
     async function searchData() {
+        // ── ガード節: 日付未入力なら即return (全件取得を物理的に遮断) ──
+        const dateFrom = filterDateStart?.value || '';
+        const dateTo = filterDateEnd?.value || '';
+        if (!dateFrom || !dateTo) {
+            console.warn('[Sales List] ガード節: 日付が未入力のため集計を中止');
+            if (typeof showToast === 'function') {
+                showToast('開始年月日と終了年月日を入力してください', 'warning');
+            }
+            return;
+        }
+
         // Loading UI
         if (listBody) {
-            listBody.innerHTML = '<tr><td colspan="5" class="no-data-cell">データを集計中...</td></tr>';
+            listBody.innerHTML = '<tr><td colspan="7" class="no-data-cell" style="padding: 40px 20px;"><i data-lucide="loader-2" class="spin" style="display: inline-block; margin-right: 8px;"></i>データを集計中...</td></tr>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
         if (btnSearchExecute) {
             btnSearchExecute.disabled = true;
@@ -108,12 +155,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        // ── フィルタ値の取得 ──
-        const dateFrom = filterDateStart?.value || '';
-        const dateTo = filterDateEnd?.value || '';
+        hasSearched = true;
 
         console.log(`[Sales List] ========== 集計開始 ==========`);
-        console.log(`[Sales List] 検索期間: ${dateFrom || '指定なし'} ～ ${dateTo || '指定なし'}`);
+        console.log(`[Sales List] 検索期間: ${dateFrom} ～ ${dateTo}`);
 
         try {
             // ================================================================
@@ -288,9 +333,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } finally {
             if (btnSearchExecute) {
-                btnSearchExecute.disabled = false;
-                btnSearchExecute.innerHTML = '<i data-lucide="search"></i> 集計実行';
+                btnSearchExecute.innerHTML = '<i data-lucide="search" style="margin-right: 8px;"></i> 集計実行';
                 if (typeof lucide !== 'undefined') lucide.createIcons();
+                updateSearchButtonState(); // ボタン活性状態を再計算
             }
         }
     }
@@ -336,7 +381,10 @@ document.addEventListener('DOMContentLoaded', () => {
         listBody.innerHTML = '';
 
         if (filtered.length === 0) {
-            listBody.innerHTML = '<tr><td colspan="5" class="no-data-cell">該当する売上データはありません。</td></tr>';
+            const msg = hasSearched
+                ? '該当期間の売上明細は見つかりませんでした。'
+                : '集計条件を指定して「集計実行」ボタンを押してください。';
+            listBody.innerHTML = `<tr><td colspan="7" class="no-data-cell" style="padding: 40px 20px; color: var(--text-muted); font-size: 13pt;">${msg}</td></tr>`;
         } else {
             filtered.forEach(item => {
                 const tr = document.createElement('tr');
@@ -524,8 +572,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- イベントバインディング ---
+    // ★ 日付変更時はボタン活性制御のみ (自動クエリ発行を廃止)
     [filterDateStart, filterDateEnd].forEach(el => {
-        if (el) el.addEventListener('change', searchData);
+        if (el) el.addEventListener('change', updateSearchButtonState);
     });
     if (btnSearchExecute) btnSearchExecute.addEventListener('click', searchData);
     [filterCustomer, filterStaff].forEach(el => {
