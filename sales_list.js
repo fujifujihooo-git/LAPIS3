@@ -21,12 +21,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnPdfExport = document.getElementById('btn-pdf-export');
     const btnSearchExecute = document.getElementById('btn-search-execute');
 
-    // Tabs
-    const tabList = document.getElementById('tab-list');
-    const tabSummary = document.getElementById('tab-summary');
-    const viewList = document.getElementById('view-list');
-    const viewSummary = document.getElementById('view-summary');
-    const monthlyAggArea = document.getElementById('monthly-agg-area');
+    // Tabs (売上明細 / 財務スナップショット)
+    const viewSalesDetail = document.getElementById('view-sales-detail');
+    const viewFinanceSnapshot = document.getElementById('view-finance-snapshot');
+    const salesTabButtons = document.querySelectorAll('.sales-tab');
 
     // Aggregates
     const aggTitle = document.getElementById('agg-title');
@@ -596,26 +594,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnExcelExport) btnExcelExport.addEventListener('click', exportExcel);
 
-    // タブ切替
-    if (tabList) {
-        tabList.addEventListener('click', () => {
-            tabList.classList.add('active');
-            if (tabSummary) tabSummary.classList.remove('active');
-            if (viewList) viewList.style.display = 'block';
-            if (monthlyAggArea) monthlyAggArea.style.display = 'flex';
-            if (viewSummary) viewSummary.style.display = 'none';
-        });
-    }
+    // ── タブ切替: 売上明細 / 財務スナップショット ──
+    salesTabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetTab = btn.dataset.tab;
 
-    if (tabSummary) {
-        tabSummary.addEventListener('click', () => {
-            if (tabList) tabList.classList.remove('active');
-            tabSummary.classList.add('active');
-            if (viewList) viewList.style.display = 'none';
-            if (monthlyAggArea) monthlyAggArea.style.display = 'none';
-            if (viewSummary) viewSummary.style.display = 'block';
+            // タブUIの切替
+            salesTabButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // ビューの切替（DOM保持方式 ― innerHTML破棄なし）
+            if (targetTab === 'detail') {
+                if (viewSalesDetail) viewSalesDetail.style.display = '';
+                if (viewFinanceSnapshot) viewFinanceSnapshot.style.display = 'none';
+            } else {
+                if (viewSalesDetail) viewSalesDetail.style.display = 'none';
+                if (viewFinanceSnapshot) viewFinanceSnapshot.style.display = '';
+            }
+            console.log(`[Sales List] タブ切替: ${targetTab}`);
         });
-    }
+    });
 
     // ================================================================
     // ■ 財務スナップショット ダッシュボード (疎結合セクション)

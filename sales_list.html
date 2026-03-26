@@ -190,6 +190,27 @@
         #snapshot-detail-table td {
             font-size: 13pt;
         }
+
+        /* ── タブ切替UI（未収一覧 segment-control 準拠） ── */
+        .sales-tab-container {
+            margin: 20px 0 16px 0;
+        }
+        .sales-tab.active {
+            background: #fff !important;
+            color: #0f172a !important;
+            font-weight: 600 !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+        }
+        .sales-tab:not(.active) {
+            background: transparent !important;
+            color: #64748b !important;
+            font-weight: 500 !important;
+            box-shadow: none !important;
+        }
+        .sales-tab:hover:not(.active) {
+            background: rgba(255,255,255,0.5) !important;
+            color: #475569 !important;
+        }
     </style>
 </head>
 
@@ -372,37 +393,55 @@
                     <!-- Add more summary cards as needed -->
                 </div>
 
-                <!-- Results Table -->
-                <div class="block">
-                    <div class="block-header">
-                        <h3 class="block-title">売上明細</h3>
+                <!-- ══ タブ切替UI（未収一覧 segment-control 準拠） ══ -->
+                <div class="sales-tab-container" id="sales-tab-container">
+                    <div class="segment-control" style="background:#e2e8f0; padding:4px; border-radius:8px; display:inline-flex; gap: 4px; align-items: center;">
+                        <button type="button" id="tab-sales-detail" class="btn btn-sm sales-tab active" data-tab="detail"
+                            style="border:none; border-radius:6px; padding: 6px 16px; transition:0.2s; font-size:13pt; cursor:pointer;">
+                            📋 売上明細
+                        </button>
+                        <button type="button" id="tab-finance-snapshot" class="btn btn-sm sales-tab" data-tab="snapshot"
+                            style="border:none; border-radius:6px; padding: 6px 16px; transition:0.2s; font-size:13pt; cursor:pointer;">
+                            📊 財務スナップショット
+                        </button>
                     </div>
-                    <div class="block-content" style="padding: 0;">
-                        <div class="table-responsive">
-                            <table class="table-modern" id="sales-table">
-                                <thead>
-                                    <tr>
-                                        <th class="sortable" data-sort="contract_date">売上日 (受任日)</th>
-                                        <th class="sortable" data-sort="customer_name">顧客名</th>
-                                        <th class="sortable" data-sort="title">案件名</th>
-                                        <th class="sortable" data-sort="reimbursement">仮受金</th>
-                                        <th class="sortable" data-sort="fee_tax_included">手数料 (税込)</th>
-                                        <th class="sortable" data-sort="total_amount">合計額</th>
-                                        <th class="sortable" data-sort="staff_name">担当者</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="sales-list-body">
-                                    <!-- JS Populated -->
-                                </tbody>
-                            </table>
+                </div>
+
+                <!-- ══ ビュー①: 売上明細 ══ -->
+                <div id="view-sales-detail">
+                    <div class="block">
+                        <div class="block-header">
+                            <h3 class="block-title">売上明細</h3>
+                        </div>
+                        <div class="block-content" style="padding: 0;">
+                            <div class="table-responsive">
+                                <table class="table-modern" id="sales-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable" data-sort="contract_date">売上日 (受任日)</th>
+                                            <th class="sortable" data-sort="customer_name">顧客名</th>
+                                            <th class="sortable" data-sort="title">案件名</th>
+                                            <th class="sortable" data-sort="reimbursement">仮受金</th>
+                                            <th class="sortable" data-sort="fee_tax_included">手数料 (税込)</th>
+                                            <th class="sortable" data-sort="total_amount">合計額</th>
+                                            <th class="sortable" data-sort="staff_name">担当者</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sales-list-body">
+                                        <!-- JS Populated -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- ══ ビュー②: 財務スナップショット ══ -->
+                <div id="view-finance-snapshot" style="display:none;">
                 <!-- ════════════════════════════════════════ -->
                 <!-- Financial Snapshot Dashboard -->
                 <!-- ════════════════════════════════════════ -->
-                <div class="snapshot-section" id="snapshot-section">
+                <div class="snapshot-section" id="snapshot-section" style="margin-top:0; border-top:none;">
                     <h3 class="section-title">財務スナップショット</h3>
 
                     <!-- Snapshot Filter -->
@@ -493,6 +532,7 @@
                         </div>
                     </div>
                 </div>
+                </div><!-- END view-finance-snapshot -->
 
                 <footer style="margin-top: 60px; text-align: center; color: #aaa; font-size: 0.8rem;">
                     &copy; 2026 LAPIS2 Project
