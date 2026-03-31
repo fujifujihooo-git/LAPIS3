@@ -40,8 +40,8 @@ window.ReportEngine = {
             })
         ]);
 
-        // PDFの読み込みとフォントキットの登録
-        const pdfDoc = await PDFDocument.load(templateBytes);
+        // PDFの読み込みとフォントキットの登録 (公式の保護付きPDFを扱えるよう ignoreEncryption を付与)
+        const pdfDoc = await PDFDocument.load(templateBytes, { ignoreEncryption: true });
         pdfDoc.registerFontkit(window.fontkit);
         
         // フォントのエンベデッド
@@ -119,8 +119,27 @@ window.ReportEngine = {
             }
         }
 
-        // 【デバッグ用】座標グリッド描画ロジックは削除済
-
+        // 【デバッグ用】明示的に ?debug_pdf=1 が指定された場合のみグリッドを描画する
+        const isDebugEnabled = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug_pdf') === '1';
+        if (isDebugEnabled) {
+            const { width, height } = page.getSize();
+            // 50pt毎に細い線を引く
+            for (let x = 50; x <= width; x += 50) {
+                page.drawLine({ start: { x, y: 0 }, end: { x, y: height }, color: rgb(1, 0.5, 0.5), thickness: 0.2 });
+            }
+            for (let y = 50; y <= height; y += 50) {
+                page.drawLine({ start: { x: 0, y }, end: { x: width, y }, color: rgb(1, 0.5, 0.5), thickness: 0.2 });
+            }
+            // 100pt毎に太い線と数値を描画する
+            for (let x = 0; x <= width; x += 100) {
+                page.drawLine({ start: { x, y: 0 }, end: { x, y: height }, color: rgb(1, 0, 0), thickness: 0.5 });
+                page.drawText(`${x}`, { x: x + 2, y: 10, size: 8, font: customFont, color: rgb(1, 0, 0) });
+            }
+            for (let y = 0; y <= height; y += 100) {
+                page.drawLine({ start: { x: 0, y }, end: { x: width, y }, color: rgb(1, 0, 0), thickness: 0.5 });
+                page.drawText(`${y}`, { x: 2, y: y + 2, size: 8, font: customFont, color: rgb(1, 0, 0) });
+            }
+        }
         return await pdfDoc.save();
     },
 

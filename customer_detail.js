@@ -1201,5 +1201,128 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnPrintReport.addEventListener('click', () => handleReportAction('download'));
     }
 
+    // --- Report Engine (National Tax Certificate) ---
+    const btnOpenNationalTaxCert = document.getElementById('btn-open-national-tax-cert-modal');
+    const reportNationalModal = document.getElementById('report-national-modal');
+    const btnCloseNationalReport = document.getElementById('btn-close-national-modal');
+    const btnPrintNationalReport = document.getElementById('btn-print-national-report');
+    const selNationalApplicantType = document.getElementById('report_national_applicant_type');
+    const groupNationalStaffSelect = document.getElementById('group_national_staff_select');
+    const selNationalReportStaff = document.getElementById('report_national_staff_id');
+
+    if (btnOpenNationalTaxCert) {
+        btnOpenNationalTaxCert.addEventListener('click', () => {
+            if (!currentCustomer) {
+                alert('顧客データが保存されていません。先に保存してください。');
+                return;
+            }
+            
+            // Populate staff dropdown if empty
+            if (selNationalReportStaff && selNationalReportStaff.options.length <= 1) {
+                const activeStaff = staffMembers
+                    .filter(s => s.status === '在籍')
+                    .sort((a, b) => (a.staff_id || 0) - (b.staff_id || 0));
+                activeStaff.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.staff_id;
+                    opt.textContent = s.staff_name;
+                    selNationalReportStaff.appendChild(opt);
+                });
+            }
+
+            if(reportNationalModal) reportNationalModal.style.display = 'flex';
+        });
+    }
+
+    if (btnCloseNationalReport) {
+        btnCloseNationalReport.addEventListener('click', () => {
+            if(reportNationalModal) reportNationalModal.style.display = 'none';
+        });
+    }
+
+    if (selNationalApplicantType) {
+        selNationalApplicantType.addEventListener('change', (e) => {
+            if (e.target.value === '代理人') {
+                if(groupNationalStaffSelect) groupNationalStaffSelect.style.display = 'block';
+            } else {
+                if(groupNationalStaffSelect) groupNationalStaffSelect.style.display = 'none';
+                if(selNationalReportStaff) selNationalReportStaff.value = ''; // Reset
+            }
+        });
+        // Trigger initial state
+        setTimeout(()=>selNationalApplicantType.dispatchEvent(new Event('change')), 100);
+    }
+
+    async function handleNationalReportAction() {
+        if (!currentCustomer) return;
+
+        // Validation
+        const appType = selNationalApplicantType ? selNationalApplicantType.value : '本人';
+        const staffId = selNationalReportStaff ? selNationalReportStaff.value : '';
+        if (appType === '代理人' && !staffId) {
+            alert('代理人の担当者を選択してください。');
+            return;
+        }
+
+        const selectedStaff = staffMembers.find(s => String(s.staff_id) === String(staffId)) || null;
+        
+        const formData = {
+            taxType: document.getElementById('report_national_tax_type') ? document.getElementById('report_national_tax_type').value : '',
+            period_start: document.getElementById('report_national_period_start') ? document.getElementById('report_national_period_start').value : '',
+            period_end: document.getElementById('report_national_period_end') ? document.getElementById('report_national_period_end').value : '',
+            copies: document.getElementById('report_national_copies') ? document.getElementById('report_national_copies').value : '1',
+            purpose: document.getElementById('report_national_purpose') ? document.getElementById('report_national_purpose').value : '',
+            applicantType: appType,
+            staff: selectedStaff ? {
+                name: selectedStaff.staff_name,
+                kana: selectedStaff.staff_kana,
+                tel: selectedStaff.phone,
+                address: selectedStaff.address || ''
+            } : null
+        };
+
+        try {
+            if (btnPrintNationalReport) btnPrintNationalReport.disabled = true;
+            let btnOriginalText = btnPrintNationalReport.textContent;
+            btnPrintNationalReport.textContent = '生成中...';
+
+            // 1. Build View Data
+            const viewData = window.TaxCertificateNationalView.buildData(currentCustomer, formData);
+
+            // キャッシュ対策：PDF差し替え時にブラウザキャッシュが残るのを防ぐため、タイムスタンプを付与
+            const t = new Date().getTime();
+
+            // 2. Load Mapping
+            const mapRes = await fetch(`report-system/report-templates/TaxPaymentCertificate_National_map.json?t=${t}`);
+            if (!mapRes.ok) throw new Error('国税用マッピング定義の読み込みに失敗しました');
+            const mappingJson = await mapRes.json();
+
+            // 3. URLs
+            const templateUrl = `report-system/report-templates/Tax_Payment_Certificate.pdf?t=${t}`;
+            const fontUrl = 'report-system/report-templates/NotoSansJP-Regular.ttf';
+
+            // 4. Generate
+            const pdfBytes = await window.ReportEngine.generateReport(templateUrl, fontUrl, mappingJson, viewData);
+
+            // 5. Output
+            const safeCustomerName = currentCustomer.customer_name.replace(/[\\/:*?"<>|]/g, '_');
+            const filename = `TaxPaymentCertificate_National_${safeCustomerName}.pdf`;
+            window.ReportEngine.downloadPDF(pdfBytes, filename);
+            if(reportNationalModal) reportNationalModal.style.display = 'none'; // Close modal on download
+            if (btnPrintNationalReport) btnPrintNationalReport.textContent = btnOriginalText;
+            
+        } catch (err) {
+            console.error('Report Generation Error:', err);
+            alert('国税帳票の生成に失敗しました: ' + err.message);
+            if (btnPrintNationalReport) btnPrintNationalReport.textContent = '印刷（ダウンロード）';
+        } finally {
+            if (btnPrintNationalReport) btnPrintNationalReport.disabled = false;
+        }
+    }
+
+    if (btnPrintNationalReport) {
+        btnPrintNationalReport.addEventListener('click', () => handleNationalReportAction());
+    }
+
     await init();
 });

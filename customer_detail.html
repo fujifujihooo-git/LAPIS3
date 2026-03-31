@@ -22,6 +22,7 @@
     <script src="https://unpkg.com/@pdf-lib/fontkit@0.0.4/dist/fontkit.umd.min.js"></script>
     <script src="report-system/report-engine/report_engine.js"></script>
     <script src="report-system/report-views/tax_certificate_view.js"></script>
+    <script src="report-system/report-views/tax_certificate_national_view.js"></script>
     <style>
         /* Local overrides for detail form */
 
@@ -566,13 +567,15 @@
                             <!-- Tab Content: Reports -->
                             <div id="tab-reports" class="tab-content">
                                 <h3 class="form-section-title">帳票出力</h3>
-                                <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+                                <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
                                     <button type="button" class="btn btn-primary" id="btn-open-tax-cert-modal" style="background:#0284c7; border:none;">
                                         <i data-lucide="file-text"></i> 東京都納税証明書交付申請書 印刷
                                     </button>
+                                    <button type="button" class="btn btn-primary" id="btn-open-national-tax-cert-modal" style="background:#16a34a; border:none;">
+                                        <i data-lucide="file-text"></i> 税務署用（国税）納税証明書交付申請書 印刷
+                                    </button>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </form>
@@ -644,6 +647,62 @@
             <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px;">
                 <button type="button" class="btn btn-secondary" id="btn-close-report-modal">キャンセル</button>
                 <button type="button" class="btn btn-primary" id="btn-print-report">印刷（ダウンロード）</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 帳票用モーダル (税務署用/国税 納税証明書交付申請書) -->
+    <div id="report-national-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; width: 600px; max-width: 90%; border-radius:8px; padding:24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto;">
+            <h3 style="margin-top:0; border-bottom:1px solid var(--border-color); padding-bottom:12px; font-size: 14pt;">税務署用（国税）納税証明書交付申請書 出力設定</h3>
+            <div class="form-grid" style="grid-template-columns: 1fr;">
+                <div class="form-group">
+                    <label>税目</label>
+                    <select id="report_national_tax_type" class="form-select">
+                        <option value="法人税">法人税</option>
+                        <option value="消費税及地方消費税">消費税及地方消費税</option>
+                        <option value="源泉所得税">源泉所得税</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap: 20px;">
+                    <div class="form-group" style="flex:1;">
+                        <label>事業年度 / 課税期間</label>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <input type="date" id="report_national_period_start" class="form-control">
+                            <span>〜</span>
+                            <input type="date" id="report_national_period_end" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-group" style="width: 100px;">
+                        <label>枚数</label>
+                        <input type="number" id="report_national_copies" class="form-control" value="1" min="1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>使用目的 / 提出先</label>
+                    <select id="report_national_purpose" class="form-select">
+                        <option value="金融機関提出用">金融機関等への提出</option>
+                        <option value="入札参加資格審査用">入札参加資格審査等</option>
+                        <option value="その他">その他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>申請者区分</label>
+                    <select id="report_national_applicant_type" class="form-select">
+                        <option value="本人">本人 (顧客自身)</option>
+                        <option value="代理人" selected>代理人 (自事務所スタッフ)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="group_national_staff_select">
+                    <label>担当者 (代理人) <span class="required">*</span></label>
+                    <select id="report_national_staff_id" class="form-select">
+                        <option value="">(未選択)</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px;">
+                <button type="button" class="btn btn-secondary" id="btn-close-national-modal">キャンセル</button>
+                <button type="button" class="btn btn-primary" id="btn-print-national-report">印刷（ダウンロード）</button>
             </div>
         </div>
     </div>

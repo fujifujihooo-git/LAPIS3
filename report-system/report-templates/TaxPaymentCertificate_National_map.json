@@ -1,0 +1,113 @@
+{
+    "TAX_PAYER_NAME": {
+        "type": "text",
+        "x": 150,
+        "y": 700,
+        "size": 12
+    },
+    "TAX_PAYER_ADDRESS": {
+        "type": "text",
+        "x": 150,
+        "y": 720,
+        "size": 10
+    },
+    "REPRESENTATIVE_NAME": {
+        "type": "text",
+        "x": 150,
+        "y": 680,
+        "size": 12
+    },
+    "PHONE_NUMBER": {
+        "type": "text",
+        "x": 350,
+        "y": 680,
+        "size": 10
+    },
+    "TAX_TYPE_CORPORATE": {
+        "type": "text",
+        "value": "○",
+        "x": 120,
+        "y": 560,
+        "size": 16
+    },
+    "TAX_TYPE_CONSUMPTION": {
+        "type": "text",
+        "value": "○",
+        "x": 120,
+        "y": 540,
+        "size": 16
+    },
+    "TAX_TYPE_WITHHOLDING": {
+        "type": "text",
+        "value": "○",
+        "x": 120,
+        "y": 520,
+        "size": 16
+    },
+    "PERIOD_START_YEAR": {
+        "type": "text",
+        "x": 200,
+        "y": 560,
+        "size": 10
+    },
+    "PERIOD_START_MONTH": {
+        "type": "text",
+        "x": 230,
+        "y": 560,
+        "size": 10
+    },
+    "PERIOD_START_DAY": {
+        "type": "text",
+        "x": 250,
+        "y": 560,
+        "size": 10
+    },
+    "PERIOD_END_YEAR": {
+        "type": "text",
+        "x": 300,
+        "y": 560,
+        "size": 10
+    },
+    "PERIOD_END_MONTH": {
+        "type": "text",
+        "x": 330,
+        "y": 560,
+        "size": 10
+    },
+    "PERIOD_END_DAY": {
+        "type": "text",
+        "x": 350,
+        "y": 560,
+        "size": 10
+    },
+    "COPIES": {
+        "type": "text",
+        "x": 450,
+        "y": 560,
+        "size": 12
+    },
+    "PURPOSE": {
+        "type": "text",
+        "x": 150,
+        "y": 400,
+        "size": 10
+    },
+    "APPLICANT_NAME": {
+        "type": "text",
+        "x": 150,
+        "y": 200,
+        "size": 12
+    },
+    "APPLICANT_ADDRESS": {
+        "type": "text",
+        "x": 150,
+        "y": 220,
+        "size": 10
+    },
+    "APPLICANT_PHONE": {
+        "type": "text",
+        "x": 350,
+        "y": 200,
+        "size": 10
+    }
+}
