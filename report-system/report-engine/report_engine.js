@@ -119,41 +119,9 @@ window.ReportEngine = {
             }
         }
 
-        // 【デバッグ用】座標グリッド描画ロジック
-        const { width, height } = page.getSize();
-        for (let i = 0; i <= width; i += 50) {
-            page.drawLine({ start: { x: i, y: 0 }, end: { x: i, y: height }, color: rgb(1, 0, 0), thickness: 0.5 });
-            page.drawText(`${i}`, { x: i, y: 10, size: 8, color: rgb(1, 0, 0), font: customFont });
-        }
-        for (let i = 0; i <= height; i += 50) {
-            page.drawLine({ start: { x: 0, y: i }, end: { x: width, y: i }, color: rgb(1, 0, 0), thickness: 0.5 });
-            page.drawText(`${i}`, { x: 10, y: i, size: 8, color: rgb(1, 0, 0), font: customFont });
-        }
+        // 【デバッグ用】座標グリッド描画ロジックは削除済
 
         return await pdfDoc.save();
-    },
-
-    /**
-     * 座標確認用のグリッドを描画する (デバッグ用)
-     * 50ptごとに赤い線を引き、座標数字を描画します。
-     */
-    drawDebugGrid(page, customFont, rgb) {
-        const { width, height } = page.getSize();
-        const lineColor = rgb(1, 0, 0); // 赤
-        const textColor = rgb(0, 0, 0); // 黒
-
-        // 垂直線 (X座標)
-        for (let x = 0; x <= width; x += 50) {
-            page.drawLine({ start: { x: x, y: 0 }, end: { x: x, y: height }, thickness: 0.5, color: lineColor, opacity: 0.5 });
-            page.drawText(String(x), { x: x + 2, y: height - 10, size: 8, font: customFont, color: textColor, opacity: 0.7 });
-        }
-        
-        // 水平線 (Y座標)
-        for (let y = 0; y <= height; y += 50) {
-            page.drawLine({ start: { x: 0, y: y }, end: { x: width, y: y }, thickness: 0.5, color: lineColor, opacity: 0.5 });
-            // pdf-libは左下が原点(0,0)のため、Y座標は下から上へ増えます
-            page.drawText(String(y), { x: 2, y: y + 2, size: 8, font: customFont, color: textColor, opacity: 0.7 });
-        }
     },
 
     /**

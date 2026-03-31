@@ -1177,7 +1177,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.ReportEngine.previewPDF(pdfBytes);
                 if (btnPreviewReport) btnPreviewReport.textContent = btnOriginalText;
             } else {
-                const filename = `納税証明書_${currentCustomer.customer_name}.pdf`;
+                // ファイル出力時の名称を変更（禁則文字がある場合はここでサニタイズ処理を入れることを推奨）
+                const filename = `納税証明申請書_都税_${currentCustomer.customer_name}.pdf`;
                 window.ReportEngine.downloadPDF(pdfBytes, filename);
                 if(reportModal) reportModal.style.display = 'none'; // Close modal on download
                 if (btnPrintReport) btnPrintReport.textContent = btnOriginalText;

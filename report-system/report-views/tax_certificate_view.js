@@ -58,7 +58,7 @@ window.TaxCertificateView = {
             applicant_kana: applicantKana,
             applicant_phone: applicantPhone,
 
-            // 事業年度の分解（令和ベースの和暦変換を想定：2019年=令和元年）
+            // 事業年度の分解（令和ベースの和暦変換を想定：2019年=令和元年）と税目の条件付き出力
             ...(() => {
                 const parseDate = (dateStr) => {
                     if (!dateStr) return { year: '', month: '', day: '' };
@@ -73,43 +73,47 @@ window.TaxCertificateView = {
                         day: parseInt(parts[2], 10).toString()
                     };
                 };
+                
                 const start = parseDate(formData.period_start);
                 const end = parseDate(formData.period_end);
-                return {
-                    period_start_year: start.year,
-                    period_start_month: start.month,
-                    period_start_day: start.day,
-                    period_end_year: end.year,
-                    period_end_month: end.month,
-                    period_end_day: end.day,
+                const periodData = {};
+                
+                const isResidentTax = formData.taxTypes && formData.taxTypes.includes('法人都民税');
+                const isBusinessTax = formData.taxTypes && formData.taxTypes.includes('法人事業税');
 
-                    period_2_start_year: start.year,
-                    period_2_start_month: start.month,
-                    period_2_start_day: start.day,
-                    period_2_end_year: end.year,
-                    period_2_end_month: end.month,
-                    period_2_end_day: end.day
-                };
+                if (isResidentTax) {
+                    periodData.tax_checkbox_1 = true;
+                    // 法人都民税は Group 2 (period_2_...) へ出力
+                    periodData.period_2_start_year = start.year;
+                    periodData.period_2_start_month = start.month;
+                    periodData.period_2_start_day = start.day;
+                    periodData.period_2_end_year = end.year;
+                    periodData.period_2_end_month = end.month;
+                    periodData.period_2_end_day = end.day;
+                    periodData.copies_2 = formData.copies ? String(formData.copies) : '1';
+                }
+
+                if (isBusinessTax) {
+                    periodData.tax_checkbox_2 = true;
+                    // 法人事業税は Group 1 (period_...) へ出力
+                    periodData.period_start_year = start.year;
+                    periodData.period_start_month = start.month;
+                    periodData.period_start_day = start.day;
+                    periodData.period_end_year = end.year;
+                    periodData.period_end_month = end.month;
+                    periodData.period_end_day = end.day;
+                    periodData.copies_1 = formData.copies ? String(formData.copies) : '1';
+                }
+
+                return periodData;
             })(),
-            copies_1: formData.copies ? String(formData.copies) : '1',
-            copies_2: formData.copies ? String(formData.copies) : '1',
+            
             // 提出先は削除済みのため、必要に応じて空文字を設定またはプロパティごと削除
             submitted_to: '',
             
             // 固定マークの出力
             fixed_mark_circle: '○'
         };
-
-        // ③ 税目のチェックボックス用フラグ
-        // taxTypes配列のチェック状態を個別のbooleanフラグに展開
-        // ※PDF書式のチェックボックス項目に合わせて定義を修正可能
-        if (formData.taxTypes && Array.isArray(formData.taxTypes)) {
-            data.tax_checkbox_1 = formData.taxTypes.includes('法人都民税');
-            data.tax_checkbox_2 = formData.taxTypes.includes('法人事業税');
-            data.tax_checkbox_3 = formData.taxTypes.includes('固定資産税');
-            data.tax_checkbox_4 = formData.taxTypes.includes('自動車税');
-        }
-
         return data;
     }
 };

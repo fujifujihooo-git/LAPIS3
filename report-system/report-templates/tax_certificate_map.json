@@ -100,19 +100,19 @@
     "period_start_year": {
         "type": "text",
         "x": 620,
-        "y": 430,
+        "y": 433,
         "size": 10
     },
     "period_start_month": {
         "type": "text",
         "x": 660,
-        "y": 430,
+        "y": 433,
         "size": 10
     },
     "period_start_day": {
         "type": "text",
         "x": 680,
-        "y": 430,
+        "y": 433,
         "size": 10
     },
     "period_end_year": {
@@ -184,7 +184,7 @@
     "fixed_mark_circle": {
         "type": "text",
         "value": "○",
-        "x": 337,
+        "x": 334,
         "y": 222,
         "size": 16
     }
