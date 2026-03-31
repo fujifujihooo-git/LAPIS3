@@ -50,7 +50,10 @@ window.TaxCertificateView = {
             taxpayer_rep_name: customer.representative_name || '',
             taxpayer_phone: customer.phone || '',
 
-            applicant_address: formData.applicantType === '代理人' ? '（事務所の住所）' : customerAddress, // 事務所の固定住所を入れる場合はここで設定
+            // 代理人の場合、選択された担当者(staff)の住所を使用。登録がない場合は空文字をフォールバック。
+            applicant_address: formData.applicantType === '代理人' 
+                ? (formData.staff && formData.staff.address ? formData.staff.address : '') 
+                : customerAddress,
             applicant_name: applicantName,
             applicant_kana: applicantKana,
             applicant_phone: applicantPhone,
@@ -78,11 +81,23 @@ window.TaxCertificateView = {
                     period_start_day: start.day,
                     period_end_year: end.year,
                     period_end_month: end.month,
-                    period_end_day: end.day
+                    period_end_day: end.day,
+
+                    period_2_start_year: start.year,
+                    period_2_start_month: start.month,
+                    period_2_start_day: start.day,
+                    period_2_end_year: end.year,
+                    period_2_end_month: end.month,
+                    period_2_end_day: end.day
                 };
             })(),
-            copies: formData.copies ? String(formData.copies) : '1',
-            submitted_to: formData.submittedTo || ''
+            copies_1: formData.copies ? String(formData.copies) : '1',
+            copies_2: formData.copies ? String(formData.copies) : '1',
+            // 提出先は削除済みのため、必要に応じて空文字を設定またはプロパティごと削除
+            submitted_to: '',
+            
+            // 固定マークの出力
+            fixed_mark_circle: '○'
         };
 
         // ③ 税目のチェックボックス用フラグ

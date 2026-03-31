@@ -1042,20 +1042,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (periodEndInput && periodStartInput) {
                 if (!periodEndInput.value) {
-                    let initialEndDate = '';
-                    if (currentCustomer.settlement_date) {
-                        initialEndDate = currentCustomer.settlement_date;
-                    } else if (currentCustomer.fiscal_year_end_month && currentCustomer.fiscal_year_end_day) {
+                    if (currentCustomer.fiscal_year_end_month && currentCustomer.fiscal_year_end_day) {
                         const today = new Date();
-                        const m = String(currentCustomer.fiscal_year_end_month).padStart(2, '0');
-                        const d = String(currentCustomer.fiscal_year_end_day).padStart(2, '0');
-                        // 決算月が現在月より後なら去年の年を使用
-                        let y = today.getFullYear();
-                        if (today.getMonth() + 1 < currentCustomer.fiscal_year_end_month) {
-                            y -= 1;
+                        // 実行当日の時刻をリセットして厳密な日付比較を行う
+                        today.setHours(0, 0, 0, 0);
+
+                        const m = parseInt(currentCustomer.fiscal_year_end_month, 10);
+                        const d = parseInt(currentCustomer.fiscal_year_end_day, 10);
+                        
+                        // 今年の決算日候補を作成
+                        let candidateEndDate = new Date(today.getFullYear(), m - 1, d);
+                        
+                        // 候補日が「本日以降（同日含む）」であれば、1年前を決算日とする（直近の既経過決算期）
+                        if (candidateEndDate >= today) {
+                            candidateEndDate.setFullYear(candidateEndDate.getFullYear() - 1);
                         }
-                        initialEndDate = `${y}-${m}-${d}`;
+                        
+                        const yStr = candidateEndDate.getFullYear();
+                        const mStr = String(candidateEndDate.getMonth() + 1).padStart(2, '0');
+                        const dStr = String(candidateEndDate.getDate()).padStart(2, '0');
+                        
+                        initialEndDate = `${yStr}-${mStr}-${dStr}`;
                     } else {
+                        // 決算日の設定がない場合は本日をセット（安全なフォールバック）
                         const today = new Date();
                         initialEndDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
                     }
@@ -1120,7 +1129,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             staff: selectedStaff ? {
                 name: selectedStaff.staff_name,
                 kana: selectedStaff.staff_kana,
-                tel: selectedStaff.phone
+                tel: selectedStaff.phone,
+                address: selectedStaff.address || ''
             } : null
         };
 

@@ -1,38 +1,191 @@
 {
-    "taxpayer_address": { "type": "text", "x": 170, "y": 450, "size": 10, "maxWidth": 300, "yOffset": -2 },
-    "taxpayer_kana": { "type": "text", "x": 170, "y": 430, "size": 8, "maxWidth": 300, "yOffset": -1 },
-    "taxpayer_name": { "type": "text", "x": 170, "y": 400, "size": 12, "maxWidth": 300, "yOffset": -2 },
-    "taxpayer_rep_name": { "type": "text", "x": 170, "y": 380, "size": 10, "maxWidth": 200, "yOffset": -2 },
-    "taxpayer_phone": { "type": "text", "x": 170, "y": 350, "size": 10, "yOffset": -1 },
-
-    "applicant_address": { "type": "text", "x": 170, "y": 320, "size": 10, "maxWidth": 300, "yOffset": -2 },
-    "applicant_kana": { "type": "text", "x": 170, "y": 300, "size": 8, "maxWidth": 300, "yOffset": -1 },
-    "applicant_name": { "type": "text", "x": 170, "y": 270, "size": 12, "maxWidth": 300, "yOffset": -2 },
-    "applicant_phone": { "type": "text", "x": 170, "y": 250, "size": 10, "yOffset": -1 },
-
-    "reason_checkbox_2": { "type": "checkbox", "x": 210, "y": 340, "size": 12, "check_mark": "○" },
-    "reason_checkbox_3": { "type": "checkbox", "x": 240, "y": 340, "size": 12, "check_mark": "○" },
-
-    "tax_checkbox_2": { "type": "checkbox", "x": 480, "y": 430, "size": 14, "check_mark": "○" },
-    "tax_checkbox_1": { "type": "checkbox", "x": 480, "y": 390, "size": 14, "check_mark": "○" },
-
-    "period_start_year": { "type": "text", "x": 620, "y": 440, "size": 10 },
-    "period_start_month": { "type": "text", "x": 650, "y": 440, "size": 10 },
-    "period_start_day": { "type": "text", "x": 680, "y": 440, "size": 10 },
-
-    "period_end_year": { "type": "text", "x": 620, "y": 420, "size": 10 },
-    "period_end_month": { "type": "text", "x": 650, "y": 420, "size": 10 },
-    "period_end_day": { "type": "text", "x": 680, "y": 420, "size": 10 },
-
-    "copies_1": { "type": "text", "x": 760, "y": 430, "size": 12 },
-
-    "period_2_start_year": { "type": "text", "x": 620, "y": 390, "size": 10 },
-    "period_2_start_month": { "type": "text", "x": 650, "y": 390, "size": 10 },
-    "period_2_start_day": { "type": "text", "x": 680, "y": 390, "size": 10 },
-
-    "period_2_end_year": { "type": "text", "x": 620, "y": 370, "size": 10 },
-    "period_2_end_month": { "type": "text", "x": 650, "y": 370, "size": 10 },
-    "period_2_end_day": { "type": "text", "x": 680, "y": 370, "size": 10 },
-
-    "copies_2": { "type": "text", "x": 760, "y": 390, "size": 12 }
+    "taxpayer_address": {
+        "type": "text",
+        "x": 170,
+        "y": 450,
+        "size": 10,
+        "maxWidth": 300,
+        "yOffset": -2
+    },
+    "taxpayer_kana": {
+        "type": "text",
+        "x": 170,
+        "y": 425,
+        "size": 8,
+        "maxWidth": 300,
+        "yOffset": -1
+    },
+    "taxpayer_name": {
+        "type": "text",
+        "x": 170,
+        "y": 400,
+        "size": 12,
+        "maxWidth": 300,
+        "yOffset": -2
+    },
+    "taxpayer_rep_name": {
+        "type": "text",
+        "x": 170,
+        "y": 377,
+        "size": 12,
+        "maxWidth": 200,
+        "yOffset": -2
+    },
+    "taxpayer_phone": {
+        "type": "text",
+        "x": 170,
+        "y": 350,
+        "size": 12,
+        "yOffset": -1
+    },
+    "applicant_address": {
+        "type": "text",
+        "x": 170,
+        "y": 320,
+        "size": 10,
+        "maxWidth": 300,
+        "yOffset": -2
+    },
+    "applicant_kana": {
+        "type": "text",
+        "x": 170,
+        "y": 300,
+        "size": 8,
+        "maxWidth": 300,
+        "yOffset": -1
+    },
+    "applicant_name": {
+        "type": "text",
+        "x": 170,
+        "y": 273,
+        "size": 12,
+        "maxWidth": 300,
+        "yOffset": -2
+    },
+    "applicant_phone": {
+        "type": "text",
+        "x": 170,
+        "y": 250,
+        "size": 12,
+        "yOffset": -1
+    },
+    "reason_checkbox_2": {
+        "type": "checkbox",
+        "x": 210,
+        "y": 340,
+        "size": 14,
+        "check_mark": "○"
+    },
+    "reason_checkbox_3": {
+        "type": "checkbox",
+        "x": 240,
+        "y": 340,
+        "size": 16,
+        "check_mark": "○"
+    },
+    "tax_checkbox_2": {
+        "type": "checkbox",
+        "x": 480,
+        "y": 424,
+        "size": 16,
+        "check_mark": "○"
+    },
+    "tax_checkbox_1": {
+        "type": "checkbox",
+        "x": 480,
+        "y": 386,
+        "size": 14,
+        "check_mark": "○"
+    },
+    "period_start_year": {
+        "type": "text",
+        "x": 620,
+        "y": 430,
+        "size": 10
+    },
+    "period_start_month": {
+        "type": "text",
+        "x": 660,
+        "y": 430,
+        "size": 10
+    },
+    "period_start_day": {
+        "type": "text",
+        "x": 680,
+        "y": 430,
+        "size": 10
+    },
+    "period_end_year": {
+        "type": "text",
+        "x": 620,
+        "y": 415,
+        "size": 10
+    },
+    "period_end_month": {
+        "type": "text",
+        "x": 660,
+        "y": 415,
+        "size": 10
+    },
+    "period_end_day": {
+        "type": "text",
+        "x": 680,
+        "y": 415,
+        "size": 10
+    },
+    "copies_1": {
+        "type": "text",
+        "x": 760,
+        "y": 422,
+        "size": 12
+    },
+    "period_2_start_year": {
+        "type": "text",
+        "x": 620,
+        "y": 398,
+        "size": 10
+    },
+    "period_2_start_month": {
+        "type": "text",
+        "x": 660,
+        "y": 398,
+        "size": 10
+    },
+    "period_2_start_day": {
+        "type": "text",
+        "x": 680,
+        "y": 398,
+        "size": 10
+    },
+    "period_2_end_year": {
+        "type": "text",
+        "x": 620,
+        "y": 378,
+        "size": 10
+    },
+    "period_2_end_month": {
+        "type": "text",
+        "x": 660,
+        "y": 378,
+        "size": 10
+    },
+    "period_2_end_day": {
+        "type": "text",
+        "x": 680,
+        "y": 378,
+        "size": 10
+    },
+    "copies_2": {
+        "type": "text",
+        "x": 760,
+        "y": 390,
+        "size": 12
+    },
+    "fixed_mark_circle": {
+        "type": "text",
+        "value": "○",
+        "x": 337,
+        "y": 222,
+        "size": 16
+    }
 }
