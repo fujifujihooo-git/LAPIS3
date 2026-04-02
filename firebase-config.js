@@ -1,13 +1,13 @@
 // Firebase Configuration
 const firebaseConfig = {
-    projectId: "lapis2-2026",
-    appId: "1:257877222040:web:544001f0cd06b0fdb226ed",
-    storageBucket: "lapis2-2026.firebasestorage.app",
-    apiKey: "AIzaSyDTiy6SkKl74myPT9A4BYSs45BgbjynerQ",
-    authDomain: "lapis2-2026.firebaseapp.com",
-    messagingSenderId: "257877222040",
-    measurementId: "G-WNVCPG6S3Y",
-    projectNumber: "257877222040"
+    projectId: "lapis3-4113e",
+    appId: "1:802380662413:web:8b98f5b8b7432cd56bc4c4",
+    storageBucket: "lapis3-4113e.firebasestorage.app",
+    apiKey: "AIzaSyB4PObusgsnMKVNeAzMTrCgjHIoJKNKyGo",
+    authDomain: "lapis3-4113e.firebaseapp.com",
+    messagingSenderId: "802380662413",
+    measurementId: "G-3J5X5XP48J",
+    projectNumber: "802380662413"
 };
 
 // Initialize Firebase (Compat)

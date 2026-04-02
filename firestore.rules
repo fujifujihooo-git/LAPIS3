@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /staff/{document_id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        request.resource.data.authority == resource.data.authority
+        ||
+        get(/databases/$(database)/documents/staff/$(request.auth.token.email)).data.authority == 'admin'
+      );
+    }
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

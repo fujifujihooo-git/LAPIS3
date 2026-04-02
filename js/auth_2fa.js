@@ -11,7 +11,7 @@ const AUTH_2FA = {
     // 定数
     COLLECTION_TRUSTED: 'trusted_devices',
     COLLECTION_OTP: 'otp_codes',
-    GAS_API_URL: 'https://script.google.com/macros/s/AKfycbwb_TK_h-rlvBCPfZEsjyF-L3qgxWEt3cglQrF25uv8_CV46lW8S8aahKqrHpFBA3kBgg/exec', // 実際のURL
+    GAS_API_URL: 'https://script.google.com/macros/s/AKfycbxZO2KX9l01h7U9768DfHHnjG8I24k2hXux6ApL0Rl-TCkXs3GY_NHHXXfhzvQvDOv5yQ/exec', // 実際のURL
     SECRET_KEY: 'lapis_secret_2026',
 
     // 信頼期間 (30日)

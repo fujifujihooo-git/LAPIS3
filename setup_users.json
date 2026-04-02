@@ -1,0 +1,138 @@
+[
+  {
+    "email": "nakamura@nakamuraj.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "中村",
+    "authority": "admin",
+    "role": "管理者",
+    "status": "在籍"
+  },
+  {
+    "email": "hosoi@nakamuraj.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "細井",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "hironaka@nakamuraj.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "弘中",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "owada@nakamuraj.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "大和田",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "shibuya@nakamuraj.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "渋谷",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "r.nakamura@nakamuraj.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "中村(R)",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "m.sato@nakamuraj.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "佐藤",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "shimane@nakamuraj.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "島根",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "sakuma@nakamuraj.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "佐久間",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "kouno@nakamuraj.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "河野",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "nakayama@nakamuraj.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "中山",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "yamanaka@nakamuraj.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "山中",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "fujita@nakamuraj.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "藤田",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "tanaka@example.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "田中",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "yamada@example.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "山田",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "suzuki@example.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "鈴木",
+    "authority": "staff",
+    "role": "担当者",
+    "status": "在籍"
+  },
+  {
+    "email": "test@example.com",
+    "password": "Lapis3_2026!",
+    "staff_name": "テストユーザー",
+    "authority": "admin",
+    "role": "管理者",
+    "status": "在籍"
+  }
+]
