@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Role Permission Control (UI) ---
-        const sessionData = localStorage.getItem('lapis2_session');
+        const sessionData = localStorage.getItem('lapis3_session');
         if (sessionData) {
             const session = JSON.parse(sessionData);
             const authSelect = document.getElementById('authority');
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedAuthority = document.getElementById('authority').value; // System Permission
 
         // --- Self Lockout Prevention ---
-        const sessionData = localStorage.getItem('lapis2_session');
+        const sessionData = localStorage.getItem('lapis3_session');
         if (sessionData) {
             const session = JSON.parse(sessionData);
             // If the user is currently an admin, editing their own profile, and changing to 'staff'
@@ -273,13 +273,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // --- Update Local Session if editing own profile ---
-            const sessionData = localStorage.getItem('lapis2_session');
+            const sessionData = localStorage.getItem('lapis3_session');
             if (sessionData) {
                 const session = JSON.parse(sessionData);
                 if (session.email === updatedData.email) {
                     session.authority = updatedData.authority;
                     session.staff_name = updatedData.staff_name;
-                    localStorage.setItem('lapis2_session', JSON.stringify(session));
+                    localStorage.setItem('lapis3_session', JSON.stringify(session));
                     // Reflect changes in UI immediately
                     if (typeof renderUserStatus === 'function') renderUserStatus(session);
                     if (typeof applyPermissions === 'function') applyPermissions(session);

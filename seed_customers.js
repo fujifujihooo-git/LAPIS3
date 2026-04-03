@@ -5,7 +5,7 @@ process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8085';
 
 // Firebase Admin初期化
 admin.initializeApp({
-    projectId: 'lapis2-2026'
+    projectId: 'lapis3-2026'
 });
 
 const db = admin.firestore();
@@ -178,7 +178,7 @@ async function seedCustomersDatabase() {
 
         // 各顧客データをバッチに追加
         customersData.forEach((data) => {
-            // LAPIS2の現在の仕様に合わせ、ドキュメントIDは autoId で生成し、
+            // LAPIS3の現在の仕様に合わせ、ドキュメントIDは autoId で生成し、
             // 内部に連番の customer_id を持つように設定。
             const newDocRef = db.collection('customers').doc();
 

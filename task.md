@@ -1,4 +1,4 @@
-# LAPIS2 開発タスクリスト（Task.md）
+# LAPIS3 開発タスクリスト（Task.md）
 
 ## ✅ 完了済みの主要タスク (Completed)
 - [x] **インフラ基盤構築**

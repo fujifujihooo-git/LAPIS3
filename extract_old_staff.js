@@ -1,5 +1,5 @@
 /**
- * 旧プロジェクト(lapis2-2026)からスタッフリストを取得し、
+ * 旧プロジェクト(lapis3-2026)からスタッフリストを取得し、
  * setup_users.json を自動生成するスクリプト
  * 
  * 使い方:
@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 
 // 旧プロジェクトの設定（公開済みのAPI Key使用）
-const OLD_PROJECT_ID = 'lapis2-2026';
+const OLD_PROJECT_ID = 'lapis3-2026';
 const OLD_API_KEY = 'AIzaSyDTiy6SkKl74myPT9A4BYSs45BgbjynerQ';
 
 async function fetchFirestoreCollection(projectId, apiKey, collectionId) {
@@ -48,7 +48,7 @@ function extractFieldValue(field) {
 }
 
 async function main() {
-    console.log('🔍 旧プロジェクト(lapis2-2026)からスタッフデータを取得中...\n');
+    console.log('🔍 旧プロジェクト(lapis3-2026)からスタッフデータを取得中...\n');
 
     try {
         const result = await fetchFirestoreCollection(OLD_PROJECT_ID, OLD_API_KEY, 'staff');

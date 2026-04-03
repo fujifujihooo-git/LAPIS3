@@ -614,7 +614,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">${contactSection}</table>
             <div style="height:6px;"></div>
             <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">${caseSection}</table>
-            <div style="margin-top:24px;text-align:center;font-size:9px;color:#999;border-top:1px dashed #ccc;padding-top:8px;">LAPIS2 案件管理システム - 顧客詳細出力</div>
+            <div style="margin-top:24px;text-align:center;font-size:9px;color:#999;border-top:1px dashed #ccc;padding-top:8px;">LAPIS3 案件管理システム - 顧客詳細出力</div>
         </div>`;
     }
 
@@ -644,7 +644,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 btnExportExcel.textContent = '生成中...';
 
                 const wb = new ExcelJS.Workbook();
-                wb.creator = 'LAPIS2';
+                wb.creator = 'LAPIS3';
                 const ws = wb.addWorksheet('顧客詳細', {
                     pageSetup: {
                         paperSize: 9, // A4

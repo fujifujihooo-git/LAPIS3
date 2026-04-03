@@ -6,7 +6,7 @@ process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9095';
 
 // Firebase Admin初期化（認証情報はエミュレータ利用時はダミーでOK）
 admin.initializeApp({
-    projectId: 'lapis2-2026'
+    projectId: 'lapis3-2026'
 });
 
 const db = admin.firestore();

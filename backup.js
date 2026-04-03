@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const checkRoleAndInit = async () => {
         // Wait briefly for common.js auth check to set session
         setTimeout(async () => {
-            const sessionData = localStorage.getItem('lapis2_session');
+            const sessionData = localStorage.getItem('lapis3_session');
             if (!sessionData) {
                 // Not authenticated yet
                 return;
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const exportedData = {
                 metadata: {
                     exportedAt: new Date().toISOString(),
-                    version: "LAPIS2_DB_V1",
+                    version: "LAPIS3_DB_V1",
                     collections: COLLECTIONS_TO_EXPORT
                 },
                 data: {}
@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const downloadJSON = (dataObj) => {
         const jsonStr = JSON.stringify(dataObj, null, 2);
         const blob = new Blob([jsonStr], { type: 'application/json' });
-        const filename = `lapis2_backup_${getFormattedTimestamp()}.json`;
+        const filename = `lapis3_backup_${getFormattedTimestamp()}.json`;
         triggerDownload(blob, filename);
     };
 
@@ -278,7 +278,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const content = await zip.generateAsync({ type: "blob" });
-            const filename = `lapis2_backup_csv_${getFormattedTimestamp()}.zip`;
+            const filename = `lapis3_backup_csv_${getFormattedTimestamp()}.zip`;
             triggerDownload(content, filename);
         } catch (e) {
             console.error("ZIP Generation error", e);
@@ -305,7 +305,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 XLSX.utils.book_append_sheet(wb, ws, colName.substring(0, 31));
             }
 
-            const filename = `lapis2_backup_${getFormattedTimestamp()}.xlsx`;
+            const filename = `lapis3_backup_${getFormattedTimestamp()}.xlsx`;
             XLSX.writeFile(wb, filename);
         } catch (e) {
             console.error("Excel Generation error", e);

@@ -21,13 +21,13 @@ const AUTH_2FA = {
 
     /**
      * デバイスIDを取得または生成する
-     * localStorageに 'lapis2_device_id' があればそれを返す。なければ新規UUIDを生成して保存。
+     * localStorageに 'lapis3_device_id' があればそれを返す。なければ新規UUIDを生成して保存。
      */
     getDeviceId: function () {
-        let deviceId = localStorage.getItem('lapis2_device_id');
+        let deviceId = localStorage.getItem('lapis3_device_id');
         if (!deviceId) {
             deviceId = crypto.randomUUID ? crypto.randomUUID() : this._generateLegacyUUID();
-            localStorage.setItem('lapis2_device_id', deviceId);
+            localStorage.setItem('lapis3_device_id', deviceId);
         }
         return deviceId;
     },

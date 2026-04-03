@@ -1,5 +1,5 @@
 /**
- * UnifiedDatePicker — LAPIS2 共通カレンダーコンポーネント
+ * UnifiedDatePicker — LAPIS3 共通カレンダーコンポーネント
  * image_6.png デザイン準拠 | 13pt フォント | 和暦併記
  * Flatpickr を完全に置き換える軽量な自作カレンダー
  * v2.0 — 直接イベントバインディング方式（イベント委譲の不具合を完全解消）

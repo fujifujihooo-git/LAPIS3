@@ -1,2 +1,2 @@
-# LAPIS2 Web App
+# LAPIS3 Web App
 Initial project structure.

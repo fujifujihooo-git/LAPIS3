@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1. Authentication & Role Check
     const checkRoleAndInit = async () => {
         setTimeout(async () => {
-            const sessionData = localStorage.getItem('lapis2_session');
+            const sessionData = localStorage.getItem('lapis3_session');
             if (!sessionData) return;
 
             try {

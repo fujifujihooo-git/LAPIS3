@@ -1,5 +1,5 @@
 /**
- * LAPIS2 帳票ビュー (Tax Certificate View)
+ * LAPIS3 帳票ビュー (Tax Certificate View)
  * Firestoreの顧客データとUIからの入力値を結合し、
  * マッピングJSONに合わせたフラットなデータ構造へ整形する。
  */

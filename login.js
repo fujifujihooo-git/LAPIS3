@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Set 2FA Pending Flag EARLY to prevent common.js auto-redirect
-            sessionStorage.setItem('lapis2_2fa_pending', 'true');
+            sessionStorage.setItem('lapis3_2fa_pending', 'true');
 
             // 1. Basic Auth
             const userCredential = await firebase.auth().signInWithEmailAndPassword(email, pass);
@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await firebase.auth().signOut();
                 alert(`ログイン不可: アカウントのステータスが無効です。\nCurrent Status: ${staffData.status}`);
                 otpModal.style.display = 'none';
-                sessionStorage.removeItem('lapis2_2fa_pending');
+                sessionStorage.removeItem('lapis3_2fa_pending');
                 return;
             }
 
@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Clear 2FA Pending Flag
-            sessionStorage.removeItem('lapis2_2fa_pending');
+            sessionStorage.removeItem('lapis3_2fa_pending');
 
             // Success case
             const sessionData = {
@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 email: staffData.email,
                 login_at: new Date().toISOString()
             };
-            localStorage.setItem('lapis2_session', JSON.stringify(sessionData));
+            localStorage.setItem('lapis3_session', JSON.stringify(sessionData));
 
             // Show success UI in modal or toast
             if (otpModal.style.display === 'block') {

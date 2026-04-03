@@ -1,5 +1,5 @@
 /**
- * UnifiedMonthPicker — LAPIS2 月選択カレンダーコンポーネント
+ * UnifiedMonthPicker — LAPIS3 月選択カレンダーコンポーネント
  * image_6.png デザイン準拠 | 13pt フォント | 和暦併記
  * 年プルダウン + 3×4 月グリッド + 削除/今月ボタン
  */

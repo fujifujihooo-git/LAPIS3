@@ -1,5 +1,5 @@
 /**
- * LAPIS2 帳票エンジン (Report Engine)
+ * LAPIS3 帳票エンジン (Report Engine)
  * 共通のPDF生成処理を提供します。
  */
 

@@ -1,3 +1,53 @@
+/**
+ * LAPIS2 -> LAPIS3 LocalStorage Migration Bridge
+ * Policy: Lazy Migration with Deferred Cleanup
+ */
+(() => {
+    const MIGRATION_FLAG_KEY = 'lapis3_migration_completed';
+    // 移行対象のレガシーキー群
+    const legacyKeys = ['lapis2_session', 'lapis2_device_id'];
+
+    try {
+        // [フェーズ2] 移行完了フラグがあれば旧キーを安全に削除（Deferred Cleanup）
+        if (localStorage.getItem(MIGRATION_FLAG_KEY) === 'true') {
+            legacyKeys.forEach(oldKey => {
+                if (localStorage.getItem(oldKey) !== null) {
+                    localStorage.removeItem(oldKey);
+                    console.log(`[LAPIS3 Migration] Cleaned up legacy storage key: ${oldKey}`);
+                }
+            });
+            return; // クリーンアップ完了済みの場合は処理終了
+        }
+
+        // [フェーズ1] 移行フラグがない場合、旧キーから新キーへデータをコピー
+        let allMigrated = true;
+        let migrationAttempted = false;
+
+        legacyKeys.forEach(oldKey => {
+            const newKey = oldKey.replace('lapis2_', 'lapis3_');
+            const oldVal = localStorage.getItem(oldKey);
+            
+            if (oldVal !== null) {
+                migrationAttempted = true;
+                if (localStorage.getItem(newKey) === null) {
+                    localStorage.setItem(newKey, oldVal);
+                    console.log(`[LAPIS3 Migration] Lazy migrated: ${oldKey} -> ${newKey}`);
+                }
+            } else {
+                // 古いデータが存在しない場合は、そのキーについては移行の必要なし
+            }
+        });
+
+        // データのコピー（移行）が完了した、または元からLAPIS2データが存在しない新規ユーザーの場合
+        // フラグを立てて、次回起動時(次回リロード時)に旧キーを削除させる
+        if (allMigrated || !migrationAttempted) {
+            localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+        }
+    } catch (e) {
+        console.error('[LAPIS3 Migration] Error during storage migration:', e);
+    }
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- Back to Top Logic ---
     const btnTop = document.getElementById('back-to-top');
@@ -46,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    console.log('LAPIS2 Common JS Loaded - v1.2.0');
+    console.log('LAPIS3 Common JS Loaded - v1.2.0');
     // --- Data Initialization ---
     initStaffData();
 
@@ -195,7 +245,7 @@ function initStaffData() {
 // --- RBAC Helpers ---
 function canAccessAccounting() {
     try {
-        const session = JSON.parse(localStorage.getItem('lapis2_session'));
+        const session = JSON.parse(localStorage.getItem('lapis3_session'));
         return session && (session.authority === 'admin' || session.authority === 'accounting');
     } catch (e) {
         return false;
@@ -204,7 +254,7 @@ function canAccessAccounting() {
 
 function isUserAdmin() {
     try {
-        const session = JSON.parse(localStorage.getItem('lapis2_session'));
+        const session = JSON.parse(localStorage.getItem('lapis3_session'));
         return session && session.authority === 'admin';
     } catch (e) {
         return false;
@@ -230,11 +280,11 @@ function checkAuth() {
         } else {
             // セッション情報を最新に保つために Firestore から取得
             // セッション情報を最新に保つために Firestore から取得
-            const session = JSON.parse(localStorage.getItem('lapis2_session'));
+            const session = JSON.parse(localStorage.getItem('lapis3_session'));
 
             // Modified: Do NOT auto-create session if on login page (let login.js handle 2FA)
             // or if 2FA is explicitly pending.
-            const is2faPending = sessionStorage.getItem('lapis2_2fa_pending') === 'true';
+            const is2faPending = sessionStorage.getItem('lapis3_2fa_pending') === 'true';
 
             if ((!session || session.email !== user.email) && !isLoginPage && !is2faPending) {
                 const staffData = await getDocFromFirestore('staff', 'email', user.email);
@@ -246,7 +296,7 @@ function checkAuth() {
                         authority: staffData.authority || (staffData.role === '管理者' ? 'admin' : 'staff'),
                         login_at: new Date().toISOString()
                     };
-                    localStorage.setItem('lapis2_session', JSON.stringify(newSession));
+                    localStorage.setItem('lapis3_session', JSON.stringify(newSession));
                     renderUserStatus(newSession);
                     applyPermissions(newSession);
                 }
@@ -261,7 +311,7 @@ function checkAuth() {
                         if (session.authority !== currentAuth || session.staff_name !== staffData.staff_name) {
                             session.authority = currentAuth;
                             session.staff_name = staffData.staff_name;
-                            localStorage.setItem('lapis2_session', JSON.stringify(session));
+                            localStorage.setItem('lapis3_session', JSON.stringify(session));
                             renderUserStatus(session);
                             applyPermissions(session);
                         }
@@ -272,8 +322,8 @@ function checkAuth() {
             if (isLoginPage) {
                 // Modified: Only redirect if session exists (2FA/Staff check completed)
                 // AND 2FA is NOT pending
-                const session = JSON.parse(localStorage.getItem('lapis2_session'));
-                const is2faPending = sessionStorage.getItem('lapis2_2fa_pending') === 'true';
+                const session = JSON.parse(localStorage.getItem('lapis3_session'));
+                const is2faPending = sessionStorage.getItem('lapis3_2fa_pending') === 'true';
 
                 if (session && session.email === user.email && !is2faPending) {
                     window.location.href = 'index.html';
@@ -371,7 +421,7 @@ async function logout() {
     if (confirm('ログアウトしますか？')) {
         try {
             await firebase.auth().signOut();
-            localStorage.removeItem('lapis2_session');
+            localStorage.removeItem('lapis3_session');
             window.location.href = 'login.html';
         } catch (err) {
             console.error('Logout error:', err);

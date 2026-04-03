@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('LAPIS2 Dashboard Initialized (Firestore Mode)');
+    console.log('LAPIS3 Dashboard Initialized (Firestore Mode)');
 
     // --- Selectors ---
     const caseListBody = document.getElementById('case-list-body');
@@ -416,7 +416,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `LAPIS2_FullExport_${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `LAPIS3_FullExport_${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
