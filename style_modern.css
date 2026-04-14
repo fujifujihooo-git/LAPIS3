@@ -991,12 +991,12 @@ a:hover {
 }
 
 .form-group {
-    margin-bottom: 18px;
+    margin-bottom: 12px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     font-size: 13pt;
     font-weight: 600;
     color: var(--text-main);
@@ -1323,7 +1323,7 @@ input[type="date"] {
     font-weight: 400 !important;
 }
 .flatpickr-calendar { display: none !important; }
-.form-group { margin-bottom: 20px !important; }
+.form-group { margin-bottom: 12px !important; }
 
 /* ================================================================
    UnifiedMonthPicker — Month grid variant
