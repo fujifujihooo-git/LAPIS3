@@ -331,7 +331,7 @@
                                     </div>
                                     <div class="form-group">
                                         <label for="customer_kana">フリガナ</label>
-                                        <input type="text" id="customer_kana" class="form-control">
+                                        <input type="text" id="customer_kana" class="form-control" data-validate="kana">
                                     </div>
                                     <div class="form-group">
                                         <label for="representative_name">代表者名</label>
@@ -362,7 +362,7 @@
                                     <div class="form-group">
                                         <label for="corporate_number">法人番号</label>
                                         <input type="text" id="corporate_number" class="form-control"
-                                            placeholder="13桁の番号">
+                                            placeholder="13桁の番号" data-validate="corporate_num">
                                     </div>
                                     <div class="form-group">
                                         <label for="primary_staff_id">外務担当者</label>
@@ -430,7 +430,7 @@
                                         <div style="display: flex; gap: 8px;">
                                             <input type="text" id="postal_code" class="form-control"
                                                 placeholder="123-4567" maxlength="8"
-                                                style="width: 140px; flex: 0 0 140px;">
+                                                style="width: 140px; flex: 0 0 140px;" data-validate="zip">
                                             <button type="button" class="btn btn-secondary btn-sm" id="btn-lookup-zip"
                                                 style="white-space: nowrap;">検索</button>
                                         </div>
@@ -451,15 +451,15 @@
                                 <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr;">
                                     <div class="form-group">
                                         <label for="phone">電話番号</label>
-                                        <input type="tel" id="phone" class="form-control">
+                                        <input type="tel" id="phone" class="form-control" data-validate="tel">
                                     </div>
                                     <div class="form-group">
                                         <label for="fax">FAX番号</label>
-                                        <input type="tel" id="fax" class="form-control">
+                                        <input type="tel" id="fax" class="form-control" data-validate="tel">
                                     </div>
                                     <div class="form-group">
                                         <label for="email">メールアドレス</label>
-                                        <input type="email" id="email" class="form-control">
+                                        <input type="email" id="email" class="form-control" data-validate="email">
                                     </div>
                                 </div>
                             </div>
@@ -713,6 +713,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
+    <script src="js/validation_rules.js"></script>
     <script src="customer_detail.js"></script>
 
     <script>

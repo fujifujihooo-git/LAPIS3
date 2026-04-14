@@ -248,7 +248,7 @@
                                     <label for="postal_code">郵便番号</label>
                                     <div style="display: flex; gap: 8px;">
                                         <input type="text" id="postal_code" class="form-control" placeholder="123-4567"
-                                            maxlength="8" style="width: 140px; flex: 0 0 140px;">
+                                            maxlength="8" style="width: 140px; flex: 0 0 140px;" data-validate="zip">
                                         <button type="button" class="btn btn-secondary btn-sm" id="btn-lookup-zip"
                                             style="white-space: nowrap;">検索</button>
                                     </div>
@@ -268,11 +268,11 @@
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label for="phone">電話番号</label>
-                                    <input type="tel" id="phone" class="form-control">
+                                    <input type="tel" id="phone" class="form-control" data-validate="tel">
                                 </div>
                                 <div class="form-group">
                                     <label for="fax">FAX番号</label>
-                                    <input type="tel" id="fax" class="form-control">
+                                    <input type="tel" id="fax" class="form-control" data-validate="tel">
                                 </div>
                             </div>
 
@@ -308,6 +308,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
+    <script src="js/validation_rules.js"></script>
     <script src="office_detail.js"></script>
 </body>
 

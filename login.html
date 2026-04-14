@@ -128,7 +128,7 @@
         <form id="login-form">
             <div class="form-group">
                 <label for="login-email">メールアドレス</label>
-                <input type="email" id="login-email" class="form-control" placeholder="example@mail.com" required>
+                <input type="email" id="login-email" class="form-control" placeholder="example@mail.com" required data-validate="email">
             </div>
             <div class="form-group">
                 <label for="login-pass">パスワード</label>
@@ -148,6 +148,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
+    <script src="js/validation_rules.js"></script>
     <script src="js/auth_2fa.js"></script>
     <script src="login.js"></script>
 

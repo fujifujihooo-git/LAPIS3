@@ -1347,3 +1347,18 @@ input[type="date"] {
     color: #fff !important; font-weight: 700;
     border-color: var(--primary, #3b82f6) !important;
 }
+
+/* --- Validation Error Styles --- */
+.validation-error {
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 4px;
+    display: block;
+}
+
+input.invalid,
+select.invalid,
+textarea.invalid {
+    border-color: #dc3545 !important;
+    background-color: #fff8f8 !important;
+}
