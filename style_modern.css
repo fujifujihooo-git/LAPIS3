@@ -1362,3 +1362,79 @@ textarea.invalid {
     border-color: #dc3545 !important;
     background-color: #fff8f8 !important;
 }
+
+/* ================================================================
+   Skeleton Loader & Error UI
+   ================================================================ */
+@keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+}
+
+.skeleton-shimmer {
+    animation: shimmer 2s infinite linear;
+    background: #f6f7f8;
+    background: linear-gradient(to right, #eeeeee 8%, #dddddd 18%, #eeeeee 33%);
+    background-size: 1000px 100%;
+}
+
+.skeleton-text {
+    height: 14px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    min-width: 100px;
+}
+
+.skeleton-row {
+    height: 24px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.skeleton-input {
+    height: 38px;
+    border-radius: 6px;
+    border: none !important;
+}
+
+.section-error-ui {
+    padding: 20px;
+    text-align: center;
+    background-color: #fef2f2;
+    border: 1px dashed #fca5a5;
+    border-radius: 8px;
+    color: #991b1b;
+}
+
+.section-error-ui button {
+    margin-top: 10px;
+    padding: 6px 16px;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.section-error-ui button:hover {
+    background-color: #dc2626;
+}
+
+.load-more-container {
+    text-align: center;
+    padding: 10px;
+}
+
+.btn-load-more {
+    padding: 8px 24px;
+    background-color: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-load-more:hover {
+    background-color: #e2e8f0;
+}

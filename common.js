@@ -48,6 +48,99 @@
     }
 })();
 
+// --- Caching Foundation ---
+window.AppCache = {
+    _memory: {},
+    get: function(key) {
+        if (this._memory[key]) return this._memory[key];
+        const sessionVal = sessionStorage.getItem(key);
+        if (sessionVal) {
+            try {
+                const parsed = JSON.parse(sessionVal);
+                this._memory[key] = parsed;
+                return parsed;
+            } catch (e) {
+                console.warn('SessionStorage parse error for key:', key);
+                return null;
+            }
+        }
+        return null;
+    },
+    set: function(key, value) {
+        this._memory[key] = value;
+        try {
+            sessionStorage.setItem(key, JSON.stringify(value));
+        } catch (e) {
+            console.warn('SessionStorage quota exceeded?', e);
+        }
+    },
+    invalidate: function(key) {
+        delete this._memory[key];
+        sessionStorage.removeItem(key);
+    },
+    clearAll: function() {
+        this._memory = {};
+        sessionStorage.clear();
+    }
+};
+
+window.MasterDataManager = {
+    staff: null,
+    licenseTypes: null,
+    governmentOffices: null,
+    
+    _isLoading: false,
+    _loadPromise: null,
+
+    loadAll: async function() {
+        // Reuse ongoing promise to prevent duplicate concurrent network fetch
+        if (this._loadPromise) return this._loadPromise;
+
+        this._loadPromise = (async () => {
+            // Check memory
+            if (this.staff && this.licenseTypes && this.governmentOffices) return;
+            
+            // Check session storage
+            const cachedStaff = window.AppCache.get('master_staff');
+            const cachedLicenses = window.AppCache.get('master_license_types');
+            const cachedGovs = window.AppCache.get('master_government_offices');
+            
+            if (cachedStaff && cachedLicenses && cachedGovs) {
+                this.staff = cachedStaff;
+                this.licenseTypes = cachedLicenses;
+                this.governmentOffices = cachedGovs;
+                return;
+            }
+
+            console.log('Fetching master data from Firestore for cache...');
+            // Fetch from Firestore
+            const [staffData, licenseData, govData] = await Promise.all([
+                getAllFromFirestore('staff'),
+                getAllFromFirestore('license_types'),
+                getAllFromFirestore('government_offices')
+            ]);
+            
+            this.staff = staffData;
+            this.licenseTypes = licenseData;
+            this.governmentOffices = govData;
+            
+            window.AppCache.set('master_staff', staffData);
+            window.AppCache.set('master_license_types', licenseData);
+            window.AppCache.set('master_government_offices', govData);
+        })();
+
+        try {
+            await this._loadPromise;
+        } finally {
+            this._loadPromise = null; // reset
+        }
+    },
+    
+    getStaff: function() { return this.staff || []; },
+    getLicenseTypes: function() { return this.licenseTypes || []; },
+    getGovernmentOffices: function() { return this.governmentOffices || []; }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- Back to Top Logic ---
     const btnTop = document.getElementById('back-to-top');
@@ -904,9 +997,26 @@ async function getDocFromFirestore(collectionName, arg2, arg3) {
 
 async function saveToFirestore(collectionName, docId, data) {
     try {
-        // saveToFirestore('customers', 'cust_1', { ... })
-        // Always use docId directly as the document ID
+        // Automatically inject updated_at timestamp
+        if (typeof firebase !== 'undefined' && firebase.firestore) {
+            data.updated_at = firebase.firestore.FieldValue.serverTimestamp();
+        }
+
         await db.collection(collectionName).doc(docId).set(data, { merge: true });
+
+        // --- Cache Invalidation ---
+        if (window.AppCache) {
+            if (['staff', 'license_types', 'government_offices'].includes(collectionName)) {
+                window.AppCache.invalidate(`master_${collectionName}`);
+                if (window.MasterDataManager) {
+                    if (collectionName === 'staff') window.MasterDataManager.staff = null;
+                    if (collectionName === 'license_types') window.MasterDataManager.licenseTypes = null;
+                    if (collectionName === 'government_offices') window.MasterDataManager.governmentOffices = null;
+                }
+            } else if (collectionName === 'customers') {
+                window.AppCache.invalidate(`customer_${docId}`);
+            }
+        }
     } catch (err) {
         console.error(`Firestore save error (${collectionName}):`, err);
         throw err;
@@ -927,14 +1037,27 @@ async function deleteFromFirestore(collectionName, arg2, arg3) {
             snapshot.docs.forEach(doc => batch.delete(doc.ref));
             await batch.commit();
             console.log(`Document(s) deleted from ${collectionName} where ${arg2}=${arg3}`);
-            return true;
         } else {
             // New pattern: deleteFromFirestore('government_offices', 'off_5')
             // Direct document ID delete
             await db.collection(collectionName).doc(arg2).delete();
             console.log(`Document deleted from ${collectionName}: ${arg2}`);
-            return true;
         }
+
+        // --- Cache Invalidation ---
+        if (window.AppCache) {
+            if (['staff', 'license_types', 'government_offices'].includes(collectionName)) {
+                window.AppCache.invalidate(`master_${collectionName}`);
+                if (window.MasterDataManager) {
+                    if (collectionName === 'staff') window.MasterDataManager.staff = null;
+                    if (collectionName === 'license_types') window.MasterDataManager.licenseTypes = null;
+                    if (collectionName === 'government_offices') window.MasterDataManager.governmentOffices = null;
+                }
+            } else if (collectionName === 'customers' && arg3 === undefined) {
+                window.AppCache.invalidate(`customer_${arg2}`);
+            }
+        }
+        return true;
     } catch (err) {
         console.error(`Firestore delete error (${collectionName}):`, err);
         throw err;

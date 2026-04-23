@@ -156,6 +156,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const row = document.createElement('tr');
             row.style.cursor = 'pointer';
             row.addEventListener('click', () => {
+                sessionStorage.setItem('temp_transition_customer', JSON.stringify(item));
                 window.location.href = `customer_detail.html?id=${item.customer_id}`;
             });
             row.innerHTML = `

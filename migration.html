@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>LAPIS3 Migration - Add updated_at</title>
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    
+    <!-- LAPIS3 Config -->
+    <script src="firebase-config.js"></script>
+
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .log { background: #f4f4f4; padding: 10px; height: 300px; overflow-y: scroll; font-family: monospace; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Firestore Migration: Add updated_at</h1>
+    <p>既存のコレクション（offices, contacts, customer_licenses, cases）に対して、updated_atフィールドが存在しないドキュメントに現在時刻を追加します。</p>
+    <button id="start-btn">マイグレーション開始</button>
+    
+    <h3>実行ログ:</h3>
+    <div id="log" class="log"></div>
+
+    <script>
+        const logDiv = document.getElementById('log');
+        function log(msg) {
+            logDiv.innerHTML += `<div>${new Date().toLocaleTimeString()} - ${msg}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(msg);
+        }
+
+        document.getElementById('start-btn').addEventListener('click', async () => {
+            document.getElementById('start-btn').disabled = true;
+            log('マイグレーションを開始します...');
+
+            const collections = ['offices', 'contacts', 'customer_licenses', 'cases'];
+            const db = firebase.firestore();
+            let totalUpdated = 0;
+
+            for (const col of collections) {
+                log(`--- コレクション [${col}] の処理を開始 ---`);
+                try {
+                    const snap = await db.collection(col).get();
+                    let updatedCount = 0;
+                    
+                    const batchOperations = [];
+                    let currentBatch = db.batch();
+                    let opCount = 0;
+
+                    snap.forEach(doc => {
+                        const data = doc.data();
+                        if (!data.updated_at) {
+                            currentBatch.update(doc.ref, {
+                                updated_at: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            opCount++;
+                            updatedCount++;
+
+                            if (opCount === 500) {
+                                batchOperations.push(currentBatch.commit());
+                                currentBatch = db.batch();
+                                opCount = 0;
+                            }
+                        }
+                    });
+
+                    if (opCount > 0) {
+                        batchOperations.push(currentBatch.commit());
+                    }
+
+                    await Promise.all(batchOperations);
+                    log(`[${col}] 完了: ${updatedCount}件のドキュメントに updated_at を追加しました。`);
+                    totalUpdated += updatedCount;
+                } catch (error) {
+                    log(`エラー: [${col}] の処理中に失敗しました: ${error.message}`);
+                }
+            }
+
+            log(`すべてのマイグレーションが完了しました！合計更新件数: ${totalUpdated}`);
+        });
+    </script>
+</body>
+</html>

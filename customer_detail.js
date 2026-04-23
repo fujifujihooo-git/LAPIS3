@@ -32,97 +32,333 @@ document.addEventListener('DOMContentLoaded', async () => {
         return new URLSearchParams(window.location.search).get('id');
     }
 
+    /* ===============================
+       Decoupled Data Fetching Logic (Phase 4)
+    =============================== */
+    let lastVisibleDoc = {
+        offices: null,
+        contacts: null,
+        licenses: null,
+        cases: null
+    };
+
     async function init() {
-        console.log('Fetching data for Customer Detail (Firestore Mode)...');
+        const tStart = performance.now();
+        console.log('Initializing Customer Detail (1-Frame Mode)...');
         customerIdParam = getCustomerIdFromUrl();
-
-        try {
-            // Always fetch master data
-            [licenseTypes, staffMembers] = await Promise.all([
-                getAllFromFirestore('license_types'),
-                getAllFromFirestore('staff')
-            ]);
-
-            if (customerIdParam === 'new') {
-                // New Customer: No need to fetch related data
-                customers = [];
-                cases = [];
-                offices = [];
-                contacts = [];
-                licenses = [];
-
-                initAdditionalDropdowns();
-
-                const nextId = await getNextSequence('customers');
+        
+        // 1. Synchronous UI initialization & Cache preview
+        initAdditionalDropdowns();
+        
+        if (customerIdParam === 'new') {
+            customers = [];
+            cases = []; offices = []; contacts = []; licenses = [];
+            hideListSections();
+            customerIdInput.value = '採番中...';
+            document.getElementById('page-title').textContent = '新規顧客登録';
+            const headerTitle = document.getElementById('header-title');
+            if (headerTitle) headerTitle.textContent = '顧客詳細：';
+            if (btnDelete) btnDelete.style.display = 'none';
+            
+            // Wait for next ID but don't block basic UI
+            getNextSequence('customers').then(nextId => {
                 customerIdInput.value = nextId;
-                document.getElementById('page-title').textContent = '新規顧客登録';
-                const headerTitle = document.getElementById('header-title');
-                if (headerTitle) headerTitle.textContent = '顧客詳細：';
-                if (btnDelete) btnDelete.style.display = 'none';
-                hideListSections();
+            });
+            
+        } else {
+            const cId = parseInt(customerIdParam);
+            // [Preview Phase] Try to load from Session Storage (temp_transition_customer)
+            try {
+                const tempStr = sessionStorage.getItem('temp_transition_customer');
+                if (tempStr) {
+                    const tempData = JSON.parse(tempStr);
+                    if (Number(tempData.customer_id) === cId) {
+                        currentCustomer = tempData;
+                        customers = [currentCustomer];
+                        populateForm(currentCustomer);
+                        const headerTitle = document.getElementById('header-title');
+                        if (headerTitle) headerTitle.textContent = `顧客詳細：${currentCustomer.customer_name || ''}`;
+                    }
+                }
+            } catch (e) { console.warn('Preview parse error', e); }
 
-            } else {
-                // Existing Customer: Fetch specific data
-                const cId = parseInt(customerIdParam);
+            // Start Skeleton on lists
+            ['offices-list-body', 'contacts-list-body', 'licenses-list-body', 'related-cases-body'].forEach(id => {
+                const tbody = document.getElementById(id);
+                if (tbody) {
+                    tbody.innerHTML = Array(3).fill('<tr><td colspan="10"><div class="skeleton-row skeleton-shimmer"></div></td></tr>').join('');
+                }
+            });
+        }
 
-                // Fetch Customer by ID
+        // --- 顧客名の入力に連動してヘッダータイトルを動的に更新 ---
+        const nameInput = document.getElementById('customer_name');
+        const headerTitle = document.getElementById('header-title');
+        if (nameInput && headerTitle) {
+            nameInput.addEventListener('input', (e) => {
+                headerTitle.textContent = `顧客詳細：${e.target.value.trim()}`;
+            });
+        }
+
+        // RBAC: 削除ボタンの表示制御（管理者のみ）
+        if (btnDelete && !isUserAdmin()) {
+            btnDelete.style.display = 'none';
+        }
+        
+        // Refresh Cache Event Listener
+        const btnRefresh = document.getElementById('btn-refresh-cache');
+        if (btnRefresh) {
+            btnRefresh.addEventListener('click', () => {
+                if (customerIdParam !== 'new') {
+                    window.AppCache.invalidate(`customer_${customerIdParam}`);
+                    loadAllSections(parseInt(customerIdParam));
+                }
+            });
+        }
+
+        const tEnd = performance.now();
+        console.table({
+            'Phase': 'Initial UI Render',
+            'Time (ms)': (tEnd - tStart).toFixed(2)
+        });
+
+        // 2. Asynchronous Data Fetching Phase
+        if (customerIdParam !== 'new') {
+            const cId = parseInt(customerIdParam);
+            // Fire & Forget background loaders
+            loadAllSections(cId);
+        }
+        
+        // Setup Sort Headers for cases (Sorting logic works on currently loaded cases array)
+        initSortHeaders('#related-cases-table', currentRelatedSort, () => {
+            if (currentCustomer && currentCustomer.customer_id) {
+                renderRelatedCases(Number(currentCustomer.customer_id));
+            }
+        });
+    }
+
+    function renderErrorUI(containerId, retryCallback) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = `<tr><td colspan="10"><div class="section-error-ui">
+            ⚠️ データの取得に失敗しました<br>
+            <button type="button" class="btn-retry">再試行</button>
+        </div></td></tr>`;
+        const btn = container.querySelector('.btn-retry');
+        if (btn) btn.addEventListener('click', retryCallback);
+    }
+
+    async function loadAllSections(cId) {
+        // Master data load if not cached (non-blocking)
+        if (window.MasterDataManager) {
+            window.MasterDataManager.loadAll().then(() => {
+                licenseTypes = window.MasterDataManager.getLicenseTypes();
+                staffMembers = window.MasterDataManager.getStaff();
+                initAdditionalDropdowns();
+                // Re-render lists that might depend on master data names after masters load
+                renderRelatedCases(cId);
+                renderOffices(cId);
+                renderContacts(cId);
+                renderLicenses(cId);
+            }).catch(e => console.error("Master data load error", e));
+        }
+
+        const tAllStart = performance.now();
+        
+        // Parallel Async Fetching
+        loadCustomerBasicData(cId).then(() => {
+            console.log(`[Perf] Basic Info loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+        });
+        
+        loadOffices(cId).then(() => {
+            console.log(`[Perf] Offices loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+        });
+
+        loadContacts(cId).then(() => {
+            console.log(`[Perf] Contacts loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+        });
+
+        loadLicenses(cId).then(() => {
+            console.log(`[Perf] Licenses loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+        });
+
+        loadCases(cId).then(() => {
+            console.log(`[Perf] Cases loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+        });
+    }
+
+    async function loadCustomerBasicData(cId) {
+        try {
+            let custData = window.AppCache ? window.AppCache.get(`customer_${cId}`) : null;
+            if (!custData) {
                 const custDoc = await db.collection('customers').doc(`cust_${cId}`).get();
                 if (!custDoc.exists) {
                     alert('顧客が見つかりません');
                     window.location.href = 'customer_list.html';
                     return;
                 }
-                currentCustomer = custDoc.data();
-                customers = [currentCustomer]; // For compatibility if needed
-
-                // Fetch Related Data by customer_id
-                const [casesSnap, officesSnap, contactsSnap, licensesSnap] = await Promise.all([
-                    db.collection('cases').where('customer_id', '==', cId).get(),
-                    db.collection('offices').where('customer_id', '==', cId).get(),
-                    db.collection('contacts').where('customer_id', '==', cId).get(),
-                    db.collection('customer_licenses').where('customer_id', '==', cId).get()
-                ]);
-
-                cases = casesSnap.docs.map(d => d.data());
-                offices = officesSnap.docs.map(d => d.data());
-                contacts = contactsSnap.docs.map(d => d.data());
-                licenses = licensesSnap.docs.map(d => ({ ...d.data(), _docId: d.id }));
-
-                initAdditionalDropdowns();
-
-                populateForm(currentCustomer);
-                const headerTitle = document.getElementById('header-title');
-                if (headerTitle) headerTitle.textContent = `顧客詳細：${currentCustomer.customer_name || ''}`;
-                renderRelatedCases(cId);
-                renderOffices(cId);
-                renderContacts(cId);
-                renderLicenses(cId);
-
-                // Setup Sorting Headers for Related Cases
-                initSortHeaders('#related-cases-table', currentRelatedSort, () => {
-                    if (currentCustomer && currentCustomer.customer_id) {
-                        renderRelatedCases(Number(currentCustomer.customer_id));
-                    }
-                });
+                custData = custDoc.data({ serverTimestamps: 'estimate' });
+                if (window.AppCache) window.AppCache.set(`customer_${cId}`, custData);
             }
-
-            // --- 顧客名の入力に連動してヘッダータイトルを動的に更新 ---
-            const nameInput = document.getElementById('customer_name');
+            
+            // Overwrite preview with actual fresh data
+            currentCustomer = custData;
+            customers = [currentCustomer];
+            populateForm(currentCustomer);
             const headerTitle = document.getElementById('header-title');
-            if (nameInput && headerTitle) {
-                nameInput.addEventListener('input', (e) => {
-                    headerTitle.textContent = `顧客詳細：${e.target.value.trim()}`;
-                });
-            }
-
-            // RBAC: 削除ボタンの表示制御（管理者のみ）
-            if (btnDelete && !isUserAdmin()) {
-                btnDelete.style.display = 'none';
-            }
-        } catch (err) {
-            console.error('Init failed:', err);
-            // alert('初期化エラー: ' + err.message); 
+            if (headerTitle) headerTitle.textContent = `顧客詳細：${currentCustomer.customer_name || ''}`;
+        } catch(err) {
+            console.error('Failed to load customer basic data', err);
         }
+    }
+
+    async function loadOffices(cId) {
+        try {
+            const snap = await db.collection('offices')
+                .where('customer_id', '==', cId)
+                .orderBy('updated_at', 'desc')
+                .limit(20)
+                .get();
+                
+            offices = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), _docId: d.id }));
+            if(snap.docs.length > 0) lastVisibleDoc.offices = snap.docs[snap.docs.length - 1];
+            
+            renderOffices(cId);
+        } catch(err) {
+            console.error('Failed to load offices', err);
+            renderErrorUI('offices-list-body', () => loadOffices(cId));
+        }
+    }
+
+    async function loadContacts(cId) {
+        try {
+            const snap = await db.collection('contacts')
+                .where('customer_id', '==', cId)
+                .orderBy('updated_at', 'desc')
+                .limit(20)
+                .get();
+                
+            contacts = snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
+            if(snap.docs.length > 0) lastVisibleDoc.contacts = snap.docs[snap.docs.length - 1];
+            
+            renderContacts(cId);
+        } catch(err) {
+            console.error('Failed to load contacts', err);
+            renderErrorUI('contacts-list-body', () => loadContacts(cId));
+        }
+    }
+
+    async function loadLicenses(cId) {
+        try {
+            const snap = await db.collection('customer_licenses')
+                .where('customer_id', '==', cId)
+                .orderBy('updated_at', 'desc')
+                .limit(20)
+                .get();
+                
+            licenses = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), _docId: d.id }));
+            lastVisibleDoc.licenses = snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null;
+            
+            renderLicenses(cId);
+        } catch(err) {
+            console.error('Failed to load licenses', err);
+            renderErrorUI('licenses-list-body', () => loadLicenses(cId));
+        }
+    }
+
+    async function loadCases(cId) {
+        try {
+            const snap = await db.collection('cases')
+                .where('customer_id', '==', cId)
+                .orderBy('updated_at', 'desc')
+                .limit(20)
+                .get();
+                
+            cases = snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
+            lastVisibleDoc.cases = snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null;
+            
+            renderRelatedCases(cId);
+        } catch(err) {
+            console.error('Failed to load cases', err);
+            renderErrorUI('related-cases-body', () => loadCases(cId));
+        }
+    }
+
+    // --- Load More Functions ---
+    window.loadMoreOffices = async function(cId) {
+        if(!lastVisibleDoc.offices) return;
+        const btn = document.querySelector('#offices-list-body .btn-load-more');
+        if(btn) { btn.innerHTML = '読み込み中...'; btn.disabled = true; }
+        try {
+            const snap = await db.collection('offices').where('customer_id', '==', cId)
+                .orderBy('updated_at', 'desc').startAfter(lastVisibleDoc.offices).limit(20).get();
+            if(snap.docs.length > 0) {
+                const newDocs = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), _docId: d.id }));
+                offices.push(...newDocs);
+                lastVisibleDoc.offices = snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null;
+                renderOffices(cId);
+            } else {
+                lastVisibleDoc.offices = null;
+                renderOffices(cId);
+            }
+        } catch(err) { console.error(err); alert('拠点データの追加読み込みに失敗しました'); }
+    }
+
+    window.loadMoreContacts = async function(cId) {
+        if(!lastVisibleDoc.contacts) return;
+        const btn = document.querySelector('#contacts-list-body .btn-load-more');
+        if(btn) { btn.innerHTML = '読み込み中...'; btn.disabled = true; }
+        try {
+            const snap = await db.collection('contacts').where('customer_id', '==', cId)
+                .orderBy('updated_at', 'desc').startAfter(lastVisibleDoc.contacts).limit(20).get();
+            if(snap.docs.length > 0) {
+                const newDocs = snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
+                contacts.push(...newDocs);
+                lastVisibleDoc.contacts = snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null;
+                renderContacts(cId);
+            } else {
+                lastVisibleDoc.contacts = null;
+                renderContacts(cId);
+            }
+        } catch(err) { console.error(err); alert('担当者データの追加読み込みに失敗しました'); }
+    }
+
+    window.loadMoreLicenses = async function(cId) {
+        if(!lastVisibleDoc.licenses) return;
+        const btn = document.querySelector('#licenses-list-body .btn-load-more');
+        if(btn) { btn.innerHTML = '読み込み中...'; btn.disabled = true; }
+        try {
+            const snap = await db.collection('customer_licenses').where('customer_id', '==', cId)
+                .orderBy('updated_at', 'desc').startAfter(lastVisibleDoc.licenses).limit(20).get();
+            if(snap.docs.length > 0) {
+                const newDocs = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), _docId: d.id }));
+                licenses.push(...newDocs);
+                lastVisibleDoc.licenses = snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null;
+                renderLicenses(cId);
+            } else {
+                lastVisibleDoc.licenses = null;
+                renderLicenses(cId);
+            }
+        } catch(err) { console.error(err); alert('許認可データの追加読み込みに失敗しました'); }
+    }
+
+    window.loadMoreCases = async function(cId) {
+        if(!lastVisibleDoc.cases) return;
+        const btn = document.querySelector('#related-cases-body .btn-load-more');
+        if(btn) { btn.innerHTML = '読み込み中...'; btn.disabled = true; }
+        try {
+            const snap = await db.collection('cases').where('customer_id', '==', cId)
+                .orderBy('updated_at', 'desc').startAfter(lastVisibleDoc.cases).limit(20).get();
+            if(snap.docs.length > 0) {
+                const newDocs = snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
+                cases.push(...newDocs);
+                lastVisibleDoc.cases = snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null;
+                renderRelatedCases(cId);
+            } else {
+                lastVisibleDoc.cases = null;
+                renderRelatedCases(cId);
+            }
+        } catch(err) { console.error(err); alert('案件データの追加読み込みに失敗しました'); }
     }
 
     function hideListSections() {
@@ -248,6 +484,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
                 relatedCasesBody.appendChild(tr);
             });
+
+            if (lastVisibleDoc.cases && related.length >= 20) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td colspan="6" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreCases(${customerId})">もっと見る <i data-lucide="chevron-down"></i></button></td>`;
+                relatedCasesBody.appendChild(tr);
+                if (window.lucide) lucide.createIcons();
+            }
         } catch (error) {
             console.error('Error rendering related cases:', error);
             relatedCasesBody.innerHTML = '<tr><td colspan="6" class="no-data-cell" style="color: red;">データの表示中にエラーが発生しました</td></tr>';
@@ -306,6 +549,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             contactsListBody.appendChild(tr);
         });
+
+        if (lastVisibleDoc.contacts && related.length >= 20) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td colspan="5" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreContacts(${customerId})">もっと見る <i data-lucide="chevron-down"></i></button></td>`;
+            contactsListBody.appendChild(tr);
+            if (window.lucide) lucide.createIcons();
+        }
     }
 
     function renderLicenses(customerId) {
@@ -341,6 +591,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             licensesListBody.appendChild(tr);
         });
+
+        if (lastVisibleDoc.licenses && related.length >= 20) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td colspan="5" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreLicenses(${customerId})">もっと見る <i data-lucide="chevron-down"></i></button></td>`;
+            licensesListBody.appendChild(tr);
+            if (window.lucide) lucide.createIcons();
+        }
     }
 
     async function handleSave(e) {
