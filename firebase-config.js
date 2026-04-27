@@ -26,18 +26,23 @@ if (useEmulator) {
 
     // Auth Emulator
     const auth = firebase.auth();
-    auth.useEmulator("http://127.0.0.1:9095");
+    auth.useEmulator("http://127.0.0.1:9099");
 }
 
 // Enable Offline Persistence
 // Called AFTER emulator connection to avoid "already started" error
-db.enablePersistence()
-    .catch((err) => {
-        if (err.code == 'failed-precondition') {
-            // Multiple tabs open, persistence can only be enabled in one tab at a a time.
-            console.warn('Persistence failed: Multiple tabs open');
-        } else if (err.code == 'unimplemented') {
-            // The current browser does not support all of the features required to enable persistence
-            console.warn('Persistence failed: Browser not supported');
-        }
-    });
+const isTestMode = (location.hostname === "localhost" || location.hostname === "127.0.0.1") && (window.__TEST_MODE__ === true);
+if (!isTestMode) {
+    db.enablePersistence()
+        .catch((err) => {
+            if (err.code == 'failed-precondition') {
+                // Multiple tabs open, persistence can only be enabled in one tab at a a time.
+                console.warn('Persistence failed: Multiple tabs open');
+            } else if (err.code == 'unimplemented') {
+                // The current browser does not support all of the features required to enable persistence
+                console.warn('Persistence failed: Browser not supported');
+            }
+        });
+} else {
+    console.log("Persistence disabled for Test Mode");
+}

@@ -1,0 +1,80 @@
+[
+  {
+    "scenario": "Pagination (0件)",
+    "result": "pass",
+    "detail": "期待通りの件数: 0",
+    "timestamp": "2026-04-27T05:53:41.243Z"
+  },
+  {
+    "scenario": "Pagination (20件)",
+    "result": "pass",
+    "detail": "期待通りの件数: 20",
+    "timestamp": "2026-04-27T05:53:42.644Z"
+  },
+  {
+    "scenario": "Pagination (21件)",
+    "result": "pass",
+    "detail": "期待通りの件数: 21",
+    "timestamp": "2026-04-27T05:53:43.906Z"
+  },
+  {
+    "scenario": "Pagination (39件)",
+    "result": "pass",
+    "detail": "期待通りの件数: 39",
+    "timestamp": "2026-04-27T05:53:45.329Z"
+  },
+  {
+    "scenario": "Pagination (40件)",
+    "result": "pass",
+    "detail": "期待通りの件数: 40",
+    "timestamp": "2026-04-27T05:53:46.806Z"
+  },
+  {
+    "scenario": "ソート変動耐性テスト",
+    "result": "info",
+    "detail": "開始",
+    "timestamp": "2026-04-27T05:53:46.808Z"
+  },
+  {
+    "scenario": "ソート変動耐性",
+    "result": "pass",
+    "detail": "更新後の「もっと見る」に成功: 39件",
+    "timestamp": "2026-04-27T05:53:56.353Z"
+  },
+  {
+    "scenario": "同時更新シナリオ",
+    "result": "info",
+    "detail": "開始",
+    "timestamp": "2026-04-27T05:53:56.354Z"
+  },
+  {
+    "scenario": "同時更新",
+    "result": "pass",
+    "detail": "不整合や表示崩れなし",
+    "timestamp": "2026-04-27T05:54:03.237Z"
+  },
+  {
+    "scenario": "遅延注入テスト (スケルトンUI)",
+    "result": "info",
+    "detail": "開始",
+    "timestamp": "2026-04-27T05:54:03.239Z"
+  },
+  {
+    "scenario": "遅延注入",
+    "result": "fail",
+    "detail": "スケルトン表示破綻: initial=false, inTab=null, afterRemoved=true, hasData=false",
+    "timestamp": "2026-04-27T05:54:14.275Z"
+  },
+  {
+    "scenario": "エラー強制発生テスト",
+    "result": "info",
+    "detail": "開始",
+    "timestamp": "2026-04-27T05:54:14.480Z"
+  },
+  {
+    "scenario": "エラー強制発生",
+    "result": "pass",
+    "detail": "エラーUIの表示を確認",
+    "timestamp": "2026-04-27T05:54:17.841Z"
+  }
+]

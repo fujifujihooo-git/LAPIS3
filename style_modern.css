@@ -1438,3 +1438,51 @@ textarea.invalid {
 .btn-load-more:hover {
     background-color: #e2e8f0;
 }
+
+/* --- Detail Page Architecture: Extended Skeleton & Transition --- */
+.skeleton-form-field {
+    height: 38px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    border: none !important;
+}
+
+.skeleton-label {
+    height: 12px;
+    width: 80px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+}
+
+.skeleton-select {
+    height: 38px;
+    border-radius: 6px;
+    width: 100%;
+}
+
+/* Section fade-in after data load */
+@keyframes sectionFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.section-loaded {
+    animation: sectionFadeIn 0.3s ease-out;
+}
+
+/* Retry button improvements */
+.btn-retry {
+    margin-top: 10px;
+    padding: 6px 16px;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.btn-retry:hover {
+    background-color: #dc2626;
+}

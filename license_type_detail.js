@@ -169,7 +169,8 @@ document.addEventListener('DOMContentLoaded', () => {
      * メインエントリーポイント。
      * initUI → initData の順で実行。UIの失敗がデータに波及しない。
      */
-    async function init() {
+    function init() {
+        const tPageStart = performance.now();
         try {
             currentIdParam = getUrlParameter('id');
 
@@ -181,15 +182,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Phase 1: UI初期化（非致命的）
             initUI();
+            console.log(`[Perf] Phase 1 (Sync UI) completed in ${(performance.now() - tPageStart).toFixed(1)}ms`);
 
-            // Phase 2: データ初期化（中核処理）
-            await initData();
+            // Phase 2: データ初期化（中核処理） - Fire & Forget
+            loadAllData();
 
         } catch (error) {
             // ⑤ 最外殻のエラーハンドリング: 想定外の例外を捕捉
             console.error('[init] 初期化中に予期しないエラーが発生:', error);
             showToast('画面の初期化に失敗しました。ページを再読込してください。', 'error');
         }
+    }
+
+    async function loadAllData() {
+        const t2Start = performance.now();
+        await initData();
+        console.log(`[Perf] Phase 2 data loaded in ${(performance.now() - t2Start).toFixed(1)}ms`);
     }
 
     // =========================================================================

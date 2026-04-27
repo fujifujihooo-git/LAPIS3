@@ -1,17 +1,16 @@
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+    const tPageStart = performance.now();
+    console.log('Office Detail: Phase 1 (Sync UI) starting...');
+
     function debugLog(msg) {
         const el = document.getElementById('debug-log');
         if (el) el.innerHTML += msg + '<br>';
         console.log(msg);
     }
 
-    // Debug: Script start
-    debugLog('office_detail.js loaded (debug3)');
-
     // --- Selectors ---
     const form = document.getElementById('office-form');
     if (!form) debugLog('<span style="color:red">Critical Error: form not found</span>');
-    else debugLog('Form found');
 
     const officeIdDisplay = document.getElementById('office-id-display');
     const officeTitle = document.getElementById('page-title');
@@ -21,70 +20,110 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnBackTop = document.getElementById('btn-back-top');
     const btnDelete = document.getElementById('btn-delete');
     const btnHeaderSave = document.querySelector('button[form="office-form"]');
-    if (!btnHeaderSave) debugLog('<span style="color:orange">Warning: Header save button not found</span>');
-    else debugLog('Header save button found');
+    const btnSave = document.getElementById('btn-save');
+    const btnLookupZip = document.getElementById('btn-lookup-zip');
 
     // --- State ---
     let currentOffice = null;
     let officeIdParam = null;
     let customerId = null;
 
-    // --- Functions ---
-    async function init() {
-        const params = new URLSearchParams(window.location.search);
-        officeIdParam = params.get('id');
-        customerId = parseInt(params.get('customer_id'));
+    // =========================================================
+    //  Phase 1: 同期UI初期化 — ブロッキングなし、即時描画
+    // =========================================================
 
-        if (!customerId) {
-            debugLog('<span style="color:red">Error: customer_id is missing in URL</span>');
-            return;
-        }
+    const params = new URLSearchParams(window.location.search);
+    officeIdParam = params.get('id');
+    customerId = parseInt(params.get('customer_id'));
 
-        // Set back button links
+    if (!customerId) {
+        debugLog('<span style="color:red">Error: customer_id is missing in URL</span>');
+        alert('顧客IDが指定されていません。');
+    } else {
         const backUrl = `customer_detail.html?id=${customerId}`;
         if (btnBack) btnBack.onclick = () => window.location.href = backUrl;
         if (btnBackTop) btnBackTop.onclick = () => window.location.href = backUrl;
+    }
+
+    if (officeIdParam === 'new') {
+        if (officeTitle) officeTitle.textContent = '新規拠点登録';
+        if (officeIdDisplay) officeIdDisplay.textContent = '(採番中...)';
+        if (createdDateDisplay) createdDateDisplay.textContent = '保存時に設定';
+        if (lastUpdatedDisplay) lastUpdatedDisplay.textContent = '保存時に設定';
+        if (btnDelete) btnDelete.style.display = 'none';
+    } else {
+        if (btnDelete) btnDelete.addEventListener('click', handleDelete);
+    }
+
+    // --- Event Listeners ---
+    if (form) form.addEventListener('submit', handleSave);
+    if (btnSave) btnSave.addEventListener('click', handleSave);
+    if (btnHeaderSave) btnHeaderSave.addEventListener('click', handleSave);
+
+    if (btnLookupZip) {
+        btnLookupZip.addEventListener('click', async () => {
+            const zip = document.getElementById('postal_code').value.replace(/[^0-9]/g, '');
+            if (!/^\d{7}$/.test(zip)) {
+                alert('郵便番号は7桁で入力してください。');
+                return;
+            }
+            try {
+                const response = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`);
+                const data = await response.json();
+                if (data.status === 200 && data.results) {
+                    const result = data.results[0];
+                    const address = result.address1 + result.address2 + result.address3;
+                    document.getElementById('address').value = address;
+                } else {
+                    alert('該当する住所が見つかりませんでした。');
+                }
+            } catch (error) {
+                console.error('ZipCloud API Error:', error);
+                alert('住所の取得に失敗しました。');
+            }
+        });
+    }
+
+    console.log(`[Perf] Phase 1 (Sync UI) completed in ${(performance.now() - tPageStart).toFixed(1)}ms`);
+
+    // =========================================================
+    //  Phase 2: 非同期データ取得 — Fire & Forget
+    // =========================================================
+    if (customerId) {
+        loadAllData();
+    }
+
+    async function loadAllData() {
+        const t2Start = performance.now();
 
         if (officeIdParam === 'new') {
-            officeTitle.textContent = '新規拠点登録';
-            if (officeIdDisplay) officeIdDisplay.textContent = '新規登録';
-            if (createdDateDisplay) createdDateDisplay.textContent = '保存時に設定';
-            if (lastUpdatedDisplay) lastUpdatedDisplay.textContent = '保存時に設定';
-            if (btnDelete) btnDelete.style.display = 'none';
-
-            // Generate next ID preview (optional, or do on save)
             try {
                 const nextId = await getNextSequence('offices');
-                officeIdDisplay.textContent = `New Office ID: ${nextId}`;
-                document.getElementById('office-form').dataset.newId = nextId;
+                if (officeIdDisplay) officeIdDisplay.textContent = `Office ID: ${nextId}`;
+                if (form) form.dataset.newId = nextId;
             } catch (e) {
-                console.error(e);
+                console.error('Failed to fetch next sequence', e);
             }
         } else {
             const oId = parseInt(officeIdParam);
             try {
-                // Optimize: query directly by ID
-                // const offices = await getAllFromFirestore('offices');
-                // currentOffice = offices.find(o => Number(o.office_id) === oId);
                 const docSnap = await db.collection('offices').doc(`office_${oId}`).get();
                 if (docSnap.exists) {
                     currentOffice = docSnap.data();
+                    populateForm(currentOffice);
                 } else {
-                    currentOffice = null;
-                }
-
-                if (!currentOffice) {
                     debugLog('拠点が見つかりません。');
-                    return;
+                    alert('拠点情報が見つかりませんでした。');
                 }
-                populateForm(currentOffice);
             } catch (err) {
                 console.error(err);
                 debugLog('データ読み込みエラー');
             }
         }
+        console.log(`[Perf] Phase 2 data loaded in ${(performance.now() - t2Start).toFixed(1)}ms`);
     }
 
+    // --- Helpers ---
     function populateForm(data) {
         if (officeIdDisplay) officeIdDisplay.textContent = `Office ID: ${data.office_id}`;
         if (officeTitle) officeTitle.textContent = `拠点詳細：${data.office_name}`;
@@ -112,7 +151,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isMain = isMainEl ? isMainEl.checked : false;
         const now = new Date().toISOString();
 
-        // Prepare data
         const updatedData = {
             customer_id: customerId,
             office_name: document.getElementById('office_name').value.trim(),
@@ -128,12 +166,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         try {
-            // Debug: 保存直前のデータを表示
             debugLog(`Saving: OfficeID=${officeIdParam}, CustomerID=${customerId}, Name=${updatedData.office_name}`);
 
-            // 排他制御: 本社(main)にする場合、この顧客の他の拠点のis_mainを下げる
             if (isMain) {
-                // Optimize: query only relevant docs
                 const snapshot = await db.collection('offices')
                     .where('customer_id', '==', customerId)
                     .where('is_main', '==', true)
@@ -142,9 +177,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const batch = db.batch();
                 let hasUpdates = false;
                 snapshot.forEach(doc => {
-                    // 自分自身以外を false に更新
-                    // 新規作成時は自分自身はまだ存在しないので全ての既存mainをfalseへ
-                    // 更新時は、自分自身のdocIdと比較
                     const isSelf = officeIdParam !== 'new' && doc.id === `office_${officeIdParam}`;
                     if (!isSelf) {
                         batch.update(doc.ref, { is_main: false });
@@ -157,15 +189,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             if (officeIdParam === 'new') {
-                // Use pre-fetched ID or fetch new one
-                let newId = parseInt(document.getElementById('office-form').dataset.newId);
+                let newId = parseInt(form ? form.dataset.newId : 0);
                 if (!newId) newId = await getNextSequence('offices');
 
                 updatedData.office_id = newId;
                 updatedData.created_date = now;
                 await saveToFirestore('offices', `office_${newId}`, updatedData);
 
-                // Update internal state and URL
                 officeIdParam = newId.toString();
                 currentOffice = updatedData;
                 history.replaceState(null, '', `?customer_id=${customerId}&id=${newId}`);
@@ -176,9 +206,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             showToast('保存しました', 'success');
-            // setTimeout(() => {
-            //     window.location.href = `customer_detail.html?id=${customerId}`;
-            // }, 1000);
         } catch (err) {
             console.error(err);
             debugLog('<span style="color:red">保存失敗: ' + err.message + '</span>');
@@ -199,43 +226,4 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert('削除失敗: ' + err.message);
         }
     }
-
-    // --- Event Listeners ---
-    if (form) {
-        form.addEventListener('submit', handleSave);
-    }
-    // btn-save ボタンの直接クリックでも保存を実行
-    const btnSave = document.getElementById('btn-save');
-    if (btnSave) {
-        btnSave.addEventListener('click', handleSave);
-    }
-    if (btnHeaderSave) btnHeaderSave.addEventListener('click', handleSave);
-    if (btnDelete) btnDelete.addEventListener('click', handleDelete);
-
-    const btnLookupZip = document.getElementById('btn-lookup-zip');
-    if (btnLookupZip) {
-        btnLookupZip.addEventListener('click', async () => {
-            const zip = document.getElementById('postal_code').value.replace(/[^0-9]/g, '');
-            if (!/^\d{7}$/.test(zip)) {
-                alert('郵便番号は7桁で入力してください。');
-                return;
-            }
-            try {
-                const response = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`);
-                const data = await response.json();
-                if (data.status === 200 && data.results) {
-                    const result = data.results[0];
-                    const address = result.address1 + result.address2 + result.address3;
-                    document.getElementById('address').value = address;
-                } else {
-                    alert('該当する住所が見つかりませんでした。');
-                }
-            } catch (error) {
-                console.error('ZipCloud API Error:', error);
-                alert('住所の取得に失敗しました。');
-            }
-        });
-    }
-
-    init();
 });

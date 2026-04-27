@@ -84,18 +84,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Functions ---
 
-    async function init() {
+    function init() {
+        const tPageStart = performance.now();
         console.log("=== init() START ===");
+        console.log('Invoice Detail: Phase 1 (Sync UI) starting...');
         console.log("window.location.search: ", window.location.search);
         console.log("currentInvoiceId parsed: ", currentInvoiceId);
+        
         bindBasicInfoEvents();
+        
         if (currentInvoiceId && currentInvoiceId !== 'new' && currentInvoiceId !== 'undefined' && currentInvoiceId !== 'null') {
             console.log("Executing loadInvoice with docId: ", currentInvoiceId);
-            await loadInvoice(currentInvoiceId);
+            // Skeleton UI
+            itemListBody.innerHTML = '<tr><td colspan="8"><div class="skeleton-row skeleton-shimmer"></div></td></tr>';
+            paymentListBody.innerHTML = '<tr><td colspan="4"><div class="skeleton-row skeleton-shimmer"></div></td></tr>';
+            
+            const tEndPhase1 = performance.now();
+            console.log(`[Perf] Phase 1 completed in ${(tEndPhase1 - tPageStart).toFixed(2)}ms`);
+            
+            // Phase 2
+            console.log('Invoice Detail: Phase 2 (Async Data) starting...');
+            loadInvoice(currentInvoiceId).then(() => {
+                const tEndPhase2 = performance.now();
+                console.log(`[Perf] Phase 2 completed in ${(tEndPhase2 - tEndPhase1).toFixed(2)}ms`);
+            });
         } else {
             console.log("Executing initNewInvoice (Fallback)");
             currentInvoiceId = null;
-            await initNewInvoice();
+            initNewInvoice();
+            const tEndPhase1 = performance.now();
+            console.log(`[Perf] Phase 1 completed in ${(tEndPhase1 - tPageStart).toFixed(2)}ms`);
         }
     }
 

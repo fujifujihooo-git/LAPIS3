@@ -1,12 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // const staffForm = document.getElementById('staff-form'); // Removed as we use button click
+    const tPageStart = performance.now();
+    console.log('Staff Detail: Phase 1 (Sync UI) starting...');
+
     const staffIdInput = document.getElementById('staff_id');
     const staffTitle = document.getElementById('page-title');
-    // const lastUpdatedDisplay = document.getElementById('last-updated-display'); // Wrong ID in HTML
-    const lastUpdatedDisplay = document.getElementById('updated_at'); // Correct ID
-    const createdDateDisplay = document.getElementById('created_at'); // Added
+    const lastUpdatedDisplay = document.getElementById('updated_at');
+    const createdDateDisplay = document.getElementById('created_at');
     const btnBack = document.getElementById('btn-back');
     const btnBackTop = document.getElementById('btn-back-top');
+    const btnSearchAddress = document.getElementById('btn-search-address');
+    const inputPostalCode = document.getElementById('postal_code');
+    const btnSave = document.getElementById('btn-save');
+    const btnDelete = document.getElementById('btn-delete');
 
     let staffId = null;
     let currentStaff = null;
@@ -17,12 +22,42 @@ document.addEventListener('DOMContentLoaded', () => {
         return params.get('id');
     }
 
-    async function init() {
-        const idParam = getStaffIdFromUrl();
-        if (idParam === 'new') {
-            staffId = 'new';
-            staffTitle.textContent = '新規担当者登録';
-            currentDocId = null; // New doc will be created
+    // =========================================================
+    //  Phase 1: 同期UI初期化 — ブロッキングなし、即時描画
+    // =========================================================
+
+    const idParam = getStaffIdFromUrl();
+    if (idParam === 'new') {
+        staffId = 'new';
+        if (staffTitle) staffTitle.textContent = '新規担当者登録';
+        currentDocId = null; 
+        if (btnDelete) btnDelete.style.display = 'none';
+        if (staffIdInput) staffIdInput.value = '(採番中...)';
+    } else {
+        staffId = parseInt(idParam);
+        if (btnDelete) btnDelete.addEventListener('click', handleDelete);
+    }
+
+    // --- イベントリスナーの登録 ---
+    if (btnSave) btnSave.addEventListener('click', handleSave);
+    if (btnBack) btnBack.addEventListener('click', () => window.location.href = 'staff_list.html');
+    if (btnBackTop) btnBackTop.addEventListener('click', () => window.location.href = 'staff_list.html');
+
+    if (inputPostalCode && btnSearchAddress) {
+        inputPostalCode.addEventListener('input', updateSearchButtonState);
+        btnSearchAddress.addEventListener('click', fetchAddress);
+    }
+
+    console.log(`[Perf] Phase 1 (Sync UI) completed in ${(performance.now() - tPageStart).toFixed(1)}ms`);
+
+    // =========================================================
+    //  Phase 2: 非同期データ取得 — Fire & Forget
+    // =========================================================
+    loadAllData();
+
+    async function loadAllData() {
+        const t2Start = performance.now();
+        if (staffId === 'new') {
             try {
                 const nextId = await getNextSequence('staff');
                 if (staffIdInput) staffIdInput.value = nextId;
@@ -31,7 +66,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (staffIdInput) staffIdInput.value = "";
             }
         } else {
-            staffId = parseInt(idParam);
             try {
                 // Use Query instead of Direct Doc ID fetch to handle any Doc ID format
                 const snapshot = await db.collection('staff').where('staff_id', '==', staffId).get();
@@ -39,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!snapshot.empty) {
                     const doc = snapshot.docs[0];
                     currentStaff = doc.data();
-                    currentDocId = doc.id; // Capture the real Doc ID
+                    currentDocId = doc.id; 
                     populateForm(currentStaff);
                 } else {
                     // Fallback: Try string query if number failed (just in case)
@@ -52,7 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         console.warn(`Staff not found for ID: ${staffId}`);
                         alert('担当者が見つかりません。');
-                        // window.location.href = 'staff_list.html'; // Optional: Redirect or stay to debug
                         return;
                     }
                 }
@@ -62,53 +95,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
         }
-
-        // Delete button setup
-        const btnDelete = document.getElementById('btn-delete');
-        if (staffId === 'new') {
-            if (btnDelete) btnDelete.style.display = 'none';
-        } else {
-            if (btnDelete) btnDelete.addEventListener('click', handleDelete);
-        }
+        console.log(`[Perf] Phase 2 data loaded in ${(performance.now() - t2Start).toFixed(1)}ms`);
     }
 
     function populateForm(data) {
         if (staffIdInput) staffIdInput.value = data.staff_id;
-        staffTitle.textContent = `担当者詳細：${data.staff_name}`;
-        // 更新日時等の表示
+        if (staffTitle) staffTitle.textContent = `担当者詳細：${data.staff_name}`;
+        
         if (lastUpdatedDisplay) lastUpdatedDisplay.innerHTML = formatToJST(data.last_updated);
-        if (createdDateDisplay) createdDateDisplay.innerHTML = formatToJST(data.created_date || data.created_at); // Handle both checks
+        if (createdDateDisplay) createdDateDisplay.innerHTML = formatToJST(data.created_date || data.created_at);
 
         document.getElementById('staff_name').value = data.staff_name || '';
-        document.getElementById('staff_name_kana').value = data.staff_kana || ''; // Fixed ID
-        document.getElementById('mobile_phone').value = data.phone || ''; // Fixed ID
+        document.getElementById('staff_name_kana').value = data.staff_kana || '';
+        document.getElementById('mobile_phone').value = data.phone || '';
         document.getElementById('email').value = data.email || '';
         document.getElementById('postal_code').value = data.postal_code || '';
         document.getElementById('address').value = data.address || '';
-        document.getElementById('building_name').value = data.building_name || ''; // Added
-
+        document.getElementById('building_name').value = data.building_name || '';
         document.getElementById('department').value = data.department || '';
-
-        // Role (Job Title)
         document.getElementById('role').value = data.role || '補助者';
-
         document.getElementById('authority').value = data.authority || 'staff';
-
-        document.getElementById('qualification').value = data.qualification || ''; // Added
-        document.getElementById('hire_date').value = formatDateForInput(data.hire_date); // Added & Formatted
-
+        document.getElementById('qualification').value = data.qualification || '';
+        document.getElementById('hire_date').value = formatDateForInput(data.hire_date);
         document.getElementById('status').value = data.status || '在籍';
         document.getElementById('remarks').value = data.remarks || '';
 
-        // Trigger button state update
-        if (typeof updateSearchButtonState === 'function') {
-            updateSearchButtonState();
-        } else {
-            const btn = document.getElementById('btn-search-address');
-            if (btn && document.getElementById('postal_code').value) {
-                btn.removeAttribute('disabled');
-            }
-        }
+        updateSearchButtonState();
 
         // --- Role Permission Control (UI) ---
         const sessionData = localStorage.getItem('lapis3_session');
@@ -116,20 +128,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const session = JSON.parse(sessionData);
             const authSelect = document.getElementById('authority');
             if (session.authority !== 'admin') {
-                // Non-admins cannot change any role
-                authSelect.setAttribute('disabled', 'disabled');
-                authSelect.title = "権限の変更は管理者のみ可能です";
+                if (authSelect) {
+                    authSelect.setAttribute('disabled', 'disabled');
+                    authSelect.title = "権限の変更は管理者のみ可能です";
+                }
             } else {
-                authSelect.removeAttribute('disabled');
-                authSelect.removeAttribute('title');
+                if (authSelect) {
+                    authSelect.removeAttribute('disabled');
+                    authSelect.removeAttribute('title');
+                }
             }
 
             // --- Privacy Masking Control (案B) ---
-            // 本人(Email一致)でも管理者でもない場合は、プライバシー情報をマスクし編集を禁止する
             const isSelf = session.email === data.email;
             const isAdmin = session.authority === 'admin';
 
-            // 新規作成時('new')は自分自身として扱う
             if (!isSelf && !isAdmin && staffId !== 'new') {
                 const privateFields = [
                     'postal_code', 'address', 'building_name',
@@ -141,32 +154,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (el) {
                         el.value = (el.tagName === 'SELECT' || el.type === 'date') ? "" : "********";
                         el.setAttribute('disabled', 'disabled');
-                        // visually obscure the field
                         el.style.color = "transparent";
                         el.style.textShadow = "0 0 5px rgba(0,0,0,0.5)";
                     }
                 });
 
-                // Disable address search button
-                const btnSearch = document.getElementById('btn-search-address');
-                if (btnSearch) btnSearch.style.display = 'none';
-
-                // Prevent saving dummy values back to DB
-                const btnSave = document.getElementById('btn-save');
+                if (btnSearchAddress) btnSearchAddress.style.display = 'none';
                 if (btnSave) btnSave.style.display = 'none';
-
-                const btnDelete = document.getElementById('btn-delete');
                 if (btnDelete) btnDelete.style.display = 'none';
             } else {
-                // Ensure buttons are visible for authorized users
-                const btnSave = document.getElementById('btn-save');
                 if (btnSave) btnSave.style.display = 'inline-flex';
             }
         }
     }
 
     async function handleSave(e) {
-        e.preventDefault();
+        if(e) e.preventDefault();
 
         // Validation
         clearInputErrors();
@@ -209,35 +212,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const now = new Date().toISOString();
-        const selectedAuthority = document.getElementById('authority').value; // System Permission
+        const selectedAuthority = document.getElementById('authority').value;
 
         // --- Self Lockout Prevention ---
         const sessionData = localStorage.getItem('lapis3_session');
         if (sessionData) {
             const session = JSON.parse(sessionData);
-            // If the user is currently an admin, editing their own profile, and changing to 'staff'
             if (session.email === document.getElementById('email').value.trim() && session.authority === 'admin' && selectedAuthority === 'staff') {
                 const confirmMsg = "⚠️ 警告\n\nあなた自身の権限を「一般」に変更しようとしています。\n実行すると以降、管理者メニュー（インポートやバックアップ等）にアクセスできなくなります。\n\n本当に自身の権限を変更して保存しますか？";
-                if (!confirm(confirmMsg)) {
-                    return; // Cancel save
-                }
+                if (!confirm(confirmMsg)) return;
             }
         }
 
         const updatedData = {
             staff_id: newId,
-            staff_name: document.getElementById('staff_name').value.trim(),
-            staff_kana: document.getElementById('staff_name_kana').value.trim(), // Fixed ID
-            phone: document.getElementById('mobile_phone').value.trim(), // Fixed ID
-            email: document.getElementById('email').value.trim(),
+            staff_name: staffName,
+            staff_kana: document.getElementById('staff_name_kana').value.trim(),
+            phone: document.getElementById('mobile_phone').value.trim(),
+            email: email,
             postal_code: document.getElementById('postal_code').value.trim(),
             address: document.getElementById('address').value.trim(),
-            building_name: document.getElementById('building_name').value.trim(), // Added
+            building_name: document.getElementById('building_name').value.trim(),
             department: document.getElementById('department').value.trim(),
-            role: document.getElementById('role').value, // Job Title
-            authority: selectedAuthority, // Modifed to use variable
-            qualification: document.getElementById('qualification').value.trim(), // Added
-            hire_date: document.getElementById('hire_date').value, // Added
+            role: document.getElementById('role').value,
+            authority: selectedAuthority,
+            qualification: document.getElementById('qualification').value.trim(),
+            hire_date: document.getElementById('hire_date').value,
             status: document.getElementById('status').value,
             remarks: document.getElementById('remarks').value.trim(),
             last_updated: now
@@ -247,10 +247,9 @@ document.addEventListener('DOMContentLoaded', () => {
             let docId = currentDocId;
 
             if (staffId === 'new') {
-                docId = `staff_${newId}`; // Generate new ID pattern for new records
+                docId = `staff_${newId}`; 
                 updatedData.created_date = now;
 
-                // Check if ID already exists to prevent overwrite (Optional safety)
                 const check = await db.collection('staff').doc(docId).get();
                 if (check.exists) {
                     if (!confirm(`Staff ID ${newId} already exists. Overwrite?`)) return;
@@ -259,35 +258,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 await saveToFirestore('staff', docId, updatedData);
                 showToast('新規登録しました', 'success');
 
-                // Update URL for new item without reloading
                 staffId = newId.toString();
                 currentDocId = docId;
                 currentStaff = updatedData;
                 history.replaceState(null, '', `?id=${newId}`);
             } else {
-                // Update existing document using its REAL ID
-                if (!docId) docId = `staff_${newId}`; // Fallback if somehow null
-
+                if (!docId) docId = `staff_${newId}`;
                 await saveToFirestore('staff', docId, { ...currentStaff, ...updatedData });
                 showToast('保存しました', 'success');
             }
 
             // --- Update Local Session if editing own profile ---
-            const sessionData = localStorage.getItem('lapis3_session');
             if (sessionData) {
                 const session = JSON.parse(sessionData);
                 if (session.email === updatedData.email) {
                     session.authority = updatedData.authority;
                     session.staff_name = updatedData.staff_name;
                     localStorage.setItem('lapis3_session', JSON.stringify(session));
-                    // Reflect changes in UI immediately
                     if (typeof renderUserStatus === 'function') renderUserStatus(session);
                     if (typeof applyPermissions === 'function') applyPermissions(session);
                 }
             }
-            // setTimeout(() => {
-            //     window.location.href = 'staff_list.html';
-            // }, 1000);
         } catch (error) {
             console.error("Save failed:", error);
             showToast('保存に失敗しました', 'error');
@@ -298,7 +289,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (staffId === 'new') return;
 
         try {
-            // 担当案件があるかチェック (Firestore Query)
             const casesRef = db.collection('cases');
             const snapField = await casesRef.where('field_staff_id', '==', staffId).get();
             const snapDoc = await casesRef.where('document_staff_id', '==', staffId).get();
@@ -310,7 +300,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (confirm('本当に削除しますか？\nこの操作は取り消せません。')) {
-                // Use currentDocId for deletion
                 const targetDocId = currentDocId || `staff_${staffId}`;
                 await deleteFromFirestore('staff', targetDocId);
 
@@ -325,21 +314,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // staffForm.addEventListener('submit', handleSave); 
-    // Form element might not exist, use button click
-    const btnSave = document.getElementById('btn-save');
-    if (btnSave) {
-        btnSave.addEventListener('click', handleSave);
-    }
-
-    if (btnBack) btnBack.addEventListener('click', () => window.location.href = 'staff_list.html');
-    if (btnBackTop) btnBackTop.addEventListener('click', () => window.location.href = 'staff_list.html');
-
-    const btnSearchAddress = document.getElementById('btn-search-address');
-    const inputPostalCode = document.getElementById('postal_code');
-
-    // Zip Code Search Logic
     function updateSearchButtonState() {
+        if (!inputPostalCode || !btnSearchAddress) return;
         if (inputPostalCode.value.trim().length > 0) {
             btnSearchAddress.removeAttribute('disabled');
         } else {
@@ -357,7 +333,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const zip = validation.value;
-
         try {
             const response = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`);
             const data = await response.json();
@@ -374,9 +349,4 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('住所の取得に失敗しました。');
         }
     }
-
-    inputPostalCode.addEventListener('input', updateSearchButtonState);
-    btnSearchAddress.addEventListener('click', fetchAddress);
-
-    init();
 });

@@ -28,6 +28,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentRelatedSort = { key: null, order: null };
 
     // --- Functions ---
+    // [DESTRUCTIVE TEST HOOK] 検証終了後に完全削除すること
+    async function executeTestHook() {
+        const isTestMode = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') && (window.__TEST_MODE__ === true);
+        if (!isTestMode) return;
+        
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('test_delay')) {
+            const delayMs = parseInt(params.get('test_delay')) || 1000;
+            console.warn(`[TEST HOOK] Injecting ${delayMs}ms delay`);
+            await new Promise(r => setTimeout(r, delayMs));
+        }
+        if (params.get('test_error') === 'true') {
+            console.warn(`[TEST HOOK] Forcing error`);
+            throw new Error('Forced Error by Test Hook');
+        }
+    }
+
     function getCustomerIdFromUrl() {
         return new URLSearchParams(window.location.search).get('id');
     }
@@ -66,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             
         } else {
-            const cId = parseInt(customerIdParam);
+            const cId = !isNaN(customerIdParam) ? Number(customerIdParam) : customerIdParam;
             // [Preview Phase] Try to load from Session Storage (temp_transition_customer)
             try {
                 const tempStr = sessionStorage.getItem('temp_transition_customer');
@@ -124,7 +141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 2. Asynchronous Data Fetching Phase
         if (customerIdParam !== 'new') {
-            const cId = parseInt(customerIdParam);
+            const cId = !isNaN(customerIdParam) ? Number(customerIdParam) : customerIdParam;
             // Fire & Forget background loaders
             loadAllSections(cId);
         }
@@ -189,6 +206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function loadCustomerBasicData(cId) {
         try {
+            await executeTestHook(); // TEST HOOK
             let custData = window.AppCache ? window.AppCache.get(`customer_${cId}`) : null;
             if (!custData) {
                 const custDoc = await db.collection('customers').doc(`cust_${cId}`).get();
@@ -214,6 +232,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function loadOffices(cId) {
         try {
+            await executeTestHook(); // TEST HOOK
             const snap = await db.collection('offices')
                 .where('customer_id', '==', cId)
                 .orderBy('updated_at', 'desc')
@@ -232,6 +251,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function loadContacts(cId) {
         try {
+            await executeTestHook(); // TEST HOOK
             const snap = await db.collection('contacts')
                 .where('customer_id', '==', cId)
                 .orderBy('updated_at', 'desc')
@@ -250,6 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function loadLicenses(cId) {
         try {
+            await executeTestHook(); // TEST HOOK
             const snap = await db.collection('customer_licenses')
                 .where('customer_id', '==', cId)
                 .orderBy('updated_at', 'desc')
@@ -267,21 +288,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function loadCases(cId) {
-        try {
-            const snap = await db.collection('cases')
-                .where('customer_id', '==', cId)
-                .orderBy('updated_at', 'desc')
-                .limit(20)
-                .get();
-                
-            cases = snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
-            lastVisibleDoc.cases = snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null;
-            
-            renderRelatedCases(cId);
-        } catch(err) {
-            console.error('Failed to load cases', err);
-            renderErrorUI('related-cases-body', () => loadCases(cId));
-        }
+        const queryId = !isNaN(cId) ? Number(cId) : cId;
+        await DetailPageHelper.loadSection({
+            name: 'RelatedCases',
+            containerId: 'related-cases-body',
+            fetchFn: async () => {
+                await executeTestHook();
+                const snap = await db.collection('cases')
+                    .where('customer_id', '==', queryId)
+                    .orderBy('updated_at', 'desc')
+                    .limit(20)
+                    .get();
+                return {
+                    data: snap.docs.map(d => {
+                        const data = d.data({ serverTimestamps: 'estimate' });
+                        return data;
+                    }),
+                    lastDoc: snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null
+                };
+            },
+            renderFn: (result) => {
+                cases = result.data;
+                lastVisibleDoc.cases = result.lastDoc;
+                renderRelatedCases(cId);
+            }
+        });
     }
 
     // --- Load More Functions ---
