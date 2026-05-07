@@ -150,6 +150,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         itemModal.style.display = 'none';
     }
 
+    function closeHistoryModal() {
+        if (historyModal) historyModal.style.display = 'none';
+    }
+    window.closeHistoryModal = closeHistoryModal;
+
     function saveEstimateItem() {
         const type = document.getElementById('modal-item-type').value;
         const desc = document.getElementById('modal-description').value;
@@ -549,10 +554,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('modal-history-comment').value = hist.comment || '';
         document.getElementById('modal-history-link-flag').checked = isLatest;
         if (historyModal) historyModal.style.display = 'block';
-    };
-
-    window.closeHistoryModal = function () {
-        if (historyModal) historyModal.style.display = 'none';
     };
 
     async function saveHistoryChanges() {

@@ -73,33 +73,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function executeSearch() {
         console.log('Execute Search');
 
-        // 1. Build Query
-        let query = db.collection('staff');
-
         const sVal = filterStatus ? filterStatus.value : '';
         const rVal = filterRole ? filterRole.value : '';
         const nameVal = searchName ? searchName.value.trim() : '';
-
-        // Apply Filters (Server-side)
-        if (sVal) {
-            query = query.where('status', '==', sVal);
-        }
-        if (rVal) {
-            query = query.where('role', '==', rVal);
-        }
 
         try {
             if (resultsSection) resultsSection.style.display = 'block';
             if (staffListBody) staffListBody.innerHTML = '<tr><td colspan="7" class="loading-cell">検索中...</td></tr>';
 
-            const snapshot = await query.get();
+            let data = await window.LapisRepositories.staff.search({
+                status: sVal,
+                role: rVal
+            });
 
-            if (snapshot.empty) {
+            if (data.length === 0) {
                 renderTable([]);
                 return;
             }
-
-            let data = snapshot.docs.map(doc => doc.data());
 
             // 2. Client-side Filter (for Name/ID)
             // Firestore cannot easily do "contains" for strings.

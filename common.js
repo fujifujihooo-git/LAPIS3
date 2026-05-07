@@ -246,85 +246,166 @@ function initDatePicker() {
     console.warn('No date picker library found.');
 }
 
-/**
- * Update the text of a wareki helper element
- */
-function updateWarekiHelper(helperElement, dateStr) {
-    if (!helperElement) return;
-    if (!dateStr) {
-        helperElement.textContent = '';
-        return;
-    }
-    const wareki = convertToWareki(dateStr);
-    helperElement.textContent = wareki ? `(${wareki})` : '';
-}
+// --- Format Utilities ---
+// Implementation lives under window.LapisFormat; legacy global functions below preserve compatibility.
+window.LapisFormat = {
+    updateWarekiHelper(helperElement, dateStr) {
+        if (!helperElement) return;
+        if (!dateStr) {
+            helperElement.textContent = '';
+            return;
+        }
+        const wareki = this.convertToWareki(dateStr);
+        helperElement.textContent = wareki ? `(${wareki})` : '';
+    },
 
-/**
- * Convert ISO date string (YYYY-MM-DD) to Japanese Era (Wareki)
- * Example: 2026-02-25 -> 令和8年2月25日
- */
-function convertToWareki(dateStr) {
-    if (!dateStr) return null;
-    try {
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return null;
+    convertToWareki(dateStr) {
+        if (!dateStr) return null;
+        try {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return null;
 
-        // Use Intl.DateTimeFormat for accurate era calculation
-        const formatter = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', {
-            era: 'long',
+            const formatter = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', {
+                era: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            return formatter.format(date);
+        } catch (e) {
+            console.error('Wareki conversion error:', e);
+            return null;
+        }
+    },
+
+    formatToJST(dateInput) {
+        if (!dateInput) return '-';
+
+        let d;
+        if (typeof dateInput === 'string') {
+            d = new Date(dateInput);
+        } else if (typeof dateInput.toDate === 'function') {
+            d = dateInput.toDate();
+        } else {
+            d = new Date(dateInput);
+        }
+
+        if (isNaN(d.getTime())) return '-';
+
+        const options = {
+            timeZone: 'Asia/Tokyo',
             year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        };
 
-        // The format produced is "令和8年2月25日"
-        return formatter.format(date);
-    } catch (e) {
-        console.error('Wareki conversion error:', e);
-        return null;
+        try {
+            const formatter = new Intl.DateTimeFormat('ja-JP', options);
+            const parts = formatter.formatToParts(d);
+            const map = {};
+            parts.forEach(p => map[p.type] = p.value);
+            return `${map.year}/${map.month}/${map.day} ${map.hour}:${map.minute}`;
+        } catch (e) {
+            console.error('JST Date formatting error:', e);
+            return '-';
+        }
+    },
+
+    formatCurrency(amount) {
+        if (amount === undefined || amount === null || amount === '') return '¥0';
+        return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(amount);
+    },
+
+    formatAmount(val) {
+        if (!val && val !== 0) return '';
+        const num = parseInt(this.unformatAmount(val));
+        if (isNaN(num)) return '';
+        return new Intl.NumberFormat('ja-JP').format(num);
+    },
+
+    unformatAmount(val) {
+        if (!val) return '';
+        return String(val).replace(/,/g, '');
+    },
+
+    formatDate(dateStr) {
+        if (!dateStr || dateStr === 'null') return this.formatDisplayValue(null);
+
+        if (dateStr && typeof dateStr.toDate === 'function') {
+            const date = dateStr.toDate();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}/${month}/${day}`;
+        }
+
+        if (typeof dateStr === 'string') {
+            return dateStr.replace(/-/g, '/');
+        }
+
+        return this.formatDisplayValue(null);
+    },
+
+    formatDateForInput(dateStr) {
+        if (!dateStr || dateStr === 'null') return '';
+
+        if (dateStr && typeof dateStr.toDate === 'function') {
+            const date = dateStr.toDate();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        if (typeof dateStr === 'string') {
+            return dateStr.replace(/\//g, '-').substring(0, 10);
+        }
+
+        return '';
+    },
+
+    formatDisplayValue(val) {
+        if (val === undefined || val === null || val === '') {
+            return '<span class="empty-placeholder">ー</span>';
+        }
+        return val;
+    },
+
+    formatRemainingDays(days, status) {
+        const terminalStatuses = ['完了', '返却済', '取下げ'];
+        if (status && terminalStatuses.includes(status)) {
+            return '<span class="empty-placeholder">ー</span>';
+        }
+
+        if (days === null) return this.formatDisplayValue(null);
+        if (days === 0) return '今日';
+        if (days > 0) return `${days}日後`;
+        return `${Math.abs(days)}日超過`;
+    },
+
+    formatLicenseNumber(license) {
+        if (!license) return '';
+        const n1 = license.license_number_1 || '';
+        const n2 = license.license_number_2 || '';
+        if (!n1 && !n2) return this.formatDisplayValue(null);
+        return `${n1}${n2 ? '-' + n2 : ''}`;
     }
+};
+
+function updateWarekiHelper(helperElement, dateStr) {
+    return window.LapisFormat.updateWarekiHelper(helperElement, dateStr);
 }
 
-/**
- * Convert Date, Firestore Timestamp, or ISO string to JST Time String
- * Output Format: YYYY/MM/DD HH:mm
- */
+function convertToWareki(dateStr) {
+    return window.LapisFormat.convertToWareki(dateStr);
+}
+
 function formatToJST(dateInput) {
-    if (!dateInput) return '-';
-
-    let d;
-    if (typeof dateInput === 'string') {
-        d = new Date(dateInput);
-    } else if (typeof dateInput.toDate === 'function') {
-        d = dateInput.toDate();
-    } else {
-        d = new Date(dateInput);
-    }
-
-    if (isNaN(d.getTime())) return '-';
-
-    // Japanese Time Settings
-    const options = {
-        timeZone: 'Asia/Tokyo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-    };
-
-    try {
-        const formatter = new Intl.DateTimeFormat('ja-JP', options);
-        // => "2026/03/03 10:10" (some environments may use commas/slashes differently by default, so we replace)
-        const parts = formatter.formatToParts(d);
-        const map = {};
-        parts.forEach(p => map[p.type] = p.value);
-        return `${map.year}/${map.month}/${map.day} ${map.hour}:${map.minute}`;
-    } catch (e) {
-        console.error('JST Date formatting error:', e);
-        return '-';
-    }
+    return window.LapisFormat.formatToJST(dateInput);
 }
 
 
@@ -553,71 +634,31 @@ function getInvoiceStatusClass(status) {
 
 // 金額表示用 (¥ あり)
 function formatCurrency(amount) {
-    if (amount === undefined || amount === null || amount === '') return '¥0';
-    return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(amount);
+    return window.LapisFormat.formatCurrency(amount);
 }
 
 // 金額入力欄用 (カンマのみ)
 function formatAmount(val) {
-    if (!val && val !== 0) return '';
-    const num = parseInt(unformatAmount(val));
-    if (isNaN(num)) return '';
-    return new Intl.NumberFormat('ja-JP').format(num);
+    return window.LapisFormat.formatAmount(val);
 }
 
 function unformatAmount(val) {
-    if (!val) return '';
-    return String(val).replace(/,/g, '');
+    return window.LapisFormat.unformatAmount(val);
 }
 
 // 日付表示統一 YYYY/MM/DD
 function formatDate(dateStr) {
-    if (!dateStr || dateStr === 'null') return formatDisplayValue(null);
-
-    // Firestore Timestampオブジェクトの場合
-    if (dateStr && typeof dateStr.toDate === 'function') {
-        const date = dateStr.toDate();
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}/${month}/${day}`;
-    }
-
-    // 文字列の場合
-    if (typeof dateStr === 'string') {
-        return dateStr.replace(/-/g, '/');
-    }
-
-    return formatDisplayValue(null);
+    return window.LapisFormat.formatDate(dateStr);
 }
 
 // Input[type="date"]用 (YYYY-MM-DD)
 function formatDateForInput(dateStr) {
-    if (!dateStr || dateStr === 'null') return '';
-
-    // Firestore Timestamp
-    if (dateStr && typeof dateStr.toDate === 'function') {
-        const date = dateStr.toDate();
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-
-    // String (YYYY/MM/DD or YYYY-MM-DD)
-    if (typeof dateStr === 'string') {
-        return dateStr.replace(/\//g, '-').substring(0, 10);
-    }
-
-    return '';
+    return window.LapisFormat.formatDateForInput(dateStr);
 }
 
 // 「ー」表示統一 (グレー)
 function formatDisplayValue(val) {
-    if (val === undefined || val === null || val === '') {
-        return '<span class="empty-placeholder">ー</span>';
-    }
-    return val;
+    return window.LapisFormat.formatDisplayValue(val);
 }
 
 // --- Validation Helpers ---
@@ -928,16 +969,7 @@ function calculateRemainingDays(scheduledDate) {
 }
 
 function formatRemainingDays(days, status) {
-    // 完了済みのステータスは「ー」を表示
-    const terminalStatuses = ['完了', '返却済', '取下げ'];
-    if (status && terminalStatuses.includes(status)) {
-        return '<span class="empty-placeholder">ー</span>';
-    }
-
-    if (days === null) return formatDisplayValue(null);
-    if (days === 0) return '今日';
-    if (days > 0) return `${days}日後`;
-    return `${Math.abs(days)}日超過`;
+    return window.LapisFormat.formatRemainingDays(days, status);
 }
 
 function getRemainingDaysClass(days, status) {
@@ -954,11 +986,7 @@ function getRemainingDaysClass(days, status) {
 }
 
 function formatLicenseNumber(license) {
-    if (!license) return '';
-    const n1 = license.license_number_1 || '';
-    const n2 = license.license_number_2 || '';
-    if (!n1 && !n2) return formatDisplayValue(null);
-    return `${n1}${n2 ? '-' + n2 : ''}`;
+    return window.LapisFormat.formatLicenseNumber(license);
 }
 
 // --- Firestore Integration Helpers (Phase 2) ---
@@ -973,6 +1001,26 @@ async function getAllFromFirestore(collectionName) {
         return [];
     }
 }
+
+// --- Repository Layer ---
+// Start with small read-only repositories while keeping existing global helpers intact.
+window.LapisRepositories = window.LapisRepositories || {};
+
+window.LapisRepositories.staff = {
+    async search(filters = {}) {
+        let query = db.collection('staff');
+
+        if (filters.status) {
+            query = query.where('status', '==', filters.status);
+        }
+        if (filters.role) {
+            query = query.where('role', '==', filters.role);
+        }
+
+        const snapshot = await query.get();
+        return snapshot.docs.map(doc => doc.data());
+    }
+};
 
 async function getDocFromFirestore(collectionName, arg2, arg3) {
     try {
