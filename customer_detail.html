@@ -152,6 +152,334 @@
             color: #ef4444;
             margin-left: 4px;
         }
+
+        /* ========================================
+         * 顧客カルテ画面 専用スタイル
+         * ======================================== */
+
+        /* --- 顧客名ヘッダー --- */
+        #customer-header-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px 24px 12px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .customer-header-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+        .customer-name-heading {
+            font-size: 22pt;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0;
+            line-height: 1.3;
+        }
+        .customer-favorite {
+            font-size: 20pt;
+            cursor: pointer;
+            color: #d1d5db;
+            transition: color 0.2s;
+        }
+        .customer-favorite:hover,
+        .customer-favorite.active {
+            color: #facc15;
+        }
+        .customer-meta-bar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            font-size: 11pt;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        .customer-meta-bar-sub {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            font-size: 11pt;
+            color: var(--text-muted);
+        }
+        .meta-item strong {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+        .badge-customer-type {
+            background: #3b82f6;
+            color: #fff;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 10pt;
+            font-weight: 700;
+        }
+
+        /* --- アクションバー --- */
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .action-bar-right {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* --- サマリーカード --- */
+        .summary-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .summary-card {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px 16px;
+            position: relative;
+            transition: box-shadow 0.2s, transform 0.15s;
+            cursor: pointer;
+        }
+        .summary-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transform: translateY(-1px);
+        }
+        .summary-card-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10pt;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .summary-card-header .sc-icon {
+            font-size: 13pt;
+        }
+        .summary-card-body {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+        .summary-big-num {
+            font-size: 26pt;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .summary-sub {
+            font-size: 14pt;
+            color: var(--text-muted);
+        }
+        .summary-card-detail {
+            font-size: 9.5pt;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            line-height: 1.5;
+        }
+        .summary-card-link {
+            font-size: 9.5pt;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .summary-card-link:hover {
+            text-decoration: underline;
+        }
+        /* カード色分け */
+        .sc-license .summary-big-num { color: #3b82f6; }
+        .sc-case .summary-big-num { color: #3b82f6; }
+        .sc-invoice .summary-big-num { color: #16a34a; }
+        .sc-alert { border-left: 3px solid #ef4444; }
+        .sc-alert .summary-big-num { color: #ef4444; }
+        .sc-alert .summary-card-detail { color: #b91c1c; }
+        .badge-success-sm {
+            background: #dcfce7; color: #16a34a;
+            padding: 1px 8px; border-radius: 4px;
+            font-size: 9pt; font-weight: 700;
+        }
+        .badge-warning-sm {
+            background: #fef3c7; color: #d97706;
+            padding: 1px 8px; border-radius: 4px;
+            font-size: 9pt; font-weight: 700;
+        }
+        .badge-danger-sm {
+            background: #fee2e2; color: #dc2626;
+            padding: 1px 8px; border-radius: 4px;
+            font-size: 9pt; font-weight: 700;
+        }
+
+        /* --- 概要タブ 2列レイアウト --- */
+        .overview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .overview-panel {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 14px 16px;
+        }
+        .overview-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .overview-panel-title {
+            font-size: 12pt;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0;
+        }
+        .btn-panel-action {
+            font-size: 9.5pt;
+            padding: 3px 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: #f8fafc;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+        .btn-panel-action:hover {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        /* 読み取り専用テーブル */
+        .info-readonly-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11pt;
+        }
+        .info-readonly-table th {
+            text-align: left;
+            padding: 5px 10px;
+            background: #f8fafc;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 1px solid #f0f0f0;
+            white-space: nowrap;
+            width: 25%;
+        }
+        .info-readonly-table td {
+            padding: 5px 10px;
+            color: var(--text-main);
+            border-bottom: 1px solid #f0f0f0;
+            font-weight: 500;
+            width: 25%;
+        }
+        /* 概要タブ内ミニテーブル */
+        .mini-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10.5pt;
+        }
+        .mini-table th {
+            text-align: left;
+            padding: 5px 8px;
+            background: #f8fafc;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 10pt;
+        }
+        .mini-table td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .mini-table tbody tr:hover {
+            background: #f8fbff;
+            cursor: pointer;
+        }
+        .memo-content {
+            font-size: 11pt;
+            line-height: 1.7;
+            color: var(--text-main);
+            white-space: pre-wrap;
+        }
+        .memo-content li {
+            margin-bottom: 2px;
+        }
+
+        /* --- 基本情報タブ 高密度グリッド --- */
+        .customer-form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px 20px;
+        }
+        .customer-form-grid .form-group {
+            margin-bottom: 6px;
+        }
+        .customer-form-grid .form-group label {
+            margin-bottom: 3px;
+            font-size: 11pt;
+        }
+
+        /* --- プレースホルダータブ --- */
+        .tab-placeholder {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-muted);
+        }
+        .tab-placeholder-icon {
+            font-size: 36pt;
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+        .tab-placeholder-title {
+            font-size: 14pt;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-main);
+        }
+        .tab-placeholder-desc {
+            font-size: 11pt;
+            max-width: 400px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* --- レスポンシブ --- */
+        @media (max-width: 1199px) {
+            .customer-form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .summary-cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 767px) {
+            .customer-form-grid {
+                grid-template-columns: 1fr;
+            }
+            .summary-cards-grid {
+                grid-template-columns: 1fr;
+            }
+            .overview-grid {
+                grid-template-columns: 1fr;
+            }
+            .customer-name-heading {
+                font-size: 16pt;
+            }
+        }
     </style>
 </head>
 
@@ -278,56 +606,187 @@
             <!-- Page Content -->
             <main id="page-content">
 
-                <!-- Actions Bar -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <!-- Left: Back, Title, ID (官公庁詳細パターン準拠) -->
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <button type="button" class="btn btn-back" id="btn-back">
-                            <i data-lucide="arrow-left"></i> 一覧へ
-                        </button>
-                        <h2 id="header-title" style="margin: 0; font-size: 13pt; color: var(--text-main);">顧客詳細：</h2>
-                        <!-- Hidden inputs for ID -->
-                        <input type="hidden" id="customer_id">
-                    </div>
+                <!-- Hidden inputs -->
+                <input type="hidden" id="customer_id">
+                <h2 id="header-title" style="display:none;">顧客詳細：</h2>
 
-                    <!-- Right: Action Buttons -->
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-delete" id="btn-delete">
-                            <i data-lucide="trash-2"></i> 削除
+                <!-- 顧客名ヘッダー -->
+                <div id="customer-header-card">
+                    <div class="customer-header-top">
+                        <h1 id="customer-name-display" class="customer-name-heading">―</h1>
+                        <span class="customer-favorite" id="btn-favorite" title="お気に入り">☆</span>
+                    </div>
+                    <div class="customer-meta-bar">
+                        <span class="badge-customer-type" id="customer-type-badge">法人</span>
+                        <span class="meta-item">顧客コード：<strong id="customer-code-display">―</strong></span>
+                        <span class="meta-item">最終更新：<strong id="last-updated-meta">―</strong></span>
+                    </div>
+                    <div class="customer-meta-bar-sub">
+                        <span class="meta-item">担当者：<strong id="staff-display">―</strong></span>
+                        <span class="meta-item">決算期：<strong id="fiscal-display">―</strong></span>
+                        <span class="meta-item">法人番号：<strong id="corp-num-display">―</strong></span>
+                    </div>
+                </div>
+
+                <!-- サマリーカード -->
+                <div class="summary-cards-grid" id="summary-cards">
+                    <div class="summary-card sc-license" id="summary-license">
+                        <div class="summary-card-header"><span class="sc-icon">📜</span> 許認可サマリー</div>
+                        <div class="summary-card-body">
+                            <span class="summary-big-num" id="sc-lic-active">-</span>
+                            <span class="summary-sub">/</span>
+                            <span class="summary-sub"><span id="sc-lic-total">-</span>件</span>
+                            <span class="badge-success-sm">有効</span>
+                        </div>
+                        <div class="summary-card-detail">期限注意：<strong id="sc-lic-warn">0</strong>件　期限切れ：<strong id="sc-lic-expired">0</strong>件</div>
+                        <a href="javascript:void(0)" class="summary-card-link" id="link-to-licenses">許認可一覧へ ＞</a>
+                    </div>
+                    <div class="summary-card sc-case" id="summary-case">
+                        <div class="summary-card-header"><span class="sc-icon">📊</span> 案件サマリー</div>
+                        <div class="summary-card-body">
+                            <span class="summary-sub">進行中</span>
+                            <span class="summary-big-num" id="sc-case-active">-</span>
+                            <span class="summary-sub">件　完了</span>
+                            <span class="summary-big-num" id="sc-case-done" style="font-size:18pt;">-</span>
+                            <span class="summary-sub">件</span>
+                        </div>
+                        <div class="summary-card-detail">直近案件：<strong id="sc-case-recent">―</strong></div>
+                        <a href="javascript:void(0)" class="summary-card-link" id="link-to-cases">案件一覧へ ＞</a>
+                    </div>
+                    <div class="summary-card sc-invoice" id="summary-invoice">
+                        <div class="summary-card-header"><span class="sc-icon">💰</span> 請求サマリー</div>
+                        <div class="summary-card-body">
+                            <span class="summary-sub">未請求</span>
+                            <span class="summary-big-num" id="sc-inv-unpaid">-</span>
+                            <span class="summary-sub">件</span>
+                        </div>
+                        <div class="summary-card-detail">未請求金額 <strong id="sc-inv-amount">―</strong></div>
+                        <a href="javascript:void(0)" class="summary-card-link" id="link-to-invoices">請求一覧へ ＞</a>
+                    </div>
+                    <div class="summary-card sc-alert" id="summary-alert">
+                        <div class="summary-card-header"><span class="sc-icon">⚠️</span> 要対応アラート</div>
+                        <div class="summary-card-body">
+                            <span class="summary-big-num" id="sc-alert-count">-</span>
+                            <span class="summary-sub">件</span>
+                        </div>
+                        <div class="summary-card-detail" id="sc-alert-detail">―</div>
+                        <a href="javascript:void(0)" class="summary-card-link" id="link-to-alerts">アラート一覧へ ＞</a>
+                    </div>
+                </div>
+
+                <!-- アクションバー（保存=Primary, 削除=右端） -->
+                <div class="action-bar">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button type="button" class="btn btn-back" id="btn-back">
+                            <i data-lucide="arrow-left"></i> 一覧へ戻る
                         </button>
-                        <button type="button" class="btn" id="btn-refresh-cache" style="background-color: #f8fafc; border: 1px solid #cbd5e1; color: #334155;">
-                            <i data-lucide="refresh-cw"></i> 最新に更新
-                        </button>
-                        <button type="button" class="btn btn-excel" id="btn-export-excel">
-                            <i data-lucide="file-spreadsheet"></i> Excel出力
+                    </div>
+                    <div class="action-bar-right">
+                        <button type="button" class="btn" id="btn-refresh-cache" style="background:#f8fafc; border:1px solid #cbd5e1; color:#334155;">
+                            <i data-lucide="refresh-cw"></i> 更新
                         </button>
                         <button type="button" class="btn btn-pdf" id="btn-export-pdf">
                             <i data-lucide="file-text"></i> PDF出力
+                        </button>
+                        <button type="button" class="btn btn-excel" id="btn-export-excel">
+                            <i data-lucide="file-spreadsheet"></i> Excel出力
                         </button>
                         <button type="button" class="btn btn-save"
                             onclick="document.getElementById('customer-form').dispatchEvent(new Event('submit', {cancelable: true, bubbles: true}));">
                             <i data-lucide="save"></i> 保存
                         </button>
+                        <button type="button" class="btn btn-delete" id="btn-delete">
+                            <i data-lucide="trash-2"></i> 削除
+                        </button>
                     </div>
                 </div>
 
                 <form id="customer-form">
-                    <!-- Tabs -->
+                    <!-- Tabs（9タブ） -->
                     <div class="tab-nav">
-                        <button type="button" class="tab-btn active" data-tab="basic">基本情報</button>
+                        <button type="button" class="tab-btn active" data-tab="overview">概要</button>
+                        <button type="button" class="tab-btn" data-tab="basic">基本情報</button>
+                        <button type="button" class="tab-btn" data-tab="licenses">許認可</button>
+                        <button type="button" class="tab-btn" data-tab="projects">申請案件</button>
                         <button type="button" class="tab-btn" data-tab="contact">連絡先・住所</button>
                         <button type="button" class="tab-btn" data-tab="offices">拠点・担当者</button>
-                        <button type="button" class="tab-btn" data-tab="licenses">許認可</button>
-                        <button type="button" class="tab-btn" data-tab="projects">案件履歴</button>
-                        <button type="button" class="tab-btn" data-tab="reports">帳票出力</button>
+                        <button type="button" class="tab-btn" data-tab="billing">請求・売上</button>
+                        <button type="button" class="tab-btn" data-tab="reports">帳票</button>
+                        <button type="button" class="tab-btn" data-tab="history">履歴</button>
                     </div>
 
                     <div class="block">
                         <div class="block-content">
-                            <!-- Tab Content: Basic Info -->
-                            <div id="tab-basic" class="tab-content active">
+                            <!-- Tab Content: 概要（読取専用カルテ） -->
+                            <div id="tab-overview" class="tab-content active">
+                                <div class="overview-grid">
+                                    <!-- 左カラム -->
+                                    <div>
+                                        <div class="overview-panel">
+                                            <div class="overview-panel-header">
+                                                <h4 class="overview-panel-title">基本情報</h4>
+                                                <button type="button" class="btn-panel-action" id="btn-goto-basic">✎ 編集</button>
+                                            </div>
+                                            <table class="info-readonly-table" id="overview-basic-table">
+                                                <tbody>
+                                                    <tr><th>顧客名</th><td id="ov-name">―</td><th>電話番号</th><td id="ov-phone">―</td></tr>
+                                                    <tr><th>フリガナ</th><td id="ov-kana">―</td><th>FAX番号</th><td id="ov-fax">―</td></tr>
+                                                    <tr><th>代表者名</th><td id="ov-rep">―</td><th>メールアドレス</th><td id="ov-email">―</td></tr>
+                                                    <tr><th>顧客区分</th><td id="ov-type">―</td><th>郵便番号</th><td id="ov-zip">―</td></tr>
+                                                    <tr><th>決算期</th><td id="ov-fiscal">―</td><th>住所</th><td id="ov-addr">―</td></tr>
+                                                    <tr><th>法人番号</th><td id="ov-corp">―</td><th>外務担当者</th><td id="ov-staff">―</td></tr>
+                                                    <tr><th>設立日</th><td id="ov-founded">―</td><th>紹介元</th><td id="ov-referral">―</td></tr>
+                                                    <tr><th>資本金</th><td id="ov-capital">―</td><th>メモ</th><td id="ov-memo-short">―</td></tr>
+                                                    <tr><th>従業員数</th><td id="ov-employees">―</td><th></th><td></td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="overview-panel" style="margin-top: 12px;">
+                                            <div class="overview-panel-header">
+                                                <h4 class="overview-panel-title">メモ・特記事項</h4>
+                                                <button type="button" class="btn-panel-action" id="btn-goto-basic-memo">✎ 編集</button>
+                                            </div>
+                                            <div class="memo-content" id="ov-remarks">―</div>
+                                        </div>
+                                    </div>
+                                    <!-- 右カラム -->
+                                    <div>
+                                        <div class="overview-panel">
+                                            <div class="overview-panel-header">
+                                                <h4 class="overview-panel-title">許認可（主要なもの）</h4>
+                                                <button type="button" class="btn-panel-action" id="btn-goto-licenses">一覧へ</button>
+                                            </div>
+                                            <table class="mini-table" id="ov-license-table">
+                                                <thead>
+                                                    <tr><th>許認可名</th><th>許可番号</th><th>有効期限</th><th>ステータス</th></tr>
+                                                </thead>
+                                                <tbody id="ov-license-body">
+                                                    <tr><td colspan="4" class="no-data-cell">読み込み中...</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="overview-panel" style="margin-top: 12px;">
+                                            <div class="overview-panel-header">
+                                                <h4 class="overview-panel-title">直近の案件</h4>
+                                                <button type="button" class="btn-panel-action" id="btn-goto-cases">一覧へ</button>
+                                            </div>
+                                            <table class="mini-table" id="ov-case-table">
+                                                <thead>
+                                                    <tr><th>案件名</th><th>状況</th><th>受注金額</th><th>完了予定日</th></tr>
+                                                </thead>
+                                                <tbody id="ov-case-body">
+                                                    <tr><td colspan="4" class="no-data-cell">読み込み中...</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tab Content: Basic Info（編集フォーム） -->
+                            <div id="tab-basic" class="tab-content">
                                 <h3 class="form-section-title">基本情報</h3>
-                                <div class="form-grid">
+                                <div class="customer-form-grid">
                                     <div class="form-group">
                                         <label for="customer_name">顧客名 <span class="required">*</span></label>
                                         <input type="text" id="customer_name" class="form-control" required>
@@ -347,38 +806,31 @@
                                             <option value="個人">個人</option>
                                         </select>
                                     </div>
-                                </div>
-                                <div class="form-grid">
                                     <div class="form-group">
                                         <label>決算期</label>
                                         <div style="display: flex; gap: 8px;">
                                             <select id="fiscal_year_end_month" class="form-select">
                                                 <option value="">(月)</option>
-                                                <!-- JS generated -->
                                             </select>
                                             <select id="fiscal_year_end_day" class="form-select">
                                                 <option value="">(日)</option>
-                                                <!-- JS generated -->
                                             </select>
                                         </div>
                                     </div>
                                     <div class="form-group">
                                         <label for="corporate_number">法人番号</label>
-                                        <input type="text" id="corporate_number" class="form-control"
-                                            placeholder="13桁の番号" data-validate="corporate_num">
+                                        <input type="text" id="corporate_number" class="form-control" placeholder="13桁の番号" data-validate="corporate_num">
                                     </div>
                                     <div class="form-group">
                                         <label for="primary_staff_id">外務担当者</label>
                                         <select id="primary_staff_id" class="form-select">
                                             <option value="">(未選択)</option>
-                                            <!-- JS generated -->
                                         </select>
                                     </div>
                                 </div>
 
-                                <!-- 管理情報から移動してきた項目 -->
-                                <h3 class="form-section-title" style="margin-top: 24px;">管理情報</h3>
-                                <div class="form-grid">
+                                <h3 class="form-section-title" style="margin-top: 20px;">管理情報</h3>
+                                <div class="customer-form-grid">
                                     <div class="form-group">
                                         <label for="status">状態 <span class="required">*</span></label>
                                         <select id="status" class="form-select" required>
@@ -416,8 +868,7 @@
                                         <textarea id="remarks" class="form-control" placeholder="顧客に関する特記事項"></textarea>
                                     </div>
                                 </div>
-                                <div class="text-right"
-                                    style="text-align: right; color: var(--text-muted); font-size: 0.8rem; margin-top: 10px;">
+                                <div class="text-right" style="text-align: right; color: var(--text-muted); font-size: 0.8rem; margin-top: 10px;">
                                     最終更新日時: <span id="last-updated-display">-</span>
                                 </div>
                             </div>
@@ -580,6 +1031,29 @@
                                     </button>
                                 </div>
                             </div>
+
+                            <!-- Tab Content: 請求・売上 -->
+                            <div id="tab-billing" class="tab-content">
+                                <div class="tab-placeholder">
+                                    <div class="tab-placeholder-icon">💰</div>
+                                    <div class="tab-placeholder-title">請求・売上管理</div>
+                                    <div class="tab-placeholder-desc">
+                                        この顧客に対する請求書、入金状況、売上推移を一元管理します。請求書発行や入金消込にもこちらから対応可能です。
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tab Content: 履歴 -->
+                            <div id="tab-history" class="tab-content">
+                                <div class="tab-placeholder">
+                                    <div class="tab-placeholder-icon">📋</div>
+                                    <div class="tab-placeholder-title">対応履歴</div>
+                                    <div class="tab-placeholder-desc">
+                                        電話・メール・訪問等の対応履歴、書類送付記録、変更履歴をタイムラインで確認できます。
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </form>

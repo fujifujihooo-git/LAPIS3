@@ -76,6 +76,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             const headerTitle = document.getElementById('header-title');
             if (headerTitle) headerTitle.textContent = '顧客詳細：';
             if (btnDelete) btnDelete.style.display = 'none';
+            // 新規時: ヘッダーカードを初期化
+            const nameDisp = document.getElementById('customer-name-display');
+            if (nameDisp) nameDisp.textContent = '新規顧客';
+            // サマリーカードは非表示（新規では意味がない）
+            const summaryCards = document.getElementById('summary-cards');
+            if (summaryCards) summaryCards.style.display = 'none';
+            // 新規時は基本情報タブをデフォルトに
+            const tabs = document.querySelectorAll('.tab-btn');
+            const contents = document.querySelectorAll('.tab-content');
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            const basicTab = document.querySelector('[data-tab="basic"]');
+            const basicContent = document.getElementById('tab-basic');
+            if (basicTab) basicTab.classList.add('active');
+            if (basicContent) basicContent.classList.add('active');
             
             // Wait for next ID but don't block basic UI
             getNextSequence('customers').then(nextId => {
@@ -110,10 +125,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // --- 顧客名の入力に連動してヘッダータイトルを動的に更新 ---
         const nameInput = document.getElementById('customer_name');
-        const headerTitle = document.getElementById('header-title');
-        if (nameInput && headerTitle) {
+        const headerTitle2 = document.getElementById('header-title');
+        const nameDisplay = document.getElementById('customer-name-display');
+        if (nameInput) {
             nameInput.addEventListener('input', (e) => {
-                headerTitle.textContent = `顧客詳細：${e.target.value.trim()}`;
+                const val = e.target.value.trim();
+                if (headerTitle2) headerTitle2.textContent = `顧客詳細：${val}`;
+                if (nameDisplay) nameDisplay.textContent = val || '―';
             });
         }
 
@@ -154,6 +172,169 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    /* ===============================
+       顧客カルテ画面 — UI描画関数
+    =============================== */
+
+    /** 顧客名ヘッダーカード更新 */
+    function updateCustomerHeaderCard(data) {
+        if (!data) return;
+        const nameEl = document.getElementById('customer-name-display');
+        if (nameEl) nameEl.textContent = data.customer_name || '―';
+
+        const typeEl = document.getElementById('customer-type-badge');
+        if (typeEl) typeEl.textContent = data.customer_type || '法人';
+
+        const codeEl = document.getElementById('customer-code-display');
+        if (codeEl) codeEl.textContent = `CUST${String(data.customer_id || '').padStart(6, '0')}`;
+
+        const staffEl = document.getElementById('staff-display');
+        if (staffEl) {
+            const staff = staffMembers.find(s => s.staff_id === data.primary_staff_id);
+            staffEl.textContent = staff ? staff.staff_name : '―';
+        }
+
+        const fiscalEl = document.getElementById('fiscal-display');
+        if (fiscalEl) fiscalEl.textContent = data.fiscal_year_end_month ? `${data.fiscal_year_end_month}月` : '―';
+
+        const corpEl = document.getElementById('corp-num-display');
+        if (corpEl) corpEl.textContent = data.corporate_number || '―';
+
+        const lastUpdEl = document.getElementById('last-updated-meta');
+        if (lastUpdEl) {
+            if (data.updated_at) {
+                const d = data.updated_at.toDate ? data.updated_at.toDate() : new Date(data.updated_at);
+                lastUpdEl.textContent = d.toLocaleString('ja-JP');
+            } else {
+                lastUpdEl.textContent = '―';
+            }
+        }
+
+        // ページタイトル更新
+        const pageTitle = document.getElementById('page-title');
+        if (pageTitle) pageTitle.textContent = `顧客カルテ：${data.customer_name || ''}`;
+    }
+
+    /** 概要タブ 基本情報（読み取り専用テーブル）更新 */
+    function updateOverviewTab(data) {
+        if (!data) return;
+        const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '―'; };
+        setText('ov-name', data.customer_name);
+        setText('ov-kana', data.customer_kana);
+        setText('ov-rep', data.representative_name);
+        setText('ov-type', data.customer_type);
+        setText('ov-fiscal', data.fiscal_year_end_month ? `${data.fiscal_year_end_month}月${data.fiscal_year_end_day || ''}日` : null);
+        setText('ov-corp', data.corporate_number);
+        setText('ov-phone', data.phone);
+        setText('ov-fax', data.fax);
+        setText('ov-email', data.email);
+        setText('ov-zip', data.postal_code);
+        setText('ov-addr', (data.address || '') + (data.building_name ? ' ' + data.building_name : '') || null);
+        const staff = staffMembers.find(s => s.staff_id === data.primary_staff_id);
+        setText('ov-staff', staff ? staff.staff_name : null);
+        setText('ov-remarks', data.remarks);
+    }
+
+    /** サマリーカード4枚描画 */
+    function renderSummaryCards(cId) {
+        // 許認可サマリー
+        const custLicenses = licenses.filter(l => l.customer_id === cId);
+        const activeLics = custLicenses.filter(l => l.status === '有効');
+        const now = new Date();
+        const warn90 = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+        let warnCount = 0, expiredCount = 0;
+        activeLics.forEach(l => {
+            if (l.expiry_date) {
+                const exp = l.expiry_date.toDate ? l.expiry_date.toDate() : new Date(l.expiry_date);
+                if (exp < now) expiredCount++;
+                else if (exp < warn90) warnCount++;
+            }
+        });
+        const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+        el('sc-lic-active', activeLics.length);
+        el('sc-lic-total', custLicenses.length);
+        el('sc-lic-warn', warnCount);
+        el('sc-lic-expired', expiredCount);
+
+        // 案件サマリー
+        const custCases = cases.filter(c => c.customer_id === cId);
+        const activeCases = custCases.filter(c => c.status && c.status !== '完了' && c.status !== '取下げ');
+        const doneCases = custCases.filter(c => c.status === '完了');
+        el('sc-case-active', activeCases.length);
+        el('sc-case-done', doneCases.length);
+        if (custCases.length > 0) {
+            const latest = custCases.sort((a, b) => {
+                const da = a.contract_date ? (a.contract_date.toDate ? a.contract_date.toDate() : new Date(a.contract_date)) : new Date(0);
+                const db2 = b.contract_date ? (b.contract_date.toDate ? b.contract_date.toDate() : new Date(b.contract_date)) : new Date(0);
+                return db2 - da;
+            })[0];
+            el('sc-case-recent', latest.license_type || latest.status || '―');
+        } else {
+            el('sc-case-recent', 'なし');
+        }
+
+        // 請求サマリー（プレースホルダー）
+        el('sc-inv-unpaid', '-');
+        el('sc-inv-amount', '（データ接続準備中）');
+
+        // 要対応アラート
+        const alertCount = warnCount + expiredCount + activeCases.filter(c => c.status === '受任' || c.status === '申請中').length;
+        el('sc-alert-count', alertCount);
+        const alertDetailEl = document.getElementById('sc-alert-detail');
+        if (alertDetailEl) {
+            const details = [];
+            if (expiredCount > 0) details.push(`期限切れ ${expiredCount}件`);
+            if (warnCount > 0) details.push(`期限注意 ${warnCount}件`);
+            if (activeCases.length > 0) details.push(`進行中案件 ${activeCases.length}件`);
+            alertDetailEl.textContent = details.length > 0 ? details.join('、') : '対応事項なし';
+        }
+    }
+
+    /** 概要タブ 許認可・案件ミニテーブル描画 */
+    function renderOverviewLists(cId) {
+        // 許認可テーブル（上位5件）
+        const licBody = document.getElementById('ov-license-body');
+        if (licBody) {
+            const custLics = licenses.filter(l => l.customer_id === cId);
+            if (custLics.length === 0) {
+                licBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999;font-style:italic;padding:12px;">許認可データなし</td></tr>';
+            } else {
+                licBody.innerHTML = custLics.slice(0, 5).map(l => {
+                    const type = licenseTypes.find(lt => lt.license_type_id === l.license_type_id);
+                    const expDate = l.expiry_date ? (l.expiry_date.toDate ? l.expiry_date.toDate() : new Date(l.expiry_date)) : null;
+                    const expStr = expDate ? expDate.toLocaleDateString('ja-JP') : '―';
+                    const statusClass = l.status === '有効' ? 'badge-success-sm' : (l.status === '期限切れ' ? 'badge-danger-sm' : 'badge-warning-sm');
+                    return `<tr>
+                        <td>${type ? type.license_type_name : '―'}</td>
+                        <td>${l.license_number || '―'}</td>
+                        <td>${expStr}</td>
+                        <td><span class="${statusClass}">${l.status || '―'}</span></td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+
+        // 案件テーブル（上位5件）
+        const caseBody = document.getElementById('ov-case-body');
+        if (caseBody) {
+            const custCases = cases.filter(c => c.customer_id === cId);
+            if (custCases.length === 0) {
+                caseBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999;font-style:italic;padding:12px;">案件データなし</td></tr>';
+            } else {
+                caseBody.innerHTML = custCases.slice(0, 5).map(c => {
+                    const complDate = c.completion_date ? (c.completion_date.toDate ? c.completion_date.toDate() : new Date(c.completion_date)) : null;
+                    const complStr = complDate ? complDate.toLocaleDateString('ja-JP') : '―';
+                    return `<tr>
+                        <td>${c.license_type || '―'}</td>
+                        <td><span class="status-badge">${c.status || '―'}</span></td>
+                        <td>${c.amount ? Number(c.amount).toLocaleString() + '円' : '―'}</td>
+                        <td>${complStr}</td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+    }
+
     function renderErrorUI(containerId, retryCallback) {
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -177,30 +358,38 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderOffices(cId);
                 renderContacts(cId);
                 renderLicenses(cId);
+                // サマリーカードも再描画（staffName等が解決される）
+                renderSummaryCards(cId);
+                renderOverviewLists(cId);
             }).catch(e => console.error("Master data load error", e));
         }
 
         const tAllStart = performance.now();
         
         // Parallel Async Fetching
-        loadCustomerBasicData(cId).then(() => {
-            console.log(`[Perf] Basic Info loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
-        });
-        
-        loadOffices(cId).then(() => {
-            console.log(`[Perf] Offices loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
-        });
+        const promises = [
+            loadCustomerBasicData(cId).then(() => {
+                console.log(`[Perf] Basic Info loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+            }),
+            loadOffices(cId).then(() => {
+                console.log(`[Perf] Offices loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+            }),
+            loadContacts(cId).then(() => {
+                console.log(`[Perf] Contacts loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+            }),
+            loadLicenses(cId).then(() => {
+                console.log(`[Perf] Licenses loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+            }),
+            loadCases(cId).then(() => {
+                console.log(`[Perf] Cases loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+            })
+        ];
 
-        loadContacts(cId).then(() => {
-            console.log(`[Perf] Contacts loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
-        });
-
-        loadLicenses(cId).then(() => {
-            console.log(`[Perf] Licenses loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
-        });
-
-        loadCases(cId).then(() => {
-            console.log(`[Perf] Cases loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+        // 全データ読み込み完了後にサマリーカード＋概要タブのリスト描画
+        Promise.allSettled(promises).then(() => {
+            renderSummaryCards(cId);
+            renderOverviewLists(cId);
+            console.log(`[Perf] All sections + summary loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
         });
     }
 
@@ -225,6 +414,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             populateForm(currentCustomer);
             const headerTitle = document.getElementById('header-title');
             if (headerTitle) headerTitle.textContent = `顧客詳細：${currentCustomer.customer_name || ''}`;
+
+            // 顧客名ヘッダーカード更新
+            updateCustomerHeaderCard(currentCustomer);
+            // 概要タブ更新
+            updateOverviewTab(currentCustomer);
         } catch(err) {
             console.error('Failed to load customer basic data', err);
         }
@@ -636,14 +830,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let newId;
         const cIdInput = document.getElementById('customer_id');
-        if (cIdInput) {
-            newId = parseInt(cIdInput.value);
+        if (customerIdParam === 'new') {
+            if (cIdInput && !isNaN(parseInt(cIdInput.value))) {
+                newId = parseInt(cIdInput.value);
+            } else {
+                newId = await getNextSequence('customers');
+                if (cIdInput) cIdInput.value = newId;
+            }
         } else {
-            // Fallback for cases where element might be missing or renamed
-            newId = parseInt(customerIdParam);
+            if (cIdInput) {
+                newId = parseInt(cIdInput.value);
+            } else {
+                newId = parseInt(customerIdParam);
+            }
         }
 
-        if (isNaN(newId)) { alert('有効なIDを入力してください'); return; }
+        if (isNaN(newId)) { alert('有効なIDを取得できませんでした'); return; }
 
         // Helper to safely get values
         const getVal = (id) => {
@@ -1253,6 +1455,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!customerIdParam || customerIdParam === 'new') { alert('先に顧客情報を保存してください'); return; }
         window.location.href = `detail.html?customer_id=${customerIdParam}&id=new`;
     });
+
+    // --- 概要タブ内のボタン → タブ切替 ---
+    function switchToTab(tabName) {
+        const tabs = document.querySelectorAll('.tab-btn');
+        const contents = document.querySelectorAll('.tab-content');
+        tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+        contents.forEach(c => c.classList.toggle('active', c.id === `tab-${tabName}`));
+    }
+    document.getElementById('btn-goto-basic')?.addEventListener('click', () => switchToTab('basic'));
+    document.getElementById('btn-goto-basic-memo')?.addEventListener('click', () => switchToTab('basic'));
+    document.getElementById('btn-goto-licenses')?.addEventListener('click', () => switchToTab('licenses'));
+    document.getElementById('btn-goto-cases')?.addEventListener('click', () => switchToTab('projects'));
+    // サマリーカードリンク
+    document.getElementById('link-to-licenses')?.addEventListener('click', () => switchToTab('licenses'));
+    document.getElementById('link-to-cases')?.addEventListener('click', () => switchToTab('projects'));
+    document.getElementById('link-to-invoices')?.addEventListener('click', () => switchToTab('billing'));
+    document.getElementById('link-to-alerts')?.addEventListener('click', () => switchToTab('overview'));
 
     // --- Postal code address lookup ---
     const btnLookupZip = document.getElementById('btn-lookup-zip');
