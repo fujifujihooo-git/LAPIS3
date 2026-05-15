@@ -653,6 +653,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (c.corporate_number) document.getElementById('corporate_number').value = c.corporate_number;
         if (c.primary_staff_id) document.getElementById('primary_staff_id').value = c.primary_staff_id;
 
+        if (c.founded_date) document.getElementById('founded_date').value = c.founded_date;
+        if (c.capital) {
+            document.getElementById('capital').value = c.capital;
+            document.getElementById('capital_display').value = c.capital.toLocaleString();
+        }
+        if (c.employee_count) {
+            document.getElementById('employee_count').value = c.employee_count;
+            document.getElementById('employee_count_display').value = c.employee_count.toLocaleString();
+        }
+
         if (lastUpdatedDisplay) lastUpdatedDisplay.textContent = formatToJST(c.last_updated);
     }
 
@@ -825,6 +835,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // --- Format Input Helpers ---
+    function setupNumericInput(displayId, hiddenId) {
+        const displayEl = document.getElementById(displayId);
+        const hiddenEl = document.getElementById(hiddenId);
+        if (!displayEl || !hiddenEl) return;
+
+        displayEl.addEventListener('blur', function() {
+            let val = this.value.replace(/,/g, '');
+            if (!isNaN(val) && val !== '') {
+                hiddenEl.value = val;
+                this.value = parseInt(val, 10).toLocaleString();
+            } else {
+                hiddenEl.value = '';
+                this.value = '';
+            }
+        });
+
+        displayEl.addEventListener('focus', function() {
+            if (hiddenEl.value) {
+                this.value = hiddenEl.value;
+            }
+        });
+    }
+
+    setupNumericInput('capital_display', 'capital');
+    setupNumericInput('employee_count_display', 'employee_count');
+
     async function handleSave(e) {
         if (e) e.preventDefault();
 
@@ -857,6 +894,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             return el ? (parseInt(el.value) || null) : null;
         };
 
+        const corporateNumber = getVal('corporate_number');
+        if (corporateNumber && !/^\d{13}$/.test(corporateNumber)) {
+            alert('法人番号は13桁の半角数字で入力してください。');
+            return;
+        }
+
         const now = new Date().toISOString();
         const updatedCustomer = {
             customer_id: newId,
@@ -877,7 +920,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             remarks: getVal('remarks'),
             fiscal_year_end_month: getNum('fiscal_year_end_month'),
             fiscal_year_end_day: getNum('fiscal_year_end_day'),
-            corporate_number: getVal('corporate_number'),
+            founded_date: getVal('founded_date'),
+            capital: getNum('capital'),
+            employee_count: getNum('employee_count'),
+            corporate_number: corporateNumber,
             primary_staff_id: getNum('primary_staff_id'),
             last_updated: now
         };
