@@ -18,8 +18,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const startDate = document.getElementById('start-date');
     const expiryDate = document.getElementById('expiry-date');
     const noticeDate = document.getElementById('notice-date');
-    const remainingDaysSpan = document.getElementById('remaining-days');
-    const noticeDaysSpan = document.getElementById('notice-days');
     const historyBody = document.getElementById('history-body');
     const changeType = document.getElementById('change-type');
     const changedBy = document.getElementById('changed-by');
@@ -31,6 +29,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnSave = document.getElementById('btn-save');
     const btnDelete = document.getElementById('btn-delete');
     const btnAddHistory = document.getElementById('btn-add-history');
+
+    // New UI selectors
+    const licenseStatusHeader = document.getElementById('license-status-header');
+    const headerTitle = document.getElementById('header-title');
+    const headerBadge = document.getElementById('header-badge');
+    const headerExpiryInfo = document.getElementById('header-expiry-info');
+    const headerLastHistory = document.getElementById('header-last-history');
+    const remainingDaysBadge = document.getElementById('remaining-days-badge');
+    const noticeDaysBadge = document.getElementById('notice-days-badge');
+    const nextActionBox = document.getElementById('next-action');
+    const nextActionText = document.getElementById('next-action-text');
+    const stickyBar = document.getElementById('sticky-action-bar');
+    const stickyBtnSave = document.getElementById('sticky-btn-save');
+    const stickyBtnDelete = document.getElementById('sticky-btn-delete');
+    const topActionBar = document.getElementById('top-action-bar');
+    const newModeGuide = document.getElementById('new-mode-guide');
 
     // Autocomplete Selectors
     const governmentOfficeSearch = document.getElementById('government-office-search');
@@ -44,9 +58,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     let licenseHistory = [];
     let governmentOffices = [];
     let currentLicense = null;
-    let fromCustomerId = null; // 顧客詳細画面から遷移した場合の顧客ID
+    let fromCustomerId = null;
+    let isDirty = false;
+    let initialSnapshot = '';
 
-    // --- Pure Functions (no async, no side effects) ---
+    // --- Pure Functions ---
     function getUrlParameter(name) {
         return new URLSearchParams(window.location.search).get(name);
     }
@@ -64,42 +80,212 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `${days}日`;
     }
 
+    function combineLicenseNumber(n1, n2) {
+        if (n1 && n2) return `${n1}-${n2}`;
+        return n1 || n2 || '';
+    }
+
+    function getExpiryBadgeClass(days) {
+        if (days === null) return 'badge-none';
+        if (days < 0) return 'badge-expired';
+        if (days <= 30) return 'badge-danger';
+        if (days <= 90) return 'badge-caution';
+        return 'badge-safe';
+    }
+
+    function getHeaderStatusClass(days) {
+        if (days === null) return 'status-safe';
+        if (days < 0) return 'status-expired';
+        if (days <= 30) return 'status-danger';
+        if (days <= 90) return 'status-caution';
+        return 'status-safe';
+    }
+
+    // --- Display Updates ---
     function updateDisplay() {
         const rem = calculateRemainingDays(expiryDate.value);
         const not = calculateRemainingDays(noticeDate.value);
-        if (remainingDaysSpan) { remainingDaysSpan.textContent = formatDays(rem); remainingDaysSpan.className = rem < 30 ? 'days-critical' : 'days-safe'; }
-        if (noticeDaysSpan) { noticeDaysSpan.textContent = formatDays(not); noticeDaysSpan.className = not < 7 ? 'days-danger' : 'days-safe'; }
+
+        // Expiry Badges
+        if (remainingDaysBadge) {
+            remainingDaysBadge.textContent = `残り日数：${formatDays(rem)}`;
+            remainingDaysBadge.className = `expiry-badge ${getExpiryBadgeClass(rem)}`;
+        }
+        if (noticeDaysBadge) {
+            noticeDaysBadge.textContent = `案内まで：${formatDays(not)}`;
+            noticeDaysBadge.className = `expiry-badge ${not !== null && not <= 0 ? 'badge-caution' : 'badge-none'}`;
+        }
+
+        // Update header if in edit mode
+        if (currentId && currentId !== 'new') {
+            renderLicenseHeader();
+            renderNextAction(rem, not);
+        }
+    }
+
+    function renderLicenseHeader() {
+        if (!licenseStatusHeader) return;
+        const typeName = licenseTypes.find(t => t.license_type_id === parseInt(licenseTypeId.value))?.license_type_name || '';
+        const num = combineLicenseNumber(licenseNumber1.value, licenseNumber2.value);
+        const titleText = [typeName, num].filter(Boolean).join('｜');
+        if (headerTitle) headerTitle.textContent = titleText || 'ー';
+
+        // Status badge
+        const st = status.value;
+        if (headerBadge) {
+            headerBadge.textContent = st;
+            headerBadge.className = 'license-header-badge ' +
+                (st === '有効' ? 'badge-active' : st === '失効' ? 'badge-expired-status' : 'badge-cancelled');
+        }
+
+        // Expiry info line
+        const rem = calculateRemainingDays(expiryDate.value);
+        if (headerExpiryInfo) {
+            const parts = [];
+            if (expiryDate.value) parts.push(`満了：${expiryDate.value}`);
+            if (rem !== null) parts.push(`残り${formatDays(rem)}`);
+            const not = calculateRemainingDays(noticeDate.value);
+            if (not !== null) parts.push(`案内まで${formatDays(not)}`);
+            headerExpiryInfo.textContent = parts.join('　');
+        }
+
+        // Header color
+        licenseStatusHeader.className = `license-header ${getHeaderStatusClass(rem)}`;
+
+        // Last history
+        renderHeaderLastHistory();
+        licenseStatusHeader.style.display = 'block';
+    }
+
+    function renderHeaderLastHistory() {
+        if (!headerLastHistory) return;
+        const lId = parseInt(currentId);
+        const sorted = licenseHistory
+            .filter(h => h.license_id === lId)
+            .sort((a, b) => new Date(b.change_date) - new Date(a.change_date));
+        if (sorted.length === 0) {
+            headerLastHistory.textContent = '最終履歴：なし';
+            return;
+        }
+        const latest = sorted[0];
+        const s = staffMembers.find(st => st.staff_id === latest.changed_by);
+        const name = s ? s.staff_name : '不明';
+        const dateStr = formatToJST(latest.change_date);
+        let text = `最終履歴：${dateStr} ${latest.change_type}｜${name}`;
+        if (latest.comment) {
+            const truncated = latest.comment.length > 20 ? latest.comment.substring(0, 20) + '…' : latest.comment;
+            text += ` 「${truncated}」`;
+        }
+        headerLastHistory.textContent = text;
+    }
+
+    function renderNextAction(rem, not) {
+        if (!nextActionBox || !nextActionText) return;
+        nextActionBox.style.display = 'flex';
+        let msg = '', cls = 'action-none';
+        if (rem === null) {
+            msg = '期限が設定されていません'; cls = 'action-none';
+        } else if (rem < 0) {
+            msg = '期限超過の可能性があります — 状況確認を推奨します'; cls = 'action-danger';
+        } else if (rem <= 30) {
+            msg = '更新申請準備が必要です'; cls = 'action-danger';
+        } else if (rem <= 90 || (not !== null && not <= 0)) {
+            msg = '更新案内対象です'; cls = 'action-caution';
+        } else {
+            const nd = noticeDate.value;
+            msg = nd ? `次回更新案内予定：${nd}` : '更新時期まで余裕があります';
+            cls = 'action-safe';
+        }
+        nextActionText.textContent = msg;
+        nextActionBox.className = `next-action-box ${cls}`;
+    }
+
+    // --- Dirty State (Diff-based) ---
+    function serializeForm() {
+        const data = {};
+        document.querySelectorAll('#page-content input:not([type=hidden]), #page-content select, #page-content textarea').forEach(el => {
+            if (el.id) data[el.id] = el.value;
+        });
+        return JSON.stringify(data);
+    }
+
+    function setupDirtyTracking() {
+        initialSnapshot = serializeForm();
+        document.getElementById('page-content').addEventListener('input', evaluateDirty);
+        document.getElementById('page-content').addEventListener('change', evaluateDirty);
+    }
+
+    function evaluateDirty() {
+        isDirty = serializeForm() !== initialSnapshot;
+        updateSaveButtonState();
+    }
+
+    function resetDirtyState() {
+        initialSnapshot = serializeForm();
+        isDirty = false;
+        updateSaveButtonState();
+    }
+
+    function updateSaveButtonState() {
+        [btnSave, stickyBtnSave].forEach(btn => {
+            if (!btn) return;
+            btn.disabled = !isDirty;
+            btn.style.opacity = isDirty ? '1' : '0.5';
+        });
+    }
+
+    // --- Sticky Action Bar ---
+    function setupStickyBar() {
+        if (!topActionBar || !stickyBar) return;
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                stickyBar.classList.toggle('visible', !entry.isIntersecting);
+            });
+        }, { threshold: 0 });
+        observer.observe(topActionBar);
+    }
+
+    // --- New/Edit Mode ---
+    function applyEditMode(isNew) {
+        const editOnlyEls = document.querySelectorAll('[data-edit-only]');
+        editOnlyEls.forEach(el => el.style.display = isNew ? 'none' : '');
+        if (newModeGuide) newModeGuide.style.display = isNew ? 'block' : 'none';
+        if (licenseStatusHeader) licenseStatusHeader.style.display = isNew ? 'none' : 'block';
     }
 
     // =========================================================
     //  Phase 1: 同期UI初期化 — ブロッキングなし、即時描画
     // =========================================================
     currentId = getUrlParameter('id');
+    const isNewMode = (currentId === 'new');
 
-    // RBAC: 削除ボタンは管理者のみ（同期チェック）
+    // RBAC: 削除ボタンは管理者のみ
     if (btnDelete && typeof isUserAdmin === 'function' && !isUserAdmin()) {
         btnDelete.style.display = 'none';
     }
 
-    if (currentId === 'new') {
+    // New/Edit mode
+    applyEditMode(isNewMode);
+
+    if (isNewMode) {
         if (pageTitle) pageTitle.textContent = '新規許認可登録';
         renderTitleArea('new', null);
     } else {
-        // スケルトンUI表示: 履歴テーブル
         if (historyBody && DPH) {
-            DPH.renderSkeleton('history-body', { rows: 3, cols: 5, type: 'table' });
+            DPH.renderSkeleton('history-body', { rows: 3, cols: 3, type: 'table' });
         }
     }
 
-    // イベントリスナーを先に登録（Phase 1完了のため即座に操作可能）
+    // Event listeners
     btnSave.addEventListener('click', handleSave);
+    if (stickyBtnSave) stickyBtnSave.addEventListener('click', handleSave);
     if (btnSearchCustomer) btnSearchCustomer.addEventListener('click', searchCustomer);
     if (btnDelete) btnDelete.addEventListener('click', handleDelete);
+    if (stickyBtnDelete) stickyBtnDelete.addEventListener('click', handleDelete);
     if (btnAddHistory) btnAddHistory.addEventListener('click', addHistory);
 
-    // 戻るボタン: 顧客詳細画面経由なら顧客画面に戻る
     [btnBack].forEach(btn => btn?.addEventListener('click', () => {
-        if (confirm('戻りますか？')) {
+        if (!isDirty || confirm('変更が保存されていません。戻りますか？')) {
             const returnUrl = fromCustomerId
                 ? `customer_detail.html?id=${fromCustomerId}`
                 : 'license_list.html';
@@ -107,7 +293,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }));
 
-    // 「顧客詳細へ」ボタンの動的リンク設定
     const btnBackToCustomer = document.getElementById('btn-back-to-customer');
     if (btnBackToCustomer) {
         btnBackToCustomer.addEventListener('click', () => {
@@ -122,6 +307,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     expiryDate.addEventListener('change', updateDisplay);
     noticeDate.addEventListener('change', updateDisplay);
+    status.addEventListener('change', updateDisplay);
+    licenseTypeId.addEventListener('change', updateDisplay);
+    licenseNumber1.addEventListener('input', updateDisplay);
+    licenseNumber2.addEventListener('input', updateDisplay);
+
+    // Sticky Bar + Dirty Tracking setup
+    setupStickyBar();
+    updateSaveButtonState();
 
     console.log(`[Perf] Phase 1 (Sync UI) completed in ${(performance.now() - tPageStart).toFixed(1)}ms`);
 
@@ -174,6 +367,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 customerSearchGroup.style.display = 'block';
             }
+            // Setup dirty tracking for new mode
+            setupDirtyTracking();
         } else {
             // 既存モード: マスタ + ライセンス + 履歴 + 顧客を並列で取得
             const cIdParam = getUrlParameter('customer_id');
@@ -215,16 +410,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // ライセンスデータをフォームに反映
                 loadData(licenseData);
                 if (btnDelete) btnDelete.style.display = 'inline-block';
+                if (stickyBtnDelete) stickyBtnDelete.style.display = 'inline-block';
 
                 console.log(`[Perf] License data loaded in ${(performance.now() - t2Start).toFixed(1)}ms`);
 
-                // 履歴と顧客を並列で取得（ライセンスデータに依存するため後続処理）
                 const licenseIdNum = licenseData.license_id || parseInt(currentId);
 
                 const historyPromise = loadHistoryAsync(licenseIdNum);
                 const customerPromise = loadCustomerAsync(licenseData.customer_id);
 
                 await Promise.all([historyPromise, customerPromise]);
+
+                // Setup dirty tracking after all data loaded
+                setupDirtyTracking();
 
                 console.log(`[Perf] All Phase 2 data loaded in ${(performance.now() - t2Start).toFixed(1)}ms`);
             } catch (err) {
@@ -407,15 +605,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function loadHistory(lId) {
         const hist = licenseHistory.filter(h => h.license_id === lId).sort((a, b) => new Date(b.change_date) - new Date(a.change_date));
-        historyBody.innerHTML = hist.length ? '' : '<tr><td colspan="5" style="text-align:center">履歴なし</td></tr>';
+        historyBody.innerHTML = hist.length ? '' : '<tr><td colspan="3" style="text-align:center">履歴なし</td></tr>';
         hist.forEach(h => {
             const s = staffMembers.find(st => st.staff_id === h.changed_by);
+            const name = s ? s.staff_name : '不明';
+            const content = `${h.change_type}｜${name}${h.comment ? ` 「${h.comment}」` : ''}`;
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${formatToJST(h.change_date)}</td>
-                <td>${h.change_type}</td>
-                <td>${s ? s.staff_name : '不明'}</td>
-                <td>${h.comment || '-'}</td>
+                <td>${content}</td>
                 <td style="text-align:center;">
                     <button type="button" class="btn-icon btn-delete-history" data-id="${h._docId}" style="color:var(--danger, #ef4444); background:none; border:none; cursor:pointer; padding:4px;" title="履歴削除">
                         <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
@@ -429,12 +627,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             historyBody.appendChild(tr);
         });
 
-        // Re-initialize lucide icons for the newly added buttons
         if (typeof lucide !== 'undefined') {
-            lucide.createIcons({
-                root: historyBody
-            });
+            lucide.createIcons({ root: historyBody });
         }
+
+        // Update header last history
+        renderHeaderLastHistory();
     }
 
     function initAutocomplete() {
@@ -516,6 +714,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await saveToFirestore('customer_licenses', docIdToSave, data);
             }
             showToast('保存しました', 'success');
+            resetDirtyState();
+
+            // If was new mode, switch to edit mode
+            if (isNewMode) {
+                applyEditMode(false);
+                updateDisplay();
+                setupDirtyTracking();
+            }
         } catch (err) {
             console.error('保存失敗:', err);
             alert('保存失敗: ' + err.message);
@@ -558,6 +764,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             showToast('履歴を追加しました', 'success');
             loadHistory(parseInt(currentId));
+            resetDirtyState();
         } catch (e) {
             console.error('履歴追加エラー:', e);
             alert('履歴追加失敗: ' + e.message);
