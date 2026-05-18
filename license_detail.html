@@ -19,9 +19,10 @@
     <style>
         /* Local overrides for license detail */
         .form-section-title {
-            font-size: 13pt;
-            font-weight: 600;
-            margin-bottom: 20px;
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            margin-top: 28px;
             padding-bottom: 8px;
             border-bottom: 1px solid var(--border-color);
             color: var(--text-main);
@@ -80,10 +81,10 @@
 
         /* === License Status Header === */
         .license-header {
-            padding: 16px 20px;
+            padding: 18px 22px;
             border-radius: 8px;
             margin-bottom: 24px;
-            border-left: 4px solid var(--primary);
+            border-left: 5px solid var(--primary);
             background: #ebf4ff;
         }
         .license-header.status-safe { border-left-color: var(--primary); background: #ebf4ff; }
@@ -95,21 +96,24 @@
             display: flex; align-items: center; justify-content: space-between;
             flex-wrap: wrap; gap: 8px;
         }
+        /* 第一視線: 許認可名＋番号 → +2pt / 700 */
         .license-header-title {
-            font-size: 1.05rem; font-weight: 600; color: var(--text-main);
+            font-size: 1.2rem; font-weight: 700; color: var(--text-main);
         }
         .license-header-badge {
-            display: inline-block; padding: 3px 10px; border-radius: 4px;
-            font-size: 0.8rem; font-weight: 700;
+            display: inline-block; padding: 3px 12px; border-radius: 4px;
+            font-size: 0.82rem; font-weight: 700;
         }
         .license-header-badge.badge-active { background: #dbeafe; color: #1e40af; }
         .license-header-badge.badge-expired-status { background: #fee2e2; color: #991b1b; }
         .license-header-badge.badge-cancelled { background: #f3f4f6; color: #6b7280; }
 
+        /* 第二視線: 期限危険性 → +1pt */
         .license-header-line2 {
-            margin-top: 6px; font-size: 0.85rem; color: var(--text-muted); font-weight: 500;
+            margin-top: 7px; font-size: 0.9rem; color: var(--text-muted); font-weight: 500;
             display: flex; gap: 16px; flex-wrap: wrap;
         }
+        /* 第三視線: 履歴 → 現状維持 */
         .license-header-line3 {
             margin-top: 4px; font-size: 0.8rem; color: var(--text-muted);
         }
@@ -130,10 +134,11 @@
             padding: 12px 16px; background: #f8fafc; border-radius: 8px;
             margin-bottom: 16px;
         }
+        /* バッジ: +1pt */
         .expiry-badge {
             display: inline-flex; align-items: center; gap: 6px;
             padding: 6px 14px; border-radius: 20px;
-            font-size: 0.85rem; font-weight: 600;
+            font-size: 0.9rem; font-weight: 600;
         }
         .expiry-badge.badge-safe { background: #dbeafe; color: #1e40af; }
         .expiry-badge.badge-caution { background: #fef3c7; color: #92400e; }
@@ -141,11 +146,11 @@
         .expiry-badge.badge-expired { background: #991b1b; color: #fff; }
         .expiry-badge.badge-none { background: #f3f4f6; color: #6b7280; }
 
-        /* === Next Action === */
+        /* === Next Action: 太字化のみ（サイズ変更なし） === */
         .next-action-box {
             display: flex; align-items: flex-start; gap: 10px;
             padding: 12px 16px; border-radius: 8px; margin-bottom: 24px;
-            font-size: 0.9rem; font-weight: 500;
+            font-size: 0.9rem; font-weight: 600;
         }
         .next-action-box.action-safe { background: #ebf4ff; color: #1e40af; border-left: 3px solid var(--primary); }
         .next-action-box.action-caution { background: #fff9db; color: #92400e; border-left: 3px solid #f0ad4e; }
