@@ -461,6 +461,363 @@
             line-height: 1.6;
         }
 
+        /* ========================================
+         * 組織・連絡タブ 専用スタイル
+         * ======================================== */
+
+        /* --- セクション共通 --- */
+        .org-section {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px 24px;
+            margin-bottom: 16px;
+        }
+        .org-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .org-section-title {
+            font-size: 14pt;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .org-section-title .section-icon {
+            font-size: 16pt;
+        }
+        .org-section-title .section-count {
+            font-size: 11pt;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        /* --- 本店・代表連絡先カード --- */
+        .hq-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px 24px;
+        }
+        .hq-card-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px 40px;
+        }
+        .hq-address-block {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .hq-zip {
+            font-size: 11pt;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .hq-address-main {
+            font-size: 13pt;
+            font-weight: 600;
+            color: var(--text-main);
+            line-height: 1.5;
+        }
+        .hq-address-building {
+            font-size: 12pt;
+            color: var(--text-main);
+        }
+        .hq-contact-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 6px 0;
+            font-size: 12pt;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .hq-contact-row:last-child {
+            border-bottom: none;
+        }
+        .hq-contact-label {
+            color: var(--text-muted);
+            font-size: 10.5pt;
+            min-width: 80px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .hq-contact-value {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        .hq-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .btn-hq-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: #fff;
+            color: #475569;
+            font-size: 10.5pt;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-hq-action:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+        }
+
+        /* 閲覧/編集モード切替 */
+        .hq-view-mode { display: block; }
+        .hq-edit-mode { display: none; }
+        .hq-card.editing {
+            background: #f0f9ff;
+            border-color: #bae6fd;
+            box-shadow: 0 4px 6px -1px rgba(186, 230, 253, 0.5);
+            position: relative;
+        }
+        .hq-card.editing::before {
+            content: "✏ 編集中";
+            position: absolute;
+            top: -12px;
+            right: 20px;
+            background: #3b82f6;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 10pt;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        }
+        .hq-card.editing .hq-view-mode { display: none; }
+        .hq-card.editing .hq-edit-mode { display: block; }
+        .hq-edit-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px 20px;
+        }
+        .hq-edit-grid .form-group {
+            margin-bottom: 4px;
+        }
+        .hq-edit-grid .form-group label {
+            font-size: 10.5pt !important;
+            margin-bottom: 3px;
+        }
+        .hq-edit-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        /* --- 登記上所在地バッジ --- */
+        .badge-registry {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #dbeafe;
+            color: #1d4ed8;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 9.5pt;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        /* --- 追加ボタン (outline系) --- */
+        .btn-outline-add {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: #fff;
+            color: #475569;
+            font-size: 10.5pt;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-outline-add:hover {
+            background: #f0f9ff;
+            border-color: #3b82f6;
+            color: #2563eb;
+        }
+
+        /* --- 拠点・担当者テーブル強化 --- */
+        .org-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11.5pt;
+        }
+        .org-table th {
+            text-align: left;
+            padding: 8px 10px;
+            background: #f8fafc;
+            font-weight: 600;
+            color: #6b7280;
+            border-bottom: 2px solid var(--border-color);
+            font-size: 10.5pt;
+            white-space: nowrap;
+        }
+        .org-table td {
+            padding: 10px 10px;
+            border-bottom: 1px solid #f0f0f0;
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+        .org-table tbody tr {
+            transition: background 0.1s;
+            cursor: pointer;
+        }
+        .org-table tbody tr:hover {
+            background: #f0f7ff;
+        }
+        .org-table tbody tr.active-filter {
+            background: #eff6ff;
+            box-shadow: inset 3px 0 0 #3b82f6;
+        }
+        .org-table .cell-name {
+            font-weight: 600;
+        }
+        .org-table .cell-sub {
+            font-size: 10pt;
+            color: var(--text-muted);
+        }
+        .org-table .cell-contact-multi {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 11pt;
+        }
+        .org-table .cell-contact-multi .contact-line {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .org-table .cell-contact-multi .contact-icon {
+            font-size: 10pt;
+            color: var(--text-muted);
+            width: 16px;
+            text-align: center;
+        }
+        .org-table .cell-ops {
+            white-space: nowrap;
+            text-align: center;
+        }
+        .btn-row-edit {
+            background: none;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            color: #64748b;
+            font-size: 10pt;
+            transition: all 0.15s;
+        }
+        .btn-row-edit:hover {
+            background: #f1f5f9;
+            color: #334155;
+        }
+
+        /* --- 状態Badge --- */
+        .badge-status {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 9.5pt;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .badge-status-active { background: #dcfce7; color: #16a34a; }
+        .badge-status-suspended { background: #fef3c7; color: #d97706; }
+        .badge-status-closed { background: #fee2e2; color: #dc2626; }
+        .badge-status-provisional { background: #f3f4f6; color: #6b7280; }
+        .badge-status-primary { background: #dbeafe; color: #2563eb; }
+        .badge-status-retired { background: #f3f4f6; color: #9ca3af; }
+        .badge-status-retiring { background: #fef3c7; color: #d97706; }
+
+        /* --- 役割Badge --- */
+        .badge-role {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 9.5pt;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .badge-role-license { background: #dbeafe; color: #1d4ed8; }
+        .badge-role-billing { background: #dcfce7; color: #16a34a; }
+        .badge-role-accounting { background: #d1fae5; color: #059669; }
+        .badge-role-sales { background: #fef3c7; color: #d97706; }
+        .badge-role-representative { background: #ede9fe; color: #7c3aed; }
+        .badge-role-other { background: #f3f4f6; color: #6b7280; }
+
+        /* --- フィルタタグ --- */
+        .filter-tag-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .filter-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 10.5pt;
+            font-weight: 600;
+        }
+        .filter-tag-close {
+            cursor: pointer;
+            font-size: 12pt;
+            color: #93c5fd;
+            font-weight: 700;
+            transition: color 0.15s;
+            line-height: 1;
+        }
+        .filter-tag-close:hover {
+            color: #2563eb;
+        }
+
+        /* --- ヒントテキスト --- */
+        .org-hint {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: #f8fafc;
+            border-radius: 6px;
+            font-size: 10.5pt;
+            color: #64748b;
+            line-height: 1.5;
+        }
+        .org-hint .hint-icon {
+            font-size: 13pt;
+            flex-shrink: 0;
+        }
+
         /* --- レスポンシブ --- */
         @media (max-width: 1199px) {
             .customer-form-grid {
@@ -468,6 +825,9 @@
             }
             .summary-cards-grid {
                 grid-template-columns: repeat(2, 1fr);
+            }
+            .hq-edit-grid {
+                grid-template-columns: 1fr 1fr;
             }
         }
         @media (max-width: 767px) {
@@ -482,6 +842,12 @@
             }
             .customer-name-heading {
                 font-size: 16pt;
+            }
+            .hq-card-grid {
+                grid-template-columns: 1fr;
+            }
+            .hq-edit-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -706,14 +1072,13 @@
                 </div>
 
                 <form id="customer-form">
-                    <!-- Tabs（9タブ） -->
+                    <!-- Tabs（8タブ — 連絡先・住所+拠点・担当者 → 組織・連絡に統合） -->
                     <div class="tab-nav">
                         <button type="button" class="tab-btn active" data-tab="overview">概要</button>
                         <button type="button" class="tab-btn" data-tab="basic">基本情報</button>
                         <button type="button" class="tab-btn" data-tab="licenses">許認可</button>
                         <button type="button" class="tab-btn" data-tab="projects">申請案件</button>
-                        <button type="button" class="tab-btn" data-tab="contact">連絡先・住所</button>
-                        <button type="button" class="tab-btn" data-tab="offices">拠点・担当者</button>
+                        <button type="button" class="tab-btn" data-tab="organization">組織・連絡</button>
                         <button type="button" class="tab-btn" data-tab="billing">請求・売上</button>
                         <button type="button" class="tab-btn" data-tab="reports">帳票</button>
                         <button type="button" class="tab-btn" data-tab="history">履歴</button>
@@ -907,96 +1272,161 @@
                                 </div>
                             </div>
 
-                            <div id="tab-contact" class="tab-content">
-                                <h3 class="form-section-title">連絡先情報</h3>
-                                <!-- Row 1: Unified Linear Flow (Postal -> Search -> Address -> Building) -->
-                                <div
-                                    style="display: flex; gap: 16px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap;">
-                                    <!-- Postal Group: 140px + Button -->
-                                    <div class="form-group" style="margin-bottom: 0;">
-                                        <label for="postal_code">郵便番号</label>
-                                        <div style="display: flex; gap: 8px;">
-                                            <input type="text" id="postal_code" class="form-control"
-                                                placeholder="123-4567" maxlength="8"
-                                                style="width: 140px; flex: 0 0 140px;" data-validate="zip">
-                                            <button type="button" class="btn btn-secondary btn-sm" id="btn-lookup-zip"
-                                                style="white-space: nowrap;">検索</button>
+                            <!-- Tab Content: 組織・連絡（旧 連絡先・住所 + 拠点・担当者 を統合） -->
+                            <div id="tab-organization" class="tab-content">
+
+                                <!-- ===== セクション1: 本店・代表連絡先 ===== -->
+                                <div class="org-section">
+                                    <div class="org-section-header">
+                                        <h3 class="org-section-title">
+                                            <span class="section-icon">🏠</span> 本店・代表連絡先
+                                        </h3>
+                                        <button type="button" class="btn-panel-action" id="btn-hq-edit">✎ 編集</button>
+                                    </div>
+
+                                    <div class="hq-card" id="hq-card">
+                                        <!-- 閲覧モード -->
+                                        <div class="hq-view-mode" id="hq-view-mode">
+                                            <div id="hq-registry-badge-area" style="margin-bottom: 10px;"></div>
+                                            <div class="hq-card-grid">
+                                                <div class="hq-address-block">
+                                                    <div class="hq-zip">
+                                                        〒<span id="hq-zip-display">―</span>
+                                                        <button type="button" class="btn-hq-action" id="btn-copy-address" title="住所コピー">📋 住所コピー</button>
+                                                    </div>
+                                                    <div class="hq-address-main" id="hq-address-display">―</div>
+                                                    <div class="hq-address-building" id="hq-building-display"></div>
+                                                </div>
+                                                <div>
+                                                    <div class="hq-contact-row">
+                                                        <span class="hq-contact-label">📞 電話番号</span>
+                                                        <span class="hq-contact-value" id="hq-phone-display">―</span>
+                                                    </div>
+                                                    <div class="hq-contact-row">
+                                                        <span class="hq-contact-label">📠 FAX番号</span>
+                                                        <span class="hq-contact-value" id="hq-fax-display">―</span>
+                                                    </div>
+                                                    <div class="hq-contact-row">
+                                                        <span class="hq-contact-label">✉ メールアドレス</span>
+                                                        <span class="hq-contact-value" id="hq-email-display">―</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="hq-actions">
+                                                <button type="button" class="btn-hq-action" id="btn-open-map">🗺 地図を開く</button>
+                                            </div>
+                                        </div>
+
+                                        <!-- 編集モード -->
+                                        <div class="hq-edit-mode" id="hq-edit-mode">
+                                            <div class="hq-edit-grid">
+                                                <div class="form-group">
+                                                    <label for="postal_code">郵便番号</label>
+                                                    <div style="display: flex; gap: 8px;">
+                                                        <input type="text" id="postal_code" class="form-control"
+                                                            placeholder="123-4567" maxlength="8"
+                                                            style="width: 140px; flex: 0 0 140px;" data-validate="zip">
+                                                        <button type="button" class="btn btn-secondary btn-sm" id="btn-lookup-zip"
+                                                            style="white-space: nowrap;">検索</button>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group" style="grid-column: span 2;">
+                                                    <label for="address">住所</label>
+                                                    <input type="text" id="address" class="form-control">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="building_name">建物名</label>
+                                                    <input type="text" id="building_name" class="form-control">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="phone">電話番号</label>
+                                                    <input type="tel" id="phone" class="form-control" data-validate="tel">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="fax">FAX番号</label>
+                                                    <input type="tel" id="fax" class="form-control" data-validate="tel">
+                                                </div>
+                                                <div class="form-group" style="grid-column: span 2;">
+                                                    <label for="email">メールアドレス</label>
+                                                    <input type="email" id="email" class="form-control" data-validate="email">
+                                                </div>
+                                            </div>
+                                            <div class="hq-edit-actions">
+                                                <button type="button" class="btn btn-secondary btn-sm" id="btn-hq-cancel">キャンセル</button>
+                                                <button type="button" class="btn btn-save btn-sm" id="btn-hq-done">編集完了</button>
+                                            </div>
                                         </div>
                                     </div>
-                                    <!-- Address: Expanded to fill space -->
-                                    <div class="form-group" style="flex: 1; min-width: 300px; margin-bottom: 0;">
-                                        <label for="address">住所</label>
-                                        <input type="text" id="address" class="form-control">
+                                </div>
+
+                                <!-- ===== セクション2: 拠点一覧 ===== -->
+                                <div class="org-section">
+                                    <div class="org-section-header">
+                                        <h3 class="org-section-title">
+                                            <span class="section-icon">🏢</span> 拠点一覧
+                                            <span class="section-count" id="offices-count"></span>
+                                        </h3>
+                                        <button type="button" class="btn-outline-add" id="btn-add-office">＋ 拠点追加</button>
                                     </div>
-                                    <!-- Building: Fixed width to match Phone below -->
-                                    <div class="form-group" style="width: 328px; flex: 0 0 328px; margin-bottom: 0;">
-                                        <label for="building_name">建物名</label>
-                                        <input type="text" id="building_name" class="form-control">
+                                    <div class="table-responsive">
+                                        <table class="org-table" id="offices-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>区分</th>
+                                                    <th>拠点名</th>
+                                                    <th>住所</th>
+                                                    <th>電話番号</th>
+                                                    <th>主担当</th>
+                                                    <th>状態</th>
+                                                    <th style="width: 60px;">操作</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="offices-list-body"></tbody>
+                                        </table>
+                                    </div>
+                                    <div class="org-hint">
+                                        <span class="hint-icon">💡</span>
+                                        <span>拠点をクリックすると、下の「担当者一覧」を該当拠点で絞り込みます。</span>
                                     </div>
                                 </div>
 
-                                <!-- Row 2: Standard Contact Grid (FAX and Email use 1:2 ratio) -->
-                                <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr;">
-                                    <div class="form-group">
-                                        <label for="phone">電話番号</label>
-                                        <input type="tel" id="phone" class="form-control" data-validate="tel">
+                                <!-- ===== セクション3: 担当者一覧 ===== -->
+                                <div class="org-section">
+                                    <div class="org-section-header">
+                                        <h3 class="org-section-title">
+                                            <span class="section-icon">👤</span> 担当者一覧
+                                            <span class="section-count" id="contacts-count"></span>
+                                        </h3>
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <div class="filter-tag-bar" id="contact-filter-bar">
+                                                <!-- フィルタタグがJSで挿入される -->
+                                            </div>
+                                            <button type="button" class="btn-outline-add" id="btn-add-contact">＋ 担当者追加</button>
+                                        </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="fax">FAX番号</label>
-                                        <input type="tel" id="fax" class="form-control" data-validate="tel">
+                                    <div class="table-responsive">
+                                        <table class="org-table" id="contacts-table">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width: 20%;">氏名</th>
+                                                    <th style="width: 25%;">所属拠点</th>
+                                                    <th style="width: 35%;">連絡先</th>
+                                                    <th style="width: 10%;">状態</th>
+                                                    <th style="width: 10%;">操作</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="contacts-list-body"></tbody>
+                                        </table>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="email">メールアドレス</label>
-                                        <input type="email" id="email" class="form-control" data-validate="email">
+                                    <div class="org-hint">
+                                        <span class="hint-icon">💡</span>
+                                        <div>
+                                            <div>拠点を選択すると、担当者一覧が自動的に絞り込まれます。</div>
+                                            <div style="margin-top:4px;">担当者が退職した場合は状態を「退職」に変更してください。履歴は自動的に記録されます。</div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
-
-                            <!-- Tab Content: Offices & Contacts -->
-                            <div id="tab-offices" class="tab-content">
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                                    <h3 class="form-section-title" style="margin-bottom: 0; border: none;">拠点一覧</h3>
-                                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-office"
-                                        onclick="const cid = new URLSearchParams(window.location.search).get('id'); if(cid && cid !== 'new') location.href='office_detail.html?v='+Date.now()+'&customer_id='+cid+'&id=new'; else alert('先に顧客情報を保存してください');">
-                                        ＋ 拠点追加
-                                    </button>
-                                </div>
-                                <div class="table-responsive mb-4">
-                                    <table class="table-modern" id="offices-table">
-                                        <thead>
-                                            <tr>
-                                                <th>拠点名</th>
-                                                <th>住所</th>
-                                                <th>電話番号</th>
-                                                <th>状態</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="offices-list-body"></tbody>
-                                    </table>
                                 </div>
 
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; margin-top: 32px;">
-                                    <h3 class="form-section-title" style="margin-bottom: 0; border: none;">担当者一覧</h3>
-                                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-contact">
-                                        ＋ 担当者追加
-                                    </button>
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table-modern" id="contacts-table">
-                                        <thead>
-                                            <tr>
-                                                <th>氏名</th>
-                                                <th>所属拠点</th>
-                                                <th>役職</th>
-                                                <th>電話</th>
-                                                <th>状態</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="contacts-list-body"></tbody>
-                                    </table>
-                                </div>
                             </div>
 
                             <!-- Tab Content: Licenses -->

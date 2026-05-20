@@ -170,6 +170,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderRelatedCases(Number(currentCustomer.customer_id));
             }
         });
+
+        // 組織・連絡タブ: 本店・代表連絡先カードのイベント設定
+        setupHQCardEvents();
     }
 
     /* ===============================
@@ -419,6 +422,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateCustomerHeaderCard(currentCustomer);
             // 概要タブ更新
             updateOverviewTab(currentCustomer);
+            // 組織・連絡タブ: 本店・代表連絡先カード更新
+            renderHQInfoCard(currentCustomer);
         } catch(err) {
             console.error('Failed to load customer basic data', err);
         }
@@ -732,62 +737,384 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    /* ===============================
+       組織・連絡タブ — フィルタ状態
+    =============================== */
+    let contactFilterOfficeId = null; // 拠点フィルタ用
+
+    /* --- 拠点状態Badge ヘルパー --- */
+    function getOfficeStatusBadge(status) {
+        const map = {
+            '稼働中': { cls: 'badge-status-active', label: '稼働中' },
+            'active': { cls: 'badge-status-active', label: '稼働中' },
+            '有効': { cls: 'badge-status-active', label: '稼働中' },
+            '休止': { cls: 'badge-status-suspended', label: '休止' },
+            '注意': { cls: 'badge-status-suspended', label: '注意' },
+            '閉鎖': { cls: 'badge-status-closed', label: '閉鎖' },
+            'inactive': { cls: 'badge-status-closed', label: '閉鎖' },
+            '無効': { cls: 'badge-status-closed', label: '閉鎖' },
+            '仮登録': { cls: 'badge-status-provisional', label: '仮登録' },
+        };
+        const m = map[status] || { cls: 'badge-status-provisional', label: status || '―' };
+        return `<span class="badge-status ${m.cls}">${m.label}</span>`;
+    }
+
+    /* --- 担当者状態Badge ヘルパー --- */
+    function getContactStatusBadge(contact) {
+        if (contact.is_primary) return `<span class="badge-status badge-status-primary">主担当</span>`;
+        const map = {
+            '在籍': { cls: 'badge-status-active', label: '在籍' },
+            'active': { cls: 'badge-status-active', label: '在籍' },
+            '有効': { cls: 'badge-status-active', label: '在籍' },
+            '退職予定': { cls: 'badge-status-retiring', label: '退職予定' },
+            '退職': { cls: 'badge-status-retired', label: '退職' },
+            'inactive': { cls: 'badge-status-retired', label: '退職' },
+            '無効': { cls: 'badge-status-retired', label: '退職' },
+        };
+        const s = contact.status || '在籍';
+        const m = map[s] || { cls: 'badge-status-provisional', label: s };
+        return `<span class="badge-status ${m.cls}">${m.label}</span>`;
+    }
+
+    /* --- 役割Badge ヘルパー --- */
+    function getRoleBadge(role) {
+        if (!role || role === '') return '';
+        const map = {
+            '許認可窓口': 'badge-role-license',
+            '請求担当': 'badge-role-billing',
+            '経理担当': 'badge-role-accounting',
+            '営業窓口': 'badge-role-sales',
+            '代表窓口': 'badge-role-representative',
+            'その他': 'badge-role-other',
+        };
+        const cls = map[role] || 'badge-role-other';
+        return `<span class="badge-role ${cls}">${role}</span>`;
+    }
+
+    /* --- 拠点区分 ヘルパー --- */
+    function getOfficeTypeLabel(o) {
+        const type = o.office_type || (o.is_main ? '本社' : '営業所');
+        return type;
+    }
+
+    /* ===============================
+       本店・代表連絡先カード 描画
+    =============================== */
+    function renderHQInfoCard(data) {
+        if (!data) return;
+        const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '―'; };
+        setText('hq-zip-display', data.postal_code);
+        setText('hq-address-display', data.address);
+        setText('hq-building-display', data.building_name);
+        setText('hq-phone-display', data.phone);
+        setText('hq-fax-display', data.fax);
+        setText('hq-email-display', data.email);
+
+        // 登記上所在地バッジ — registered_office_id が null の場合は本店が登記上所在地
+        const badgeArea = document.getElementById('hq-registry-badge-area');
+        if (badgeArea) {
+            if (!data.registered_office_id) {
+                badgeArea.innerHTML = '<span class="badge-registry">🏢 登記上所在地</span>';
+            } else {
+                badgeArea.innerHTML = '';
+            }
+        }
+    }
+
+    function setupHQCardEvents() {
+        const hqCard = document.getElementById('hq-card');
+        const btnEdit = document.getElementById('btn-hq-edit');
+        const btnCancel = document.getElementById('btn-hq-cancel');
+        const btnDone = document.getElementById('btn-hq-done');
+        const btnCopy = document.getElementById('btn-copy-address');
+        const btnMap = document.getElementById('btn-open-map');
+
+        if (btnEdit) {
+            btnEdit.addEventListener('click', () => {
+                if (hqCard) hqCard.classList.add('editing');
+                btnEdit.textContent = '✎ 編集中...';
+                btnEdit.disabled = true;
+            });
+        }
+        if (btnCancel) {
+            btnCancel.addEventListener('click', () => {
+                if (hqCard) hqCard.classList.remove('editing');
+                if (btnEdit) { btnEdit.textContent = '✎ 編集'; btnEdit.disabled = false; }
+                // 元の値に戻す
+                if (currentCustomer) populateForm(currentCustomer);
+                renderHQInfoCard(currentCustomer);
+            });
+        }
+        if (btnDone) {
+            btnDone.addEventListener('click', () => {
+                if (hqCard) hqCard.classList.remove('editing');
+                if (btnEdit) { btnEdit.textContent = '✎ 編集'; btnEdit.disabled = false; }
+                // 閲覧カードを更新（input値を反映）
+                const getVal = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+                const viewData = {
+                    postal_code: getVal('postal_code'),
+                    address: getVal('address'),
+                    building_name: getVal('building_name'),
+                    phone: getVal('phone'),
+                    fax: getVal('fax'),
+                    email: getVal('email'),
+                    registered_office_id: currentCustomer ? currentCustomer.registered_office_id : null
+                };
+                renderHQInfoCard(viewData);
+            });
+        }
+        if (btnCopy) {
+            btnCopy.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const addr = (document.getElementById('hq-address-display')?.textContent || '') +
+                    ' ' + (document.getElementById('hq-building-display')?.textContent || '');
+                const fullAddr = `〒${document.getElementById('hq-zip-display')?.textContent || ''} ${addr}`.trim();
+                navigator.clipboard.writeText(fullAddr).then(() => {
+                    showToast('住所をコピーしました', 'success');
+                }).catch(() => {
+                    showToast('コピーに失敗しました', 'error');
+                });
+            });
+        }
+        if (btnMap) {
+            btnMap.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const addr = (document.getElementById('hq-address-display')?.textContent || '') +
+                    ' ' + (document.getElementById('hq-building-display')?.textContent || '');
+                if (addr.trim() && addr.trim() !== '―') {
+                    window.open(`https://www.google.com/maps/search/${encodeURIComponent(addr.trim())}`, '_blank');
+                } else {
+                    showToast('住所が設定されていません', 'error');
+                }
+            });
+        }
+
+        // 郵便番号検索
+        const btnLookupZip = document.getElementById('btn-lookup-zip');
+        if (btnLookupZip) {
+            btnLookupZip.addEventListener('click', async () => {
+                const zip = document.getElementById('postal_code').value.replace(/[^0-9]/g, '');
+                if (!/^\d{7}$/.test(zip)) {
+                    alert('郵便番号は7桁で入力してください。');
+                    return;
+                }
+                try {
+                    const response = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`);
+                    const data = await response.json();
+                    if (data.status === 200 && data.results) {
+                        const result = data.results[0];
+                        const address = result.address1 + result.address2 + result.address3;
+                        document.getElementById('address').value = address;
+                    } else {
+                        alert('該当する住所が見つかりませんでした。');
+                    }
+                } catch (error) {
+                    console.error('ZipCloud API Error:', error);
+                    alert('住所の取得に失敗しました。');
+                }
+            });
+        }
+    }
+
+    /* ===============================
+       拠点一覧 描画（リファクタリング済）
+    =============================== */
     function renderOffices(customerId) {
         if (!officesListBody) return;
         const related = offices.filter(o => Number(o.customer_id) === customerId);
         officesListBody.innerHTML = '';
 
+        // 件数表示
+        const countEl = document.getElementById('offices-count');
+        if (countEl) countEl.textContent = `（${related.length}件）`;
+
         if (related.length === 0) {
-            officesListBody.innerHTML = '<tr><td colspan="4" class="no-data-cell">拠点データがありません</td></tr>';
+            officesListBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; font-style:italic; padding:20px;">拠点データがありません</td></tr>';
             return;
         }
 
+        // 登記上所在地の office_id を取得
+        const registeredOfficeId = currentCustomer ? currentCustomer.registered_office_id : null;
+
         related.forEach(o => {
             const tr = document.createElement('tr');
+            const primaryContact = contacts.find(c => c.office_id === o.office_id && Number(c.customer_id) === customerId && c.is_primary);
+            const primaryName = primaryContact ? (primaryContact.contact_name || '名称未設定') : '<span style="color:#aaa;">-</span>';
+            
+            const typeLabel = getOfficeTypeLabel(o);
+            const isRegistered = (registeredOfficeId && registeredOfficeId === o.office_id);
+            const registryBadge = isRegistered ? ' <span class="badge-registry">🏢 登記上所在地</span>' : '';
+
+            // フィルタ中の行をハイライト
+            if (contactFilterOfficeId === o.office_id) {
+                tr.classList.add('active-filter');
+            }
+
             tr.innerHTML = `
-                <td style="font-weight: 600;">${o.office_name || '-'}</td>
+                <td>${typeLabel}${registryBadge}</td>
+                <td class="cell-name">${o.office_name || '-'}</td>
                 <td>${o.address || '-'}</td>
                 <td>${o.phone || '-'}</td>
-                <td><span class="badge ${o.status === 'active' ? 'status-junin' : 'status-torisage'}">${o.status === 'active' ? '有効' : (o.status === 'inactive' ? '無効' : (o.status || '-'))}</span></td>
+                <td>${primaryName}</td>
+                <td>${getOfficeStatusBadge(o.status)}</td>
+                <td class="cell-ops">
+                    <button type="button" class="btn-row-edit" data-office-id="${o.office_id}" title="編集">✎</button>
+                </td>
             `;
-            tr.style.cursor = 'pointer';
-            tr.addEventListener('click', () => {
-                window.location.href = `office_detail.html?customer_id=${customerId}&id=${o.office_id}`;
+
+            // 行クリック → 担当者フィルタ
+            tr.addEventListener('click', (e) => {
+                if (e.target.closest('.btn-row-edit')) return; // 編集ボタンは別処理
+                if (contactFilterOfficeId === o.office_id) {
+                    // 同じ拠点を再クリック → フィルタ解除
+                    contactFilterOfficeId = null;
+                } else {
+                    contactFilterOfficeId = o.office_id;
+                }
+                renderOffices(customerId); // ハイライト更新
+                renderContacts(customerId); // フィルタ適用
             });
+
             officesListBody.appendChild(tr);
         });
+
+        // 編集ボタンのイベント
+        officesListBody.querySelectorAll('.btn-row-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const oId = btn.dataset.officeId;
+                window.location.href = `office_detail.html?customer_id=${customerId}&id=${oId}`;
+            });
+        });
+
+        // 拠点追加ボタンのイベント
+        const btnAddOffice = document.getElementById('btn-add-office');
+        if (btnAddOffice && !btnAddOffice.dataset.bound) {
+            btnAddOffice.dataset.bound = 'true';
+            btnAddOffice.addEventListener('click', () => {
+                const cid = new URLSearchParams(window.location.search).get('id');
+                if (cid && cid !== 'new') {
+                    location.href = `office_detail.html?v=${Date.now()}&customer_id=${cid}&id=new`;
+                } else {
+                    alert('先に顧客情報を保存してください');
+                }
+            });
+        }
+
+        if (lastVisibleDoc.offices && related.length >= 20) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td colspan="7" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreOffices(${customerId})">もっと見る</button></td>`;
+            officesListBody.appendChild(tr);
+        }
     }
 
+    /* ===============================
+       担当者一覧 描画（リファクタリング済）
+    =============================== */
     function renderContacts(customerId) {
         if (!contactsListBody) return;
-        const related = contacts.filter(c => Number(c.customer_id) === customerId);
+        let related = contacts.filter(c => Number(c.customer_id) === customerId);
+
+        // フィルタタグ描画
+        const filterBar = document.getElementById('contact-filter-bar');
+        if (filterBar) {
+            if (contactFilterOfficeId !== null) {
+                const filterOffice = offices.find(o => o.office_id === contactFilterOfficeId);
+                const filterName = filterOffice ? filterOffice.office_name : `拠点ID: ${contactFilterOfficeId}`;
+                filterBar.innerHTML = `<span class="filter-tag">${filterName} <span class="filter-tag-close" id="btn-clear-filter">&times;</span></span>`;
+                // ×クリックでフィルタ解除
+                const clearBtn = document.getElementById('btn-clear-filter');
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', () => {
+                        contactFilterOfficeId = null;
+                        renderOffices(customerId);
+                        renderContacts(customerId);
+                    });
+                }
+                // フィルタ適用
+                related = related.filter(c => c.office_id === contactFilterOfficeId);
+            } else {
+                filterBar.innerHTML = '';
+            }
+        }
+
+        // 件数表示
+        const countEl = document.getElementById('contacts-count');
+        const totalCount = contacts.filter(c => Number(c.customer_id) === customerId).length;
+        if (countEl) {
+            if (contactFilterOfficeId !== null) {
+                countEl.textContent = `（${related.length}/${totalCount}件）`;
+            } else {
+                countEl.textContent = `（${totalCount}件）`;
+            }
+        }
+
         contactsListBody.innerHTML = '';
 
         if (related.length === 0) {
-            contactsListBody.innerHTML = '<tr><td colspan="5" class="no-data-cell">担当者データがありません</td></tr>';
+            const msg = contactFilterOfficeId !== null ? 'この拠点に所属する担当者はいません' : '担当者データがありません';
+            contactsListBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#999; font-style:italic; padding:20px;">${msg}</td></tr>`;
             return;
         }
 
         related.forEach(c => {
             const officeName = offices.find(o => o.office_id === c.office_id && Number(o.customer_id) === customerId)?.office_name || '-';
             const tr = document.createElement('tr');
+
+            // 連絡先統合表示（電話 + メール をシンプルな2段構成に）
+            let contactCell = '<div style="padding: 6px 0; line-height: 1.5; font-size: 11pt;">';
+            if (c.phone) {
+                contactCell += `<div style="color: var(--text-main);">${c.phone}</div>`;
+            } else if (c.mobile) {
+                contactCell += `<div style="color: var(--text-main);">${c.mobile} (携)</div>`;
+            }
+            
+            if (c.email) {
+                contactCell += `<div><a href="mailto:${c.email}" style="color: #2563eb; text-decoration: none;">${c.email}</a></div>`;
+            } else if (!c.phone && !c.mobile) {
+                contactCell += '<span style="color:#999;">―</span>';
+            }
+            contactCell += '</div>';
+
             tr.innerHTML = `
-                <td style="font-weight: 600;">${c.contact_name || '-'}</td>
+                <td class="cell-name">${c.contact_name || '-'}</td>
                 <td>${officeName}</td>
-                <td>${c.title || '-'}</td>
-                <td>${c.phone || '-'}</td>
-                <td><span class="badge ${(c.status === 'active' || c.status === '在籍') ? 'status-junin' : 'status-torisage'}">${c.status === 'active' ? '有効' : (c.status === 'inactive' ? '無効' : (c.status || '-'))}</span></td>
+                <td>${contactCell}</td>
+                <td>${getContactStatusBadge(c)}</td>
+                <td class="cell-ops">
+                    <button type="button" class="btn-row-edit" data-contact-id="${c.contact_id}" title="編集">✎</button>
+                </td>
             `;
-            tr.style.cursor = 'pointer';
-            tr.addEventListener('click', () => {
-                window.location.href = `contact_detail.html?customer_id=${customerId}&id=${c.contact_id}`;
-            });
+
             contactsListBody.appendChild(tr);
         });
 
+        // 編集ボタンのイベント
+        contactsListBody.querySelectorAll('.btn-row-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const cId = btn.dataset.contactId;
+                window.location.href = `contact_detail.html?customer_id=${customerId}&id=${cId}`;
+            });
+        });
+
+        // 担当者追加ボタンのイベント
+        const btnAddContact = document.getElementById('btn-add-contact');
+        if (btnAddContact && !btnAddContact.dataset.bound) {
+            btnAddContact.dataset.bound = 'true';
+            btnAddContact.addEventListener('click', () => {
+                const cid = new URLSearchParams(window.location.search).get('id');
+                if (cid && cid !== 'new') {
+                    location.href = `contact_detail.html?customer_id=${cid}&id=new`;
+                } else {
+                    alert('先に顧客情報を保存してください');
+                }
+            });
+        }
+
         if (lastVisibleDoc.contacts && related.length >= 20) {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td colspan="5" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreContacts(${customerId})">もっと見る <i data-lucide="chevron-down"></i></button></td>`;
+            tr.innerHTML = `<td colspan="6" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreContacts(${customerId})">もっと見る</button></td>`;
             contactsListBody.appendChild(tr);
             if (window.lucide) lucide.createIcons();
         }

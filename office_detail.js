@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentOffice = null;
     let officeIdParam = null;
     let customerId = null;
+    let currentCustomerDoc = null;
 
     // =========================================================
     //  Phase 1: 同期UI初期化 — ブロッキングなし、即時描画
@@ -96,6 +97,17 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadAllData() {
         const t2Start = performance.now();
 
+        try {
+            // Fetch Customer Document to get registered_office_id
+            const custSnap = await db.collection('customers').where('customer_id', '==', customerId).limit(1).get();
+            if (!custSnap.empty) {
+                currentCustomerDoc = custSnap.docs[0].data();
+                currentCustomerDoc.docId = custSnap.docs[0].id;
+            }
+        } catch (e) {
+            console.error('Failed to fetch customer data', e);
+        }
+
         if (officeIdParam === 'new') {
             try {
                 const nextId = await getNextSequence('offices');
@@ -133,82 +145,103 @@ document.addEventListener('DOMContentLoaded', () => {
         const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
 
         setVal('office_name', data.office_name || '');
-        const isMainEl = document.getElementById('is_main');
-        if (isMainEl) isMainEl.checked = !!data.is_main;
+        
+        const isRegisteredData = currentCustomerDoc && currentCustomerDoc.registered_office_id === data.office_id;
+
         setVal('postal_code', data.postal_code || '');
         setVal('address', data.address || '');
         setVal('building_name', data.building_name || '');
         setVal('phone', data.phone || '');
         setVal('fax', data.fax || '');
-        setVal('status', data.status || '有効');
+        setVal('email', data.email || '');
+        setVal('status', data.status || '稼働中');
         setVal('remarks', data.remarks || '');
+
+        // 登記上所在地のラジオボタン反映
+        const radReg = document.querySelector('input[name="registry_type"][value="registered"]');
+        const radNorm = document.querySelector('input[name="registry_type"][value="normal"]');
+        if (isRegisteredData && radReg) radReg.checked = true;
+        else if (radNorm) radNorm.checked = true;
     }
 
     async function handleSave(e) {
         if (e) e.preventDefault();
-
-        const isMainEl = document.getElementById('is_main');
-        const isMain = isMainEl ? isMainEl.checked : false;
         const now = new Date().toISOString();
 
-        const updatedData = {
-            customer_id: customerId,
-            office_name: document.getElementById('office_name').value.trim(),
-            is_main: isMain,
-            postal_code: document.getElementById('postal_code').value.trim(),
-            address: document.getElementById('address').value.trim(),
-            building_name: document.getElementById('building_name').value.trim(),
-            phone: document.getElementById('phone').value.trim(),
-            fax: document.getElementById('fax').value.trim(),
-            status: document.getElementById('status').value,
-            remarks: document.getElementById('remarks').value.trim(),
-            last_updated: now
-        };
+        if (btnSave) btnSave.disabled = true;
 
         try {
-            debugLog(`Saving: OfficeID=${officeIdParam}, CustomerID=${customerId}, Name=${updatedData.office_name}`);
+            const isRegisteredSelected = (document.querySelector('input[name="registry_type"]:checked')?.value === 'registered');
+            let targetOfficeId = officeIdParam === 'new' ? null : parseInt(officeIdParam);
 
-            if (isMain) {
-                const snapshot = await db.collection('offices')
-                    .where('customer_id', '==', customerId)
-                    .where('is_main', '==', true)
-                    .get();
+            if (officeIdParam === 'new') {
+                targetOfficeId = parseInt(form ? form.dataset.newId : 0);
+                if (!targetOfficeId) targetOfficeId = await getNextSequence('offices');
+            }
 
-                const batch = db.batch();
-                let hasUpdates = false;
-                snapshot.forEach(doc => {
-                    const isSelf = officeIdParam !== 'new' && doc.id === `office_${officeIdParam}`;
-                    if (!isSelf) {
-                        batch.update(doc.ref, { is_main: false });
-                        hasUpdates = true;
+            const updatedData = {
+                customer_id: customerId,
+                office_name: document.getElementById('office_name').value.trim(),
+                postal_code: document.getElementById('postal_code').value.trim(),
+                address: document.getElementById('address').value.trim(),
+                building_name: document.getElementById('building_name').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                fax: document.getElementById('fax').value.trim(),
+                email: document.getElementById('email') ? document.getElementById('email').value.trim() : '',
+                status: document.getElementById('status').value,
+                remarks: document.getElementById('remarks').value.trim(),
+                last_updated: now
+            };
+
+            debugLog(`Saving: OfficeID=${targetOfficeId}, CustomerID=${customerId}, Name=${updatedData.office_name}`);
+
+            const batch = db.batch();
+
+            // 登記上所在地の変更確認とCustomers更新バッチ
+            if (currentCustomerDoc && currentCustomerDoc.docId) {
+                if (isRegisteredSelected && currentCustomerDoc.registered_office_id !== targetOfficeId) {
+                    if (currentCustomerDoc.registered_office_id) {
+                        const oldSnap = await db.collection('offices').where('customer_id', '==', customerId).where('office_id', '==', currentCustomerDoc.registered_office_id).limit(1).get();
+                        let oldName = '他の拠点';
+                        if (!oldSnap.empty) oldName = oldSnap.docs[0].data().office_name || oldName;
+
+                        if (!confirm(`現在の登記上所在地：${oldName}\n\n${updatedData.office_name}へ変更しますか？`)) {
+                            if (btnSave) btnSave.disabled = false;
+                            return; // キャンセル
+                        }
                     }
-                });
-                if (hasUpdates) {
-                    await batch.commit();
+                    batch.update(db.collection('customers').doc(currentCustomerDoc.docId), { registered_office_id: targetOfficeId });
+                    currentCustomerDoc.registered_office_id = targetOfficeId; // ローカル状態更新
+                } else if (!isRegisteredSelected && currentCustomerDoc.registered_office_id === targetOfficeId) {
+                    batch.update(db.collection('customers').doc(currentCustomerDoc.docId), { registered_office_id: null });
+                    currentCustomerDoc.registered_office_id = null;
                 }
             }
 
             if (officeIdParam === 'new') {
-                let newId = parseInt(form ? form.dataset.newId : 0);
-                if (!newId) newId = await getNextSequence('offices');
-
-                updatedData.office_id = newId;
+                updatedData.office_id = targetOfficeId;
                 updatedData.created_date = now;
-                await saveToFirestore('offices', `office_${newId}`, updatedData);
+                const docRef = db.collection('offices').doc(`office_${targetOfficeId}`);
+                batch.set(docRef, updatedData);
 
-                officeIdParam = newId.toString();
+                officeIdParam = targetOfficeId.toString();
                 currentOffice = updatedData;
-                history.replaceState(null, '', `?customer_id=${customerId}&id=${newId}`);
+                history.replaceState(null, '', `?customer_id=${customerId}&id=${targetOfficeId}`);
             } else {
-                const oId = parseInt(officeIdParam);
-                updatedData.office_id = oId;
-                await saveToFirestore('offices', `office_${oId}`, { ...currentOffice, ...updatedData });
+                updatedData.office_id = targetOfficeId;
+                const docRef = db.collection('offices').doc(`office_${targetOfficeId}`);
+                batch.update(docRef, updatedData);
             }
 
+            await batch.commit();
             showToast('保存しました', 'success');
+
         } catch (err) {
             console.error(err);
             debugLog('<span style="color:red">保存失敗: ' + err.message + '</span>');
+            showToast('保存に失敗しました', 'error');
+        } finally {
+            if (btnSave) btnSave.disabled = false;
         }
     }
 

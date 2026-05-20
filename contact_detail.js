@@ -187,12 +187,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     .where('is_primary', '==', true)
                     .get();
 
+                let existingPrimaryNames = [];
+                let existingPrimaryDocs = [];
+
                 otherPrimarySnap.forEach(doc => {
                     const d = doc.data();
                     if (contactIdParam === 'new' || d.contact_id !== parseInt(contactIdParam)) {
-                        batch.update(doc.ref, { is_primary: false });
+                        existingPrimaryNames.push(d.contact_name || '名称未設定');
+                        existingPrimaryDocs.push(doc);
                     }
                 });
+
+                if (existingPrimaryNames.length > 0) {
+                    const confirmMsg = `現在の主担当：\n${existingPrimaryNames.join(', ')}\n\n${contactName}へ変更しますか？`;
+                    if (!confirm(confirmMsg)) {
+                        if (btnSave) btnSave.disabled = false;
+                        return; // キャンセル時は保存処理を中断
+                    }
+                    // 承認されたら一括解除
+                    existingPrimaryDocs.forEach(doc => {
+                        batch.update(doc.ref, { is_primary: false });
+                    });
+                }
             }
 
             const updatedData = {
