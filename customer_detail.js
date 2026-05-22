@@ -70,27 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (customerIdParam === 'new') {
             customers = [];
             cases = []; offices = []; contacts = []; licenses = [];
-            hideListSections();
-            customerIdInput.value = '採番中...';
-            document.getElementById('page-title').textContent = '新規顧客登録';
-            const headerTitle = document.getElementById('header-title');
-            if (headerTitle) headerTitle.textContent = '顧客詳細：';
-            if (btnDelete) btnDelete.style.display = 'none';
-            // 新規時: ヘッダーカードを初期化
-            const nameDisp = document.getElementById('customer-name-display');
-            if (nameDisp) nameDisp.textContent = '新規顧客';
-            // サマリーカードは非表示（新規では意味がない）
-            const summaryCards = document.getElementById('summary-cards');
-            if (summaryCards) summaryCards.style.display = 'none';
-            // 新規時は基本情報タブをデフォルトに
-            const tabs = document.querySelectorAll('.tab-btn');
-            const contents = document.querySelectorAll('.tab-content');
-            tabs.forEach(t => t.classList.remove('active'));
-            contents.forEach(c => c.classList.remove('active'));
-            const basicTab = document.querySelector('[data-tab="basic"]');
-            const basicContent = document.getElementById('tab-basic');
-            if (basicTab) basicTab.classList.add('active');
-            if (basicContent) basicContent.classList.add('active');
+            updateScreenMode('new');
             
             // Wait for next ID but don't block basic UI
             getNextSequence('customers').then(nextId => {
@@ -143,10 +123,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Refresh Cache Event Listener
         const btnRefresh = document.getElementById('btn-refresh-cache');
         if (btnRefresh) {
-            btnRefresh.addEventListener('click', () => {
+            btnRefresh.addEventListener('click', async () => {
                 if (customerIdParam !== 'new') {
                     window.AppCache.invalidate(`customer_${customerIdParam}`);
-                    loadAllSections(parseInt(customerIdParam));
+                    await refreshCustomerUI(parseInt(customerIdParam));
                 }
             });
         }
@@ -159,9 +139,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 2. Asynchronous Data Fetching Phase
         if (customerIdParam !== 'new') {
+            updateScreenMode('existing');
             const cId = !isNaN(customerIdParam) ? Number(customerIdParam) : customerIdParam;
-            // Fire & Forget background loaders
-            loadAllSections(cId);
+            // Fetch everything, wait for completion to avoid race conditions
+            await refreshCustomerUI(cId);
         }
         
         // Setup Sort Headers for cases (Sorting logic works on currently loaded cases array)
@@ -338,18 +319,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function renderErrorUI(containerId, retryCallback) {
-        const container = document.getElementById(containerId);
+    /**
+     * ページ上部統合警告バナーを表示
+     * @param {string} title - 警告タイトル
+     * @param {string} detail - 詳細メッセージ
+     * @param {boolean} isIndexError - Firestoreインデックス不足かどうか
+     */
+    function showPageWarning(title, detail, isIndexError = false) {
+        const container = document.getElementById('page-warning-container');
         if (!container) return;
-        container.innerHTML = `<tr><td colspan="10"><div class="section-error-ui">
-            ⚠️ データの取得に失敗しました<br>
-            <button type="button" class="btn-retry">再試行</button>
-        </div></td></tr>`;
-        const btn = container.querySelector('.btn-retry');
-        if (btn) btn.addEventListener('click', retryCallback);
+        const cssClass = isIndexError ? 'warning-index' : 'warning-error';
+        const icon = isIndexError ? '⚙️' : '⚠️';
+        container.innerHTML = `<div class="page-warning-banner ${cssClass}">
+            <span class="warning-icon">${icon}</span>
+            <div class="warning-body">
+                <div class="warning-title">${title}</div>
+                <div class="warning-detail">${detail}</div>
+            </div>
+            <button type="button" class="btn-warning-retry" id="btn-page-retry">再読み込み</button>
+        </div>`;
+        const btn = container.querySelector('#btn-page-retry');
+        if (btn) {
+            btn.addEventListener('click', async () => {
+                btn.disabled = true;
+                btn.textContent = '読み込み中...';
+                clearPageWarning();
+                if (currentCustomer && currentCustomer.customer_id) {
+                    await refreshCustomerUI(Number(currentCustomer.customer_id));
+                }
+            });
+        }
     }
 
-    async function loadAllSections(cId) {
+    /** ページ上部統合警告バナーを消去 */
+    function clearPageWarning() {
+        const container = document.getElementById('page-warning-container');
+        if (container) container.innerHTML = '';
+    }
+
+    async function loadAllSections(cId, options = {}) {
+        const { includeBasicData = false } = options;
+
         // Master data load if not cached (non-blocking)
         if (window.MasterDataManager) {
             window.MasterDataManager.loadAll().then(() => {
@@ -368,12 +378,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const tAllStart = performance.now();
+
+        // 前回の警告をクリア
+        clearPageWarning();
         
         // Parallel Async Fetching
         const promises = [
-            loadCustomerBasicData(cId).then(() => {
-                console.log(`[Perf] Basic Info loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
-            }),
             loadOffices(cId).then(() => {
                 console.log(`[Perf] Offices loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
             }),
@@ -388,12 +398,88 @@ document.addEventListener('DOMContentLoaded', async () => {
             })
         ];
 
-        // 全データ読み込み完了後にサマリーカード＋概要タブのリスト描画
-        Promise.allSettled(promises).then(() => {
-            renderSummaryCards(cId);
-            renderOverviewLists(cId);
-            console.log(`[Perf] All sections + summary loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
-        });
+        if (includeBasicData) {
+            promises.push(
+                loadCustomerBasicData(cId).then(() => {
+                    console.log(`[Perf] Basic Info loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+                })
+            );
+        }
+
+        // 全データ読み込み完了後に結果を検査
+        const results = await Promise.allSettled(promises);
+
+        // 失敗したセクションを集計
+        const failedResults = results.filter(r => r.status === 'rejected');
+        if (failedResults.length > 0) {
+            console.error('[CustomerDetail] Section load failures:', failedResults.map(r => r.reason));
+
+            const hasIndexError = failedResults.some(r =>
+                r.reason?.code === 'failed-precondition' ||
+                (r.reason?.message && r.reason.message.includes('requires an index'))
+            );
+
+            if (hasIndexError) {
+                showPageWarning(
+                    '初期設定中です',
+                    'データベース設定を適用中のため、数分後に再度お試しください。',
+                    true
+                );
+            } else {
+                showPageWarning(
+                    '一部データの読み込みに失敗しました',
+                    '再読み込みをお試しください。問題が続く場合は管理者にお問い合わせください。',
+                    false
+                );
+            }
+        }
+        
+        renderSummaryCards(cId);
+        renderOverviewLists(cId);
+        console.log(`[Perf] All sections + summary loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+    }
+
+    async function refreshCustomerUI(cId) {
+        await loadAllSections(cId, { includeBasicData: true });
+    }
+
+    function updateScreenMode(mode) {
+        if (mode === 'new') {
+            ['offices-table', 'contacts-table', 'licenses-table', 'related-cases-table'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const section = el.closest('.form-section') || el.closest('.org-section') || el.closest('.table-responsive');
+                if (section) section.style.display = 'none';
+            });
+            customerIdInput.value = '採番中...';
+            document.getElementById('page-title').textContent = '新規顧客登録';
+            const headerTitle = document.getElementById('header-title');
+            if (headerTitle) headerTitle.textContent = '顧客詳細：';
+            if (btnDelete) btnDelete.style.display = 'none';
+            const nameDisp = document.getElementById('customer-name-display');
+            if (nameDisp) nameDisp.textContent = '新規顧客';
+            const summaryCards = document.getElementById('summary-cards');
+            if (summaryCards) summaryCards.style.display = 'none';
+            
+            const tabs = document.querySelectorAll('.tab-btn');
+            const contents = document.querySelectorAll('.tab-content');
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            const basicTab = document.querySelector('[data-tab="basic"]');
+            const basicContent = document.getElementById('tab-basic');
+            if (basicTab) basicTab.classList.add('active');
+            if (basicContent) basicContent.classList.add('active');
+        } else if (mode === 'existing') {
+            ['offices-table', 'contacts-table', 'licenses-table', 'related-cases-table'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const section = el.closest('.form-section') || el.closest('.org-section') || el.closest('.table-responsive');
+                if (section) section.style.display = '';
+            });
+            if (btnDelete && isUserAdmin()) btnDelete.style.display = '';
+            const summaryCards = document.getElementById('summary-cards');
+            if (summaryCards) summaryCards.style.display = '';
+        }
     }
 
     async function loadCustomerBasicData(cId) {
@@ -430,88 +516,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function loadOffices(cId) {
-        try {
-            await executeTestHook(); // TEST HOOK
-            const snap = await db.collection('offices')
-                .where('customer_id', '==', cId)
-                .orderBy('updated_at', 'desc')
-                .limit(20)
-                .get();
-                
-            offices = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), _docId: d.id }));
-            if(snap.docs.length > 0) lastVisibleDoc.offices = snap.docs[snap.docs.length - 1];
+        await executeTestHook(); // TEST HOOK
+        const snap = await db.collection('offices')
+            .where('customer_id', '==', cId)
+            .orderBy('last_updated', 'desc')
+            .limit(20)
+            .get();
             
-            renderOffices(cId);
-        } catch(err) {
-            console.error('Failed to load offices', err);
-            renderErrorUI('offices-list-body', () => loadOffices(cId));
-        }
+        offices = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), _docId: d.id }));
+        if(snap.docs.length > 0) lastVisibleDoc.offices = snap.docs[snap.docs.length - 1];
+        
+        renderOffices(cId);
     }
 
     async function loadContacts(cId) {
-        try {
-            await executeTestHook(); // TEST HOOK
-            const snap = await db.collection('contacts')
-                .where('customer_id', '==', cId)
-                .orderBy('updated_at', 'desc')
-                .limit(20)
-                .get();
-                
-            contacts = snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
-            if(snap.docs.length > 0) lastVisibleDoc.contacts = snap.docs[snap.docs.length - 1];
+        await executeTestHook(); // TEST HOOK
+        const snap = await db.collection('contacts')
+            .where('customer_id', '==', cId)
+            .orderBy('last_updated', 'desc')
+            .limit(20)
+            .get();
             
-            renderContacts(cId);
-        } catch(err) {
-            console.error('Failed to load contacts', err);
-            renderErrorUI('contacts-list-body', () => loadContacts(cId));
-        }
+        contacts = snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
+        if(snap.docs.length > 0) lastVisibleDoc.contacts = snap.docs[snap.docs.length - 1];
+        
+        renderContacts(cId);
     }
 
     async function loadLicenses(cId) {
-        try {
-            await executeTestHook(); // TEST HOOK
-            const snap = await db.collection('customer_licenses')
-                .where('customer_id', '==', cId)
-                .orderBy('updated_at', 'desc')
-                .limit(20)
-                .get();
-                
-            licenses = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), _docId: d.id }));
-            lastVisibleDoc.licenses = snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null;
+        await executeTestHook(); // TEST HOOK
+        const snap = await db.collection('customer_licenses')
+            .where('customer_id', '==', cId)
+            .orderBy('last_updated', 'desc')
+            .limit(20)
+            .get();
             
-            renderLicenses(cId);
-        } catch(err) {
-            console.error('Failed to load licenses', err);
-            renderErrorUI('licenses-list-body', () => loadLicenses(cId));
-        }
+        licenses = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), _docId: d.id }));
+        lastVisibleDoc.licenses = snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null;
+        
+        renderLicenses(cId);
     }
 
     async function loadCases(cId) {
         const queryId = !isNaN(cId) ? Number(cId) : cId;
-        await DetailPageHelper.loadSection({
-            name: 'RelatedCases',
-            containerId: 'related-cases-body',
-            fetchFn: async () => {
-                await executeTestHook();
-                const snap = await db.collection('cases')
-                    .where('customer_id', '==', queryId)
-                    .orderBy('updated_at', 'desc')
-                    .limit(20)
-                    .get();
-                return {
-                    data: snap.docs.map(d => {
-                        const data = d.data({ serverTimestamps: 'estimate' });
-                        return data;
-                    }),
-                    lastDoc: snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null
-                };
-            },
-            renderFn: (result) => {
-                cases = result.data;
-                lastVisibleDoc.cases = result.lastDoc;
-                renderRelatedCases(cId);
-            }
-        });
+        await executeTestHook();
+        const snap = await db.collection('cases')
+            .where('customer_id', '==', queryId)
+            .orderBy('last_updated', 'desc')
+            .limit(20)
+            .get();
+        cases = snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
+        lastVisibleDoc.cases = snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null;
+        renderRelatedCases(cId);
     }
 
     // --- Load More Functions ---
@@ -521,7 +577,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(btn) { btn.innerHTML = '読み込み中...'; btn.disabled = true; }
         try {
             const snap = await db.collection('offices').where('customer_id', '==', cId)
-                .orderBy('updated_at', 'desc').startAfter(lastVisibleDoc.offices).limit(20).get();
+                .orderBy('last_updated', 'desc').startAfter(lastVisibleDoc.offices).limit(20).get();
             if(snap.docs.length > 0) {
                 const newDocs = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), _docId: d.id }));
                 offices.push(...newDocs);
@@ -540,7 +596,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(btn) { btn.innerHTML = '読み込み中...'; btn.disabled = true; }
         try {
             const snap = await db.collection('contacts').where('customer_id', '==', cId)
-                .orderBy('updated_at', 'desc').startAfter(lastVisibleDoc.contacts).limit(20).get();
+                .orderBy('last_updated', 'desc').startAfter(lastVisibleDoc.contacts).limit(20).get();
             if(snap.docs.length > 0) {
                 const newDocs = snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
                 contacts.push(...newDocs);
@@ -578,7 +634,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(btn) { btn.innerHTML = '読み込み中...'; btn.disabled = true; }
         try {
             const snap = await db.collection('cases').where('customer_id', '==', cId)
-                .orderBy('updated_at', 'desc').startAfter(lastVisibleDoc.cases).limit(20).get();
+                .orderBy('last_updated', 'desc').startAfter(lastVisibleDoc.cases).limit(20).get();
             if(snap.docs.length > 0) {
                 const newDocs = snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
                 cases.push(...newDocs);
@@ -591,13 +647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch(err) { console.error(err); alert('案件データの追加読み込みに失敗しました'); }
     }
 
-    function hideListSections() {
-        // 新規登録時はリストセクションを非表示
-        ['offices-table', 'contacts-table', 'licenses-table', 'related-cases-table'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.closest('.form-section').style.display = 'none';
-        });
-    }
+
 
     function initAdditionalDropdowns() {
         // 決算期（月）
@@ -1263,22 +1313,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (customerIdParam === 'new') {
                 updatedCustomer.created_date = now;
                 await saveToFirestore('customers', `cust_${newId}`, updatedCustomer);
-                // URLを更新し、内部状態を既存顧客モードに変更
+                
+                // Switch SPA state instead of reloading
                 history.replaceState(null, '', `?id=${newId}`);
                 customerIdParam = String(newId);
                 currentCustomer = updatedCustomer;
                 document.getElementById('page-title').textContent = '顧客詳細';
+                
+                // Initialize existing mode UI
+                updateScreenMode('existing');
+                // Fetch basic data (again) and other sections
+                await refreshCustomerUI(newId);
             } else {
                 await saveToFirestore('customers', `cust_${newId}`, { ...currentCustomer, ...updatedCustomer });
                 currentCustomer = { ...currentCustomer, ...updatedCustomer };
+                // Fetch latest data to refresh UI
+                await refreshCustomerUI(newId);
             }
             showToast('保存しました', 'success');
 
-            // 下記の行をコメントアウトして、一覧画面へのリダイレクトとアラートを抑止
-            // alert('保存完了しました。OKを押すと一覧に戻ります。');
-            // window.location.href = 'customer_list.html';
-
-            // 必要に応じてdirtyフラグを解除する処理をここに追加
             // if (typeof isDirty !== 'undefined') isDirty = false;
         } catch (err) {
             console.error(err);

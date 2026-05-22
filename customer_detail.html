@@ -850,6 +850,63 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* --- ページ上部統合警告バナー --- */
+        .page-warning-banner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            font-size: 11pt;
+            line-height: 1.5;
+            animation: fadeInWarning 0.3s ease-out;
+        }
+        .page-warning-banner.warning-index {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            color: #92400e;
+        }
+        .page-warning-banner.warning-error {
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            color: #991b1b;
+        }
+        .page-warning-banner .warning-icon {
+            font-size: 18pt;
+            flex-shrink: 0;
+        }
+        .page-warning-banner .warning-body {
+            flex: 1;
+        }
+        .page-warning-banner .warning-title {
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+        .page-warning-banner .warning-detail {
+            font-size: 10pt;
+            opacity: 0.85;
+        }
+        .page-warning-banner .btn-warning-retry {
+            padding: 6px 16px;
+            border: 1px solid currentColor;
+            border-radius: 6px;
+            background: transparent;
+            color: inherit;
+            font-size: 10.5pt;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .page-warning-banner .btn-warning-retry:hover {
+            background: rgba(0,0,0,0.05);
+        }
+        @keyframes fadeInWarning {
+            from { opacity: 0; transform: translateY(-8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 
@@ -997,6 +1054,9 @@
                         <span class="meta-item">法人番号：<strong id="corp-num-display">―</strong></span>
                     </div>
                 </div>
+
+                <!-- ページ上部統合警告バナー -->
+                <div id="page-warning-container"></div>
 
                 <!-- サマリーカード -->
                 <div class="summary-cards-grid" id="summary-cards">
