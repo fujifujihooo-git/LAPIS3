@@ -217,6 +217,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         const staff = staffMembers.find(s => s.staff_id === data.primary_staff_id);
         setText('ov-staff', staff ? staff.staff_name : null);
         setText('ov-remarks', data.remarks);
+
+        // 設立日: YYYY/MM/DD形式で表示
+        const foundedEl = document.getElementById('ov-founded');
+        if (foundedEl) {
+            if (data.founded_date) {
+                foundedEl.textContent = data.founded_date.replace(/-/g, '/');
+            } else {
+                foundedEl.textContent = '―';
+            }
+        }
+
+        // 資本金: 千円単位のカンマ区切り表示
+        const capitalEl = document.getElementById('ov-capital');
+        if (capitalEl) {
+            if (data.capital && Number(data.capital) > 0) {
+                capitalEl.textContent = Number(data.capital).toLocaleString() + ' 千円';
+            } else {
+                capitalEl.textContent = '―';
+            }
+        }
+
+        // 従業員数: 人単位で表示
+        const employeesEl = document.getElementById('ov-employees');
+        if (employeesEl) {
+            if (data.employee_count && Number(data.employee_count) > 0) {
+                employeesEl.textContent = Number(data.employee_count).toLocaleString() + ' 人';
+            } else {
+                employeesEl.textContent = '―';
+            }
+        }
     }
 
     /** サマリーカード4枚描画 */
@@ -283,7 +313,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (custLics.length === 0) {
                 licBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999;font-style:italic;padding:12px;">許認可データなし</td></tr>';
             } else {
-                licBody.innerHTML = custLics.slice(0, 5).map(l => {
+                // 期限リスク順ソート: 期限切れ(古い順) → 期限あり(近い順) → 期限なし(最後尾)
+                const MAX_DATE = new Date('9999-12-31');
+                const sortedLics = [...custLics].sort((a, b) => {
+                    const da = a.expiry_date ? (a.expiry_date.toDate ? a.expiry_date.toDate() : new Date(a.expiry_date)) : MAX_DATE;
+                    const db2 = b.expiry_date ? (b.expiry_date.toDate ? b.expiry_date.toDate() : new Date(b.expiry_date)) : MAX_DATE;
+                    return da - db2;
+                });
+                licBody.innerHTML = sortedLics.slice(0, 5).map(l => {
                     const type = licenseTypes.find(lt => lt.license_type_id === l.license_type_id);
                     const expDate = l.expiry_date ? (l.expiry_date.toDate ? l.expiry_date.toDate() : new Date(l.expiry_date)) : null;
                     const expStr = expDate ? expDate.toLocaleDateString('ja-JP') : '―';
@@ -305,11 +342,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (custCases.length === 0) {
                 caseBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999;font-style:italic;padding:12px;">案件データなし</td></tr>';
             } else {
-                caseBody.innerHTML = custCases.slice(0, 5).map(c => {
+                // 受任日（contract_date）で降順ソート
+                const sortedCases = [...custCases].sort((a, b) => {
+                    const da = a.contract_date ? (a.contract_date.toDate ? a.contract_date.toDate() : new Date(a.contract_date)) : new Date(0);
+                    const db2 = b.contract_date ? (b.contract_date.toDate ? b.contract_date.toDate() : new Date(b.contract_date)) : new Date(0);
+                    return db2 - da; // 降順
+                });
+
+                caseBody.innerHTML = sortedCases.slice(0, 5).map(c => {
                     const complDate = c.completion_date ? (c.completion_date.toDate ? c.completion_date.toDate() : new Date(c.completion_date)) : null;
                     const complStr = complDate ? complDate.toLocaleDateString('ja-JP') : '―';
+
+                    // 受任日のフォーマット（YYYY/MM/DD）
+                    const contDate = c.contract_date ? (c.contract_date.toDate ? c.contract_date.toDate() : new Date(c.contract_date)) : null;
+                    const contStr = contDate ? `${contDate.getFullYear()}/${String(contDate.getMonth() + 1).padStart(2, '0')}/${String(contDate.getDate()).padStart(2, '0')}` : '―';
+
                     return `<tr>
-                        <td>${c.license_type || '―'}</td>
+                        <td>
+                            <div style="font-weight: 600;">${c.license_type || '―'}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">${contStr === '―' ? '―' : contStr + ' 受任'}</div>
+                        </td>
                         <td><span class="status-badge">${c.status || '―'}</span></td>
                         <td>${c.amount ? Number(c.amount).toLocaleString() + '円' : '―'}</td>
                         <td>${complStr}</td>
@@ -1327,6 +1379,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 await saveToFirestore('customers', `cust_${newId}`, { ...currentCustomer, ...updatedCustomer });
                 currentCustomer = { ...currentCustomer, ...updatedCustomer };
+                // キャッシュ無効化 → 最新データで概要タブ等を再描画
+                if (window.AppCache) window.AppCache.invalidate(`customer_${newId}`);
                 // Fetch latest data to refresh UI
                 await refreshCustomerUI(newId);
             }

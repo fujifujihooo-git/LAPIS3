@@ -369,22 +369,34 @@
             border-collapse: collapse;
             font-size: 11pt;
         }
+        .info-readonly-table .group-header {
+            background: transparent;
+            color: #475569;
+            font-size: 10.5pt;
+            font-weight: 700;
+            padding: 16px 8px 4px;
+            border-bottom: 1px solid #cbd5e1;
+            letter-spacing: 0.05em;
+        }
+        .info-readonly-table tr:first-child .group-header {
+            padding-top: 4px;
+        }
         .info-readonly-table th {
             text-align: left;
-            padding: 5px 10px;
-            background: #f3f4f6;
-            color: #6b7280;
-            font-weight: 400;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 7px 10px;
+            background: #f8fafc;
+            color: #64748b;
+            font-weight: 500;
+            border-bottom: 1px solid #f1f5f9;
             white-space: nowrap;
-            width: 25%;
+            width: 15%;
         }
         .info-readonly-table td {
-            padding: 5px 10px;
-            color: #1f2937;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 7px 10px;
+            color: #0f172a;
+            border-bottom: 1px solid #f1f5f9;
             font-weight: 600;
-            width: 25%;
+            width: 35%;
             font-size: 12pt;
         }
         /* 概要タブ内ミニテーブル */
@@ -1041,7 +1053,6 @@
                 <div id="customer-header-card">
                     <div class="customer-header-top">
                         <h1 id="customer-name-display" class="customer-name-heading">―</h1>
-                        <span class="customer-favorite" id="btn-favorite" title="お気に入り">☆</span>
                     </div>
                     <div class="customer-meta-bar">
                         <span class="badge-customer-type" id="customer-type-badge">法人</span>
@@ -1158,15 +1169,21 @@
                                             </div>
                                             <table class="info-readonly-table" id="overview-basic-table">
                                                 <tbody>
+                                                    <tr>
+                                                        <td colspan="2" class="group-header">会社情報</td>
+                                                        <td colspan="2" class="group-header">連絡情報</td>
+                                                    </tr>
                                                     <tr><th>顧客名</th><td id="ov-name">―</td><th>電話番号</th><td id="ov-phone">―</td></tr>
                                                     <tr><th>フリガナ</th><td id="ov-kana">―</td><th>FAX番号</th><td id="ov-fax">―</td></tr>
                                                     <tr><th>代表者名</th><td id="ov-rep">―</td><th>メールアドレス</th><td id="ov-email">―</td></tr>
                                                     <tr><th>顧客区分</th><td id="ov-type">―</td><th>郵便番号</th><td id="ov-zip">―</td></tr>
                                                     <tr><th>決算期</th><td id="ov-fiscal">―</td><th>住所</th><td id="ov-addr">―</td></tr>
                                                     <tr><th>法人番号</th><td id="ov-corp">―</td><th>外務担当者</th><td id="ov-staff">―</td></tr>
-                                                    <tr><th>設立日</th><td id="ov-founded">―</td><th>紹介元</th><td id="ov-referral">―</td></tr>
-                                                    <tr><th>資本金</th><td id="ov-capital">―</td><th>メモ</th><td id="ov-memo-short">―</td></tr>
-                                                    <tr><th>従業員数</th><td id="ov-employees">―</td><th></th><td></td></tr>
+                                                    <tr><th>設立日</th><td id="ov-founded">―</td><th></th><td></td></tr>
+                                                    <tr>
+                                                        <td colspan="4" class="group-header">企業規模</td>
+                                                    </tr>
+                                                    <tr><th>資本金</th><td id="ov-capital">―</td><th>従業員数</th><td id="ov-employees">―</td></tr>
                                                 </tbody>
                                             </table>
                                         </div>
