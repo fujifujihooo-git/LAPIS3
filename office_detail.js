@@ -99,10 +99,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Fetch Customer Document to get registered_office_id
-            const custSnap = await db.collection('customers').where('customer_id', '==', customerId).limit(1).get();
-            if (!custSnap.empty) {
-                currentCustomerDoc = custSnap.docs[0].data();
-                currentCustomerDoc.docId = custSnap.docs[0].id;
+            const custDoc = await db.collection('customers').doc(`cust_${customerId}`).get();
+            if (custDoc.exists) {
+                currentCustomerDoc = custDoc.data();
+                currentCustomerDoc.docId = custDoc.id;
             }
         } catch (e) {
             console.error('Failed to fetch customer data', e);
@@ -234,6 +234,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             await batch.commit();
+            if (window.AppCache) {
+                window.AppCache.invalidate(`customer_${customerId}`);
+            }
             showToast('保存しました', 'success');
 
         } catch (err) {

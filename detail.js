@@ -696,7 +696,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 remarks: document.getElementById('remarks')?.value || '',
                 return_date: document.getElementById('return_date')?.value || '',
                 last_updated: new Date().toISOString(),
-                estimate_items: estimateItems
+                estimate_items: estimateItems,
+                estimated_fee: Number(document.getElementById('estimated_fee')?.value) || 0,
+                suspense_receipt_amount: Number(document.getElementById('suspense_receipt_amount')?.value) || 0
             };
 
             const batch = db.batch();

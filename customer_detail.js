@@ -325,9 +325,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const expDate = l.expiry_date ? (l.expiry_date.toDate ? l.expiry_date.toDate() : new Date(l.expiry_date)) : null;
                     const expStr = expDate ? expDate.toLocaleDateString('ja-JP') : '―';
                     const statusClass = l.status === '有効' ? 'badge-success-sm' : (l.status === '期限切れ' ? 'badge-danger-sm' : 'badge-warning-sm');
+                    const licenseNum = typeof formatLicenseNumber === 'function' ? formatLicenseNumber(l) : (l.license_number || '―');
                     return `<tr>
                         <td>${type ? type.license_type_name : '―'}</td>
-                        <td>${l.license_number || '―'}</td>
+                        <td>${licenseNum}</td>
                         <td>${expStr}</td>
                         <td><span class="${statusClass}">${l.status || '―'}</span></td>
                     </tr>`;
@@ -357,13 +358,38 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const contDate = c.contract_date ? (c.contract_date.toDate ? c.contract_date.toDate() : new Date(c.contract_date)) : null;
                     const contStr = contDate ? `${contDate.getFullYear()}/${String(contDate.getMonth() + 1).padStart(2, '0')}/${String(contDate.getDate()).padStart(2, '0')}` : '―';
 
+                    // 見積合計（税込）表示：
+                    // パターン1: total_amount フィールドが存在する場合はそのまま利用
+                    // パターン2: estimated_fee（税抜課税額）+ 消費税(10%) + suspense_receipt_amount（非課税額）で算出
+                    let totalEstimate;
+                    if (c.total_amount !== undefined && c.total_amount !== null && c.total_amount !== '') {
+                        totalEstimate = Number(c.total_amount);
+                    } else {
+                        const taxable = Number(c.estimated_fee || 0);
+                        const tax = Math.floor(taxable * 0.1);
+                        const nontaxable = Number(c.suspense_receipt_amount || 0);
+                        totalEstimate = taxable + tax + nontaxable;
+                    }
+                    const feeStr = totalEstimate > 0
+                        ? totalEstimate.toLocaleString() + ' 円'
+                        : '―';
+
+                    // ステータスバッジ：案件一覧(app.js)と同じ getStatusKey マッピングを使用
+                    const statusKeyMap = {
+                        '相談': 'sodan', '受任': 'junin', '作成中': 'sakusei',
+                        '作成完了': 'ready', '受付（受理）': 'uketuke', '補正': 'hosei',
+                        '完了': 'kanryo', '取下げ': 'torisage', '返却（県局）': 'henkyoku'
+                    };
+                    const statusKey = statusKeyMap[c.status] || 'sodan';
+                    const statusBadgeHtml = `<span class="badge status-${statusKey}">${c.status || '―'}</span>`;
+
                     return `<tr>
                         <td>
                             <div style="font-weight: 600;">${c.license_type || '―'}</div>
                             <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">${contStr === '―' ? '―' : contStr + ' 受任'}</div>
                         </td>
-                        <td><span class="status-badge">${c.status || '―'}</span></td>
-                        <td>${c.amount ? Number(c.amount).toLocaleString() + '円' : '―'}</td>
+                        <td>${statusBadgeHtml}</td>
+                        <td>${feeStr}</td>
                         <td>${complStr}</td>
                     </tr>`;
                 }).join('');
@@ -488,6 +514,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         renderSummaryCards(cId);
         renderOverviewLists(cId);
+
+        // [バッジ即時反映のための追加]
+        // 各データセクション（拠点リストなど）と基本情報（登記上所在地IDを含む）のロードは非同期かつ並列で走るため、
+        // 拠点一覧のロード（loadOffices）の時点で顧客基本情報のロード（loadCustomerBasicData）が未完了の場合、
+        // 登記上所在地バッジが描画されないタイミングが発生します。
+        // そのため、全セクションの並列ロード（Promise.allSettled）がすべて完了したこの最終段階で、
+        // 最新の顧客データと拠点データを用いて「登記上所在地」バッジを含む拠点一覧を確実に再描画します。
+        renderOffices(cId);
+
         console.log(`[Perf] All sections + summary loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
     }
 
@@ -562,6 +597,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateOverviewTab(currentCustomer);
             // 組織・連絡タブ: 本店・代表連絡先カード更新
             renderHQInfoCard(currentCustomer);
+
+            // [バッジ即時反映のための追加]
+            // 顧客データ（特に登記上所在地ID：registered_office_id）のロード完了後に、
+            // 拠点一覧を再描画して「登記上所在地」バッジを即時に反映させます。
+            renderOffices(cId);
         } catch(err) {
             console.error('Failed to load customer basic data', err);
         }
@@ -846,6 +886,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     /* --- 拠点状態Badge ヘルパー --- */
     function getOfficeStatusBadge(status) {
+        const s = status || '稼働中';
         const map = {
             '稼働中': { cls: 'badge-status-active', label: '稼働中' },
             'active': { cls: 'badge-status-active', label: '稼働中' },
@@ -857,7 +898,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             '無効': { cls: 'badge-status-closed', label: '閉鎖' },
             '仮登録': { cls: 'badge-status-provisional', label: '仮登録' },
         };
-        const m = map[status] || { cls: 'badge-status-provisional', label: status || '―' };
+        const m = map[s] || { cls: 'badge-status-provisional', label: s || '―' };
         return `<span class="badge-status ${m.cls}">${m.label}</span>`;
     }
 
@@ -1031,7 +1072,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (countEl) countEl.textContent = `（${related.length}件）`;
 
         if (related.length === 0) {
-            officesListBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; font-style:italic; padding:20px;">拠点データがありません</td></tr>';
+            officesListBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; font-style:italic; padding:20px;">拠点データがありません</td></tr>';
             return;
         }
 
@@ -1043,7 +1084,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const primaryContact = contacts.find(c => c.office_id === o.office_id && Number(c.customer_id) === customerId && c.is_primary);
             const primaryName = primaryContact ? (primaryContact.contact_name || '名称未設定') : '<span style="color:#aaa;">-</span>';
             
-            const typeLabel = getOfficeTypeLabel(o);
             const isRegistered = (registeredOfficeId && registeredOfficeId === o.office_id);
             const registryBadge = isRegistered ? ' <span class="badge-registry">🏢 登記上所在地</span>' : '';
 
@@ -1053,8 +1093,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             tr.innerHTML = `
-                <td>${typeLabel}${registryBadge}</td>
-                <td class="cell-name">${o.office_name || '-'}</td>
+                <td class="cell-name">${o.office_name || '-'}${registryBadge}</td>
                 <td>${o.address || '-'}</td>
                 <td>${o.phone || '-'}</td>
                 <td>${primaryName}</td>
@@ -1105,7 +1144,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (lastVisibleDoc.offices && related.length >= 20) {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td colspan="7" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreOffices(${customerId})">もっと見る</button></td>`;
+            tr.innerHTML = `<td colspan="6" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreOffices(${customerId})">もっと見る</button></td>`;
             officesListBody.appendChild(tr);
         }
     }
