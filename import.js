@@ -385,6 +385,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let cleanDoc = { ...doc };
                     delete cleanDoc._docId;
 
+                    // 顧客データにsearch_name/search_kanaを自動付与
+                    if (col === 'customers') {
+                        cleanDoc.search_name = generateSearchName(cleanDoc.customer_name);
+                        cleanDoc.search_kana = generateSearchKana(cleanDoc.customer_kana);
+                    }
+
                     const ref = db.collection(col).doc(docId);
                     currentBatch.set(ref, cleanDoc);
                     batchCount++;
@@ -406,6 +412,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let docId = doc._docId;
                     let cleanDoc = { ...doc };
                     delete cleanDoc._docId;
+
+                    // 顧客データにsearch_name/search_kanaを自動付与
+                    if (col === 'customers') {
+                        cleanDoc.search_name = generateSearchName(cleanDoc.customer_name);
+                        cleanDoc.search_kana = generateSearchKana(cleanDoc.customer_kana);
+                    }
 
                     const ref = db.collection(col).doc(docId);
                     currentBatch.set(ref, cleanDoc);

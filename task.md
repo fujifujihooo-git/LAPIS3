@@ -18,6 +18,47 @@
   - [x] `jsPDF` `jspdf-autotable` を用いた、クライアント完結型PDF自動生成ロジックの実装
   - [x] デザイン指定書（デザイン案02）に基づくPDFレイアウトの忠実な再現
 
+- [x] **顧客カルテ：対応履歴機能（顧客履歴）の実装**
+  - [x] `customer_histories` コレクション設計（`customer_id: Number`, `created_by_id`, `created_by_name` 二重保存方式）
+  - [x] 3カラムレイアウト（検索・一覧・詳細）の実装
+  - [x] モーダルによる履歴登録・編集・削除
+  - [x] 種別ラジオボタンの1行表示修正（flex-wrap: nowrap）
+  - [x] `customer_id` 型統一（Number型強制キャスト・`in` クエリ廃止）
+  - [x] 調査用デバッグログ（`[DEBUG_COMP]`, `[Perf]`等）の本番前クリーンアップ完了
+
+---
+
+## 🔥 インシデント記録（2026-06-17）
+
+### [INC-001] 対応履歴が画面に表示されない問題
+
+**症状**
+- Puppeteerテスト・DOM確認では `取得件数: 6件 / 描画件数: 6件` で成功
+- ユーザー実画面では対応履歴が一切表示されない
+
+**推定原因（未確定）**
+- `FirebaseError: The query requires an index` エラーが発生していたことは確定。
+- `where('customer_id') + where('deleted_at') + orderBy('response_date')` の組み合わせは Firestore 複合インデックスが必須。
+- `firestore.indexes.json` には定義済みであったが、本番Firestoreへの**デプロイが未実施だった可能性が高い**。
+- ただし、接続先が本番Firestoreかエミュレータかの切り分けが不十分（`hostname === "127.0.0.1"` の場合はエミュレータ接続になるはずだが、エミュレータ環境でインデックスエラーが出た明確な理由は解明されていない）。
+- ローカル環境でのFirestoreキャッシュ干渉、エミュレータの再起動不足、または接続先（本番/エミュレータ）の認識のズレといった、複数の環境要因が重なった可能性がある。
+
+**調査経緯**
+1. Firestore保存 → OK（データ存在確認済み）
+2. loadCustomerHistories() 取得件数 → OK（エミュレータ環境では正常）
+3. renderHistories() 描画件数 → OK（同上）
+4. ユーザー実画面 → NG（インデックスエラーで catch へ落下 → 履歴0件扱い）
+
+**修正内容**
+- `firebase deploy --only firestore:indexes` を実行し本番Firestoreにインデックスを反映
+- `orderBy` をクエリから除外しJS側ソートに変更（インデックス依存を排除・環境差異を吸収）
+- `firebase-config.js` の `enablePersistence()` をエミュレータ使用時は無効化（キャッシュ干渉防止）
+
+**再発防止策**
+- `firestore.indexes.json` を変更したら必ず `firebase deploy --only firestore:indexes` をデプロイチェックリストに含める
+- Firestoreの `where + where + orderBy` 複合クエリは、開発初期から `firestore.indexes.json` への登録とデプロイを徹底する
+- エミュレータでのみ動作確認して完了とみなさない（本番Firestoreでのインデックスエラーはエミュレータでは再現しない）
+
 ---
 
 ## 🚧 進行中・残りのタスク (To Do / In Progress)
@@ -35,6 +76,13 @@
 - [ ] アプリケーション全体のエラーハンドリング強化（Firestoreのクエリ上限時やネットワークエラー時のUI表示）
 - [ ] データ入力フォームのバリデーション強化（必須項目の漏れ防止、金額の半角数字固定など）
 
-### 4. クリーンアップ・リファクタリング
+### 4. 対応履歴機能の動作確認（ユーザー環境）
+- [x] 新規登録 → 一覧即時反映の確認
+- [x] 編集・削除の動作確認
+- [x] F5リロード後の再表示確認
+- [x] 顧客切替後の再表示確認（別顧客の履歴が混入しないこと）
+- [x] `response_date` 降順ソートの正確性確認（同日時データの並び）
+
+### 5. クリーンアップ・リファクタリング
 - [ ] `_BACKUP_BEFORE_REDESIGN` 等の一時退避用フォルダや、未使用になったコードの整理
 - [ ] コメントの整理とドキュメント（README等）の最新化

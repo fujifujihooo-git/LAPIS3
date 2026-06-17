@@ -13,14 +13,9 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=BIZ+UDGothic:wght@400;700&display=swap"
         rel="stylesheet">
-    <!-- Export Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+    <!-- Export Libraries (遅延ロード: exceljs, html2pdf, pdf-lib, fontkit はボタン押下時に動的ロード) -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <script src="https://unpkg.com/@pdf-lib/fontkit@0.0.4/dist/fontkit.umd.min.js"></script>
     <script src="report-system/report-engine/report_engine.js"></script>
     <script src="report-system/report-views/tax_certificate_view.js"></script>
     <script src="report-system/report-views/tax_certificate_national_view.js"></script>
@@ -919,6 +914,326 @@
             from { opacity: 0; transform: translateY(-8px); }
             to   { opacity: 1; transform: translateY(0); }
         }
+
+        /* ========================================
+         * 履歴タブ（3カラムレイアウト）スタイル
+         * ======================================== */
+        .history-layout {
+            display: flex;
+            gap: 20px;
+            min-height: 500px;
+            align-items: stretch;
+            margin-top: 12px;
+        }
+
+        .history-col {
+            background: #fff;
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .history-col-search {
+            width: 22%;
+            flex-shrink: 0;
+            justify-content: space-between;
+        }
+
+        .history-col-list {
+            width: 44%;
+            flex-shrink: 0;
+        }
+
+        .history-col-detail {
+            width: 34%;
+            flex-grow: 1;
+        }
+
+        .history-section-title {
+            font-size: 13pt;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color, #e2e8f0);
+            color: var(--text-main, #1e293b);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-count {
+            font-size: 11pt;
+            font-weight: 400;
+            color: #64748b;
+        }
+
+        /* 検索フォーム */
+        .history-col-search .form-group {
+            margin-bottom: 16px;
+        }
+        .history-col-search .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .checkbox-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13pt;
+            color: var(--text-main, #1e293b);
+            cursor: pointer;
+            margin-bottom: 0;
+            font-weight: 400;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .date-range-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .date-range-wrapper .form-control {
+            padding: 8px;
+            font-size: 12pt;
+        }
+
+        .range-separator {
+            color: #64748b;
+            font-size: 11pt;
+        }
+
+        .clear-btn-wrapper {
+            margin-top: 16px;
+            text-align: left;
+        }
+
+        .clear-search-link {
+            color: #64748b;
+            font-size: 12pt;
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+
+        .clear-search-link:hover {
+            color: var(--primary, #2563eb);
+            text-decoration: underline;
+        }
+
+        .register-btn-wrapper {
+            margin-top: auto;
+            border-top: 1px solid var(--border-color, #e2e8f0);
+            padding-top: 16px;
+        }
+
+        /* タイムライン一覧 */
+        .history-timeline {
+            flex-grow: 1;
+            overflow-y: auto;
+            max-height: 600px;
+            padding-right: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .no-history-message, .select-history-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 150px;
+            color: #94a3b8;
+            font-size: 12pt;
+            font-style: italic;
+            text-align: center;
+            border: 2px dashed #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .select-history-placeholder {
+            height: 250px;
+        }
+
+        .history-item {
+            display: flex;
+            gap: 16px;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .history-item:hover {
+            border-color: var(--primary, #2563eb);
+            background: #f8fafc;
+        }
+
+        .history-item.active {
+            border-color: var(--primary, #2563eb);
+            background: #eff6ff;
+            box-shadow: 0 0 0 1px var(--primary, #2563eb);
+        }
+
+        .history-item-icon-wrapper {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .history-type-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #fff;
+        }
+
+        /* 種別カラー定義 */
+        .type-color-phone { background-color: #22c55e; border: 2px solid #22c55e; } /* 緑 */
+        .type-color-mail { background-color: #a855f7; border: 2px solid #a855f7; } /* 紫 */
+        .type-color-visit { background-color: #f97316; border: 2px solid #f97316; } /* オレンジ */
+        .type-color-other { background-color: #64748b; border: 2px solid #64748b; } /* グレー */
+
+        .history-item-content {
+            flex-grow: 1;
+            min-width: 0;
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+
+        .history-item-date {
+            font-size: 10.5pt;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .history-item-author {
+            font-size: 10.5pt;
+            color: #64748b;
+        }
+
+        .history-item-subject {
+            font-size: 13pt;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-item-excerpt {
+            font-size: 12pt;
+            color: #64748b;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.4;
+        }
+
+        /* 履歴詳細 */
+        .history-detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color, #e2e8f0);
+        }
+
+        .history-detail-header .history-section-title {
+            margin-bottom: 0;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .history-detail-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .history-detail-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .detail-row {
+            display: flex;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 12px;
+            font-size: 13pt;
+        }
+
+        .detail-label {
+            width: 130px;
+            flex-shrink: 0;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            flex-grow: 1;
+            color: #1e293b;
+            line-height: 1.5;
+        }
+
+        .detail-value-content {
+            white-space: pre-wrap;
+            word-break: break-all;
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .detail-type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11pt;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        /* モーダル内ラジオボタン用調整 */
+        input[type="radio"] {
+            cursor: pointer;
+        }
     </style>
 </head>
 
@@ -1585,11 +1900,90 @@
 
                             <!-- Tab Content: 履歴 -->
                             <div id="tab-history" class="tab-content">
-                                <div class="tab-placeholder">
-                                    <div class="tab-placeholder-icon">📋</div>
-                                    <div class="tab-placeholder-title">対応履歴</div>
-                                    <div class="tab-placeholder-desc">
-                                        電話・メール・訪問等の対応履歴、書類送付記録、変更履歴をタイムラインで確認できます。
+                                <div class="history-layout">
+                                    <!-- 左カラム: 検索 -->
+                                    <div class="history-col history-col-search">
+                                        <div class="search-section">
+                                            <h4 class="history-section-title">検索条件</h4>
+                                            
+                                            <div class="form-group">
+                                                <label for="history-search-keyword">キーワード検索</label>
+                                                <div class="search-input-wrapper" style="position: relative;">
+                                                    <input type="text" id="history-search-keyword" class="form-control" placeholder="件名・内容を検索" style="padding-right: 32px;">
+                                                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none;">🔍</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>種別フィルタ</label>
+                                                <div class="checkbox-group">
+                                                    <label class="checkbox-label">
+                                                        <input type="checkbox" id="filter-type-all" checked> すべて
+                                                    </label>
+                                                    <label class="checkbox-label">
+                                                        <input type="checkbox" name="filter-type" value="電話"> 電話
+                                                    </label>
+                                                    <label class="checkbox-label">
+                                                        <input type="checkbox" name="filter-type" value="メール"> メール
+                                                    </label>
+                                                    <label class="checkbox-label">
+                                                        <input type="checkbox" name="filter-type" value="訪問"> 訪問
+                                                    </label>
+                                                    <label class="checkbox-label">
+                                                        <input type="checkbox" name="filter-type" value="その他"> その他
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>期間指定</label>
+                                                <div class="date-range-wrapper">
+                                                    <input type="date" id="history-search-start" class="form-control lapis-datepicker" placeholder="開始日">
+                                                    <span class="range-separator">〜</span>
+                                                    <input type="date" id="history-search-end" class="form-control lapis-datepicker" placeholder="終了日">
+                                                </div>
+                                            </div>
+
+                                            <div class="clear-btn-wrapper">
+                                                <a href="javascript:void(0)" id="btn-clear-history-search" class="clear-search-link">検索条件をクリア</a>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="register-btn-wrapper">
+                                            <button type="button" class="btn btn-save btn-block" id="btn-open-history-modal" style="width: 100%; justify-content: center; display: flex; align-items: center; gap: 8px;">
+                                                <i data-lucide="plus" style="width:18px; height:18px;"></i> 対応履歴を登録
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- 中央カラム: タイムライン一覧 -->
+                                    <div class="history-col history-col-list">
+                                        <div class="history-list-header">
+                                            <h4 class="history-section-title">対応履歴一覧 <span class="history-count" id="history-list-count">(0件)</span></h4>
+                                        </div>
+                                        <div class="history-timeline" id="history-timeline-container">
+                                            <div class="no-history-message">対応履歴はありません</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 右カラム: 履歴詳細 -->
+                                    <div class="history-col history-col-detail">
+                                        <div class="history-detail-header">
+                                            <h4 class="history-section-title">対応履歴詳細</h4>
+                                            <div class="history-detail-actions" id="history-detail-actions-container" style="display: none;">
+                                                <button type="button" class="btn btn-secondary btn-sm" id="btn-edit-history" style="background:#f8fafc; border:1px solid #cbd5e1; color:#334155; display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px;">
+                                                    <i data-lucide="edit-3" style="width:14px; height:14px;"></i> 編集
+                                                </button>
+                                                <button type="button" class="btn btn-delete btn-sm" id="btn-delete-history-btn" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px;">
+                                                    <i data-lucide="trash-2" style="width:14px; height:14px;"></i> 削除
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="history-detail-content" id="history-detail-container">
+                                            <div class="select-history-placeholder">
+                                                一覧から対応履歴を選択してください。
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1725,6 +2119,80 @@
         </div>
     </div>
 
+    <!-- 対応履歴登録・編集モーダル -->
+    <div id="history-form-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; width: 680px; max-width: 95%; border-radius:8px; padding:24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 95vh; overflow-y: auto; position: relative;">
+            <button type="button" id="btn-close-history-modal" style="position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; line-height: 1;">&times;</button>
+            <h3 id="history-modal-title" style="margin-top:0; border-bottom:1px solid var(--border-color); padding-bottom:12px; font-size: 14pt; font-weight: 600;">対応履歴を登録</h3>
+            
+            <form id="history-modal-form" style="margin-top: 16px;">
+                <input type="hidden" id="history-edit-id">
+                
+                <div class="form-grid" style="grid-template-columns: 1fr 1.2fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>対応日時 <span class="required">*</span></label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="date" id="history-input-date" class="form-control" required style="flex: 1.2;">
+                            <input type="time" id="history-input-time" class="form-control" required style="flex: 0.8;">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>種別 <span class="required">*</span></label>
+                        <div style="display: flex; gap: 12px; align-items: center; height: 44px; font-size: 11pt; flex-wrap: nowrap;">
+                            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0; white-space: nowrap;">
+                                <input type="radio" name="history-type" value="電話" checked style="width: auto; margin-right: 0;"> 電話
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0; white-space: nowrap;">
+                                <input type="radio" name="history-type" value="メール" style="width: auto; margin-right: 0;"> メール
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0; white-space: nowrap;">
+                                <input type="radio" name="history-type" value="訪問" style="width: auto; margin-right: 0;"> 訪問
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0; white-space: nowrap;">
+                                <input type="radio" name="history-type" value="その他" style="width: auto; margin-right: 0;"> その他
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 16px;">
+                    <label for="history-input-subject">件名 <span class="required">*</span></label>
+                    <input type="text" id="history-input-subject" class="form-control" required placeholder="100文字以内">
+                    <div style="text-align: right; font-size: 10pt; color: #94a3b8; margin-top: 4px;" id="history-subject-counter">0 / 100</div>
+                </div>
+
+                <div class="form-group" style="margin-top: 16px;">
+                    <label for="history-input-content">内容 <span class="required">*</span></label>
+                    <textarea id="history-input-content" class="form-control" rows="6" required placeholder="対応内容を記入してください（1000文字程度）" style="min-height: 120px;"></textarea>
+                    <div style="text-align: right; font-size: 10pt; color: #94a3b8; margin-top: 4px;" id="history-content-counter">0 / 1000</div>
+                </div>
+
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+                    <div class="form-group">
+                        <label for="history-input-next-action">次回対応予定日</label>
+                        <input type="date" id="history-input-next-action" class="form-control">
+                    </div>
+                    <div></div>
+                </div>
+
+                <!-- 説明表示 -->
+                <div style="margin-top: 20px; padding: 12px 16px; background: #f8fafc; border-radius: 6px; border-left: 4px solid #3b82f6; font-size: 11pt; color: #475569; display: flex; align-items: flex-start; gap: 8px;">
+                    <span style="font-size: 13pt; color: #3b82f6; line-height: 1;">ℹ</span>
+                    <div style="line-height: 1.5; text-align: left;">
+                        登録者はログイン中のユーザーが自動設定されます。<br>
+                        登録後も内容の編集は可能です。
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px;">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-history-save">キャンセル</button>
+                    <button type="submit" class="btn btn-save" id="btn-confirm-history-save">登録</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -1732,6 +2200,7 @@
     <script src="common.js"></script>
     <script src="detail_common.js"></script>
     <script src="js/validation_rules.js"></script>
+    <script src="search_utils.js"></script>
     <script src="customer_detail.js"></script>
 
     <script>

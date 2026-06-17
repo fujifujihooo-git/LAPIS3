@@ -31,8 +31,8 @@ if (useEmulator) {
 
 // Enable Offline Persistence
 // Called AFTER emulator connection to avoid "already started" error
-const isTestMode = (location.hostname === "localhost" || location.hostname === "127.0.0.1") && (window.__TEST_MODE__ === true);
-if (!isTestMode) {
+// エミュレータ使用時はキャッシュ干渉を防ぐため Persistence を無効化する（Firebase 推奨設定）
+if (!useEmulator) {
     db.enablePersistence()
         .catch((err) => {
             if (err.code == 'failed-precondition') {
@@ -44,5 +44,5 @@ if (!isTestMode) {
             }
         });
 } else {
-    console.log("Persistence disabled for Test Mode");
+    console.log("Persistence disabled for Emulator / Test Mode");
 }

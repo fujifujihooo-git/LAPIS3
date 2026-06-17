@@ -1,6 +1,6 @@
 [
   {
-    "email": "nakamura@nakamuraj.com",
+    "email": "lapis-test@lapis.local",
     "password": "Lapis3_2026!",
     "staff_name": "中村",
     "authority": "admin",
@@ -8,7 +8,7 @@
     "status": "在籍"
   },
   {
-    "email": "hosoi@nakamuraj.com",
+    "email": "hosoi@example.com",
     "password": "Lapis3_2026!",
     "staff_name": "細井",
     "authority": "staff",
@@ -16,7 +16,7 @@
     "status": "在籍"
   },
   {
-    "email": "hironaka@nakamuraj.com",
+    "email": "hironaka@example.com",
     "password": "Lapis3_2026!",
     "staff_name": "弘中",
     "authority": "staff",
@@ -24,7 +24,7 @@
     "status": "在籍"
   },
   {
-    "email": "owada@nakamuraj.com",
+    "email": "owada@example.com",
     "password": "Lapis3_2026!",
     "staff_name": "大和田",
     "authority": "staff",
@@ -32,7 +32,7 @@
     "status": "在籍"
   },
   {
-    "email": "shibuya@nakamuraj.com",
+    "email": "shibuya@example.com",
     "password": "Lapis3_2026!",
     "staff_name": "渋谷",
     "authority": "staff",
@@ -40,7 +40,7 @@
     "status": "在籍"
   },
   {
-    "email": "r.nakamura@nakamuraj.com",
+    "email": "r.nakamura@example.com",
     "password": "Lapis3_2026!",
     "staff_name": "中村(R)",
     "authority": "staff",
@@ -48,7 +48,7 @@
     "status": "在籍"
   },
   {
-    "email": "m.sato@nakamuraj.com",
+    "email": "m.sato@example.com",
     "password": "Lapis3_2026!",
     "staff_name": "佐藤",
     "authority": "staff",
@@ -56,7 +56,7 @@
     "status": "在籍"
   },
   {
-    "email": "shimane@nakamuraj.com",
+    "email": "shimane@example.com",
     "password": "Lapis3_2026!",
     "staff_name": "島根",
     "authority": "staff",
@@ -64,7 +64,7 @@
     "status": "在籍"
   },
   {
-    "email": "sakuma@nakamuraj.com",
+    "email": "sakuma@example.com",
     "password": "Lapis3_2026!",
     "staff_name": "佐久間",
     "authority": "staff",
@@ -72,7 +72,7 @@
     "status": "在籍"
   },
   {
-    "email": "kouno@nakamuraj.com",
+    "email": "kouno@example.com",
     "password": "Lapis3_2026!",
     "staff_name": "河野",
     "authority": "staff",
@@ -80,7 +80,7 @@
     "status": "在籍"
   },
   {
-    "email": "nakayama@nakamuraj.com",
+    "email": "nakayama@example.com",
     "password": "Lapis3_2026!",
     "staff_name": "中山",
     "authority": "staff",
@@ -88,7 +88,7 @@
     "status": "在籍"
   },
   {
-    "email": "yamanaka@nakamuraj.com",
+    "email": "yamanaka@example.com",
     "password": "Lapis3_2026!",
     "staff_name": "山中",
     "authority": "staff",
@@ -96,7 +96,7 @@
     "status": "在籍"
   },
   {
-    "email": "fujita@nakamuraj.com",
+    "email": "fujita@example.com",
     "password": "Lapis3_2026!",
     "staff_name": "藤田",
     "authority": "staff",

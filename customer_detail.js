@@ -13,6 +13,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnExportPdf = document.getElementById('btn-export-pdf');
     const btnExportExcel = document.getElementById('btn-export-excel');
 
+    // --- Lazy Load Helper (Phase1 パフォーマンス改善) ---
+    function loadScript(url) {
+        return new Promise((resolve, reject) => {
+            if (document.querySelector(`script[src="${url}"]`)) {
+                resolve();
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = url;
+            script.onload = resolve;
+            script.onerror = () => reject(new Error(`スクリプトの読み込みに失敗しました: ${url}`));
+            document.head.appendChild(script);
+        });
+    }
+
     // --- State ---
     let customers = [];
     let cases = [];
@@ -61,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function init() {
         const tStart = performance.now();
-        console.log('Initializing Customer Detail (1-Frame Mode)...');
+
         customerIdParam = getCustomerIdFromUrl();
         
         // 1. Synchronous UI initialization & Cache preview
@@ -131,11 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
-        const tEnd = performance.now();
-        console.table({
-            'Phase': 'Initial UI Render',
-            'Time (ms)': (tEnd - tStart).toFixed(2)
-        });
+
 
         // 2. Asynchronous Data Fetching Phase
         if (customerIdParam !== 'new') {
@@ -154,6 +165,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 組織・連絡タブ: 本店・代表連絡先カードのイベント設定
         setupHQCardEvents();
+
+        // 履歴タブ: イベント設定
+        initHistoryEvents();
     }
 
     /* ===============================
@@ -174,8 +188,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const staffEl = document.getElementById('staff-display');
         if (staffEl) {
-            const staff = staffMembers.find(s => s.staff_id === data.primary_staff_id);
+            const staff = staffMembers.find(s => Number(s.staff_id) === Number(data.primary_staff_id));
             staffEl.textContent = staff ? staff.staff_name : '―';
+            console.log('[HeaderRender]', data.primary_staff_id);
         }
 
         const fiscalEl = document.getElementById('fiscal-display');
@@ -214,7 +229,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setText('ov-email', data.email);
         setText('ov-zip', data.postal_code);
         setText('ov-addr', (data.address || '') + (data.building_name ? ' ' + data.building_name : '') || null);
-        const staff = staffMembers.find(s => s.staff_id === data.primary_staff_id);
+        const staff = staffMembers.find(s => Number(s.staff_id) === Number(data.primary_staff_id));
         setText('ov-staff', staff ? staff.staff_name : null);
         setText('ov-remarks', data.remarks);
 
@@ -438,49 +453,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadAllSections(cId, options = {}) {
         const { includeBasicData = false } = options;
 
-        // Master data load if not cached (non-blocking)
+        // 前回の警告をクリア
+        clearPageWarning();
+
+        // 1. 【根本解決】マスタデータのロード完了を保証する
         if (window.MasterDataManager) {
-            window.MasterDataManager.loadAll().then(() => {
+            try {
+                await window.MasterDataManager.loadAll();
                 licenseTypes = window.MasterDataManager.getLicenseTypes();
                 staffMembers = window.MasterDataManager.getStaff();
+                console.log('[MasterLoaded]', staffMembers ? staffMembers.length : 0);
                 initAdditionalDropdowns();
-                // Re-render lists that might depend on master data names after masters load
-                renderRelatedCases(cId);
-                renderOffices(cId);
-                renderContacts(cId);
-                renderLicenses(cId);
-                // サマリーカードも再描画（staffName等が解決される）
-                renderSummaryCards(cId);
-                renderOverviewLists(cId);
-            }).catch(e => console.error("Master data load error", e));
+            } catch(e) {
+                console.error("Master data load error", e);
+            }
         }
 
         const tAllStart = performance.now();
-
-        // 前回の警告をクリア
-        clearPageWarning();
         
         // Parallel Async Fetching
         const promises = [
-            loadOffices(cId).then(() => {
-                console.log(`[Perf] Offices loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
-            }),
-            loadContacts(cId).then(() => {
-                console.log(`[Perf] Contacts loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
-            }),
-            loadLicenses(cId).then(() => {
-                console.log(`[Perf] Licenses loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
-            }),
-            loadCases(cId).then(() => {
-                console.log(`[Perf] Cases loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
-            })
+            loadOffices(cId),
+            loadContacts(cId),
+            loadLicenses(cId),
+            loadCases(cId),
+            loadCustomerHistories(cId)
         ];
 
         if (includeBasicData) {
             promises.push(
-                loadCustomerBasicData(cId).then(() => {
-                    console.log(`[Perf] Basic Info loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
-                })
+                loadCustomerBasicData(cId)
             );
         }
 
@@ -523,7 +525,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 最新の顧客データと拠点データを用いて「登記上所在地」バッジを含む拠点一覧を確実に再描画します。
         renderOffices(cId);
 
-        console.log(`[Perf] All sections + summary loaded in ${(performance.now() - tAllStart).toFixed(2)}ms`);
+
     }
 
     async function refreshCustomerUI(cId) {
@@ -587,6 +589,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Overwrite preview with actual fresh data
             currentCustomer = custData;
             customers = [currentCustomer];
+            console.log('[CustomerLoaded]', currentCustomer ? currentCustomer.primary_staff_id : null);
             populateForm(currentCustomer);
             const headerTitle = document.getElementById('header-title');
             if (headerTitle) headerTitle.textContent = `顧客詳細：${currentCustomer.customer_name || ''}`;
@@ -765,6 +768,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 外務担当者
         const staffSel = document.getElementById('primary_staff_id');
         if (staffSel) {
+            // 重複追加を防ぐため、一旦最初の「未選択」オプション以外をクリアする
+            while (staffSel.options.length > 1) {
+                staffSel.remove(1);
+            }
             const activeStaff = staffMembers
                 .filter(s => s.status === '在籍')
                 .sort((a, b) => (a.staff_id || 0) - (b.staff_id || 0));
@@ -778,6 +785,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function populateForm(c) {
+
         document.getElementById('customer_name').value = c.customer_name || '';
         document.getElementById('customer_kana').value = c.customer_kana || '';
         document.getElementById('representative_name').value = c.representative_name || '';
@@ -1396,6 +1404,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             last_updated: now
         };
 
+        // 検索用フィールドを自動生成（search_utils.js）
+        updatedCustomer.search_name = generateSearchName(updatedCustomer.customer_name);
+        updatedCustomer.search_kana = generateSearchKana(updatedCustomer.customer_kana);
+
         try {
             // Debug: 保存直前のデータを表示
             // const debugMsg = `保存データの確認:\nID: ${newId}\n名前: ${updatedCustomer.customer_name}\nDocID: cust_${newId}`;
@@ -1478,7 +1490,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Export Functions ---
     function buildPrintHTML(data) {
-        const staff = staffMembers.find(s => s.staff_id === data.primary_staff_id);
+        const staff = staffMembers.find(s => Number(s.staff_id) === Number(data.primary_staff_id));
         const staffName = staff ? staff.staff_name : '-';
         const now = new Date().toLocaleString('ja-JP');
 
@@ -1628,20 +1640,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (btnExportPdf) {
-        btnExportPdf.addEventListener('click', () => {
+        btnExportPdf.addEventListener('click', async () => {
             if (!currentCustomer) return;
-            const element = document.getElementById('print-template');
-            element.innerHTML = buildPrintHTML(currentCustomer);
-            element.style.display = 'block';
-            html2pdf(element, {
-                margin: 8,
-                filename: `顧客詳細_${currentCustomer.customer_name}_${new Date().toISOString().split('T')[0]}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            }).then(() => {
+            const originalHTML = btnExportPdf.innerHTML;
+            try {
+                btnExportPdf.disabled = true;
+                btnExportPdf.textContent = '読み込み中...';
+                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
+                btnExportPdf.textContent = '生成中...';
+                const element = document.getElementById('print-template');
+                element.innerHTML = buildPrintHTML(currentCustomer);
+                element.style.display = 'block';
+                await html2pdf(element, {
+                    margin: 8,
+                    filename: `顧客詳細_${currentCustomer.customer_name}_${new Date().toISOString().split('T')[0]}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2 },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                });
                 element.style.display = 'none';
-            });
+            } catch (err) {
+                console.error('PDF export failed:', err);
+                alert('PDF出力に失敗しました: ' + err.message);
+            } finally {
+                btnExportPdf.disabled = false;
+                btnExportPdf.innerHTML = originalHTML;
+            }
         });
     }
 
@@ -1650,6 +1674,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!currentCustomer) return;
             try {
                 btnExportExcel.disabled = true;
+                btnExportExcel.textContent = '読み込み中...';
+                await loadScript('https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js');
                 btnExportExcel.textContent = '生成中...';
 
                 const wb = new ExcelJS.Workbook();
@@ -2167,9 +2193,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             let btnOriginalText = '';
             if (actionType === 'preview') {
                 btnOriginalText = btnPreviewReport.textContent;
-                btnPreviewReport.textContent = '生成中...';
+                btnPreviewReport.textContent = '読み込み中...';
             } else {
                 btnOriginalText = btnPrintReport.textContent;
+                btnPrintReport.textContent = '読み込み中...';
+            }
+
+            // 遅延ロード: pdf-lib + fontkit
+            await Promise.all([
+                loadScript('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js'),
+                loadScript('https://unpkg.com/@pdf-lib/fontkit@0.0.4/dist/fontkit.umd.min.js')
+            ]);
+            if (actionType === 'preview') {
+                btnPreviewReport.textContent = '生成中...';
+            } else {
                 btnPrintReport.textContent = '生成中...';
             }
 
@@ -2310,6 +2347,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             if (btnPrintNationalReport) btnPrintNationalReport.disabled = true;
             let btnOriginalText = btnPrintNationalReport.textContent;
+            btnPrintNationalReport.textContent = '読み込み中...';
+
+            // 遅延ロード: pdf-lib + fontkit
+            await Promise.all([
+                loadScript('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js'),
+                loadScript('https://unpkg.com/@pdf-lib/fontkit@0.0.4/dist/fontkit.umd.min.js')
+            ]);
             btnPrintNationalReport.textContent = '生成中...';
 
             // 1. Build View Data
@@ -2349,6 +2393,575 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnPrintNationalReport) {
         btnPrintNationalReport.addEventListener('click', () => handleNationalReportAction());
     }
+
+    // =========================================================
+    //  対応履歴（customer_histories）タブ用ロジック
+    // =========================================================
+    
+    // --- History Tab State ---
+    let histories = [];
+    let filteredHistories = [];
+    let selectedHistory = null;
+
+    async function loadCustomerHistories(cId) {
+        try {
+
+            
+            const customerId = Number(cId);
+            if (Number.isNaN(customerId)) {
+                throw new Error('customer_id must be a valid number');
+            }
+            
+            // NOTE: orderBy('response_date') は customer_id + deleted_at との複合インデックスが必要。
+            // インデックス未反映環境でのエラー回避のため、orderBy はクエリから除外し JS 側でソートする。
+            // インデックス定義は firestore.indexes.json に記載済み（デプロイ後も動作は変わらない）。
+            const snap = await db.collection('customer_histories')
+                .where('customer_id', '==', customerId)
+                .where('deleted_at', '==', null)
+                .get();
+            
+
+            
+            histories = snap.docs.map(doc => {
+                const data = doc.data({ serverTimestamps: 'estimate' });
+
+                return {
+                    id: doc.id,
+                    ...data
+                };
+            });
+
+            // JS側で response_date 降順ソート（Firestore側 orderBy を除いたため）
+            histories.sort((a, b) => {
+                const toMs = v => v ? (v.toDate ? v.toDate().getTime() : new Date(v).getTime()) : 0;
+                return toMs(b.response_date) - toMs(a.response_date);
+            });
+
+
+            
+            applyHistoryFilters();
+        } catch (err) {
+            console.error('Failed to load customer histories:', err);
+        }
+    }
+
+    function applyHistoryFilters() {
+        const keyword = document.getElementById('history-search-keyword')?.value.trim().toLowerCase();
+        const filterTypeAll = document.getElementById('filter-type-all')?.checked;
+        const checkedTypes = Array.from(document.querySelectorAll('input[name="filter-type"]:checked')).map(cb => cb.value);
+        const dateStartVal = document.getElementById('history-search-start')?.value;
+        const dateEndVal = document.getElementById('history-search-end')?.value;
+
+        filteredHistories = histories.filter(h => {
+            // 1. 種別フィルタ
+            if (!filterTypeAll && checkedTypes.length > 0) {
+                if (!checkedTypes.includes(h.history_type)) return false;
+            }
+            
+            // 2. キーワード検索（件名、内容。部分一致）
+            if (keyword) {
+                const subject = (h.subject || '').toLowerCase();
+                const content = (h.content || '').toLowerCase();
+                if (!subject.includes(keyword) && !content.includes(keyword)) return false;
+            }
+
+            // 3. 期間指定
+            if (h.response_date) {
+                const hDate = h.response_date.toDate ? h.response_date.toDate() : new Date(h.response_date);
+                
+                if (dateStartVal) {
+                    const startLimit = new Date(dateStartVal);
+                    startLimit.setHours(0, 0, 0, 0);
+                    if (hDate < startLimit) return false;
+                }
+                
+                if (dateEndVal) {
+                    const endLimit = new Date(dateEndVal);
+                    endLimit.setHours(23, 59, 59, 999);
+                    if (hDate > endLimit) return false;
+                }
+            } else {
+                if (dateStartVal || dateEndVal) return false;
+            }
+
+            return true;
+        });
+
+        renderHistories();
+    }
+
+    function renderHistories() {
+        const container = document.getElementById('history-timeline-container');
+        const countEl = document.getElementById('history-list-count');
+        
+        if (!container) {
+            console.error('[CustomerDetail] renderHistories: container not found');
+            return;
+        }
+        
+        if (countEl) {
+            countEl.textContent = `(${filteredHistories.length}件)`;
+        }
+
+
+
+        if (filteredHistories.length === 0) {
+            container.innerHTML = '<div class="no-history-message">対応履歴はありません</div>';
+            return;
+        }
+
+        container.innerHTML = filteredHistories.map(h => {
+            let typeClass = 'type-color-other';
+            let iconName = 'file-text';
+            
+            if (h.history_type === '電話') {
+                typeClass = 'type-color-phone';
+                iconName = 'phone';
+            } else if (h.history_type === 'メール') {
+                typeClass = 'type-color-mail';
+                iconName = 'mail';
+            } else if (h.history_type === '訪問') {
+                typeClass = 'type-color-visit';
+                iconName = 'users';
+            }
+            
+            const rDate = h.response_date ? (h.response_date.toDate ? h.response_date.toDate() : new Date(h.response_date)) : null;
+            const dateStr = rDate ? formatHistoryDateTime(rDate) : '―';
+            
+            const activeClass = selectedHistory && selectedHistory.id === h.id ? 'active' : '';
+            const excerpt = h.content && h.content.length > 60 ? h.content.substring(0, 60) + '...' : (h.content || '');
+            
+            return `
+                <div class="history-item ${activeClass}" data-id="${h.id}">
+                    <div class="history-item-icon-wrapper">
+                        <div class="history-type-icon ${typeClass}">
+                            <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
+                        </div>
+                    </div>
+                    <div class="history-item-content">
+                        <div class="history-item-header">
+                           <div class="history-item-date">${dateStr}</div>
+                           <div class="history-item-author">${h.created_by_name || '―'}</div>
+                        </div>
+                        <div class="history-item-subject">${escapeHtml(h.subject || '')}</div>
+                        <div class="history-item-excerpt">${escapeHtml(excerpt)}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons({ root: container });
+        }
+
+
+
+        container.querySelectorAll('.history-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const id = item.dataset.id;
+                const found = filteredHistories.find(h => h.id === id);
+                if (found) {
+                    selectHistory(found);
+                }
+            });
+        });
+    }
+
+    function formatHistoryDateTime(d) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hour = String(d.getHours()).padStart(2, '0');
+        const minute = String(d.getMinutes()).padStart(2, '0');
+        const days = ['日', '月', '火', '水', '木', '金', '土'];
+        const dayOfWeek = days[d.getDay()];
+        return `${year}/${month}/${day} (${dayOfWeek}) ${hour}:${minute}`;
+   }
+
+   function escapeHtml(str) {
+       return str
+           .replace(/&/g, "&amp;")
+           .replace(/</g, "&lt;")
+           .replace(/>/g, "&gt;")
+           .replace(/"/g, "&quot;")
+           .replace(/'/g, "&#039;");
+   }
+
+   function selectHistory(h) {
+       selectedHistory = h;
+       
+       const container = document.getElementById('history-timeline-container');
+       if (container) {
+           container.querySelectorAll('.history-item').forEach(item => {
+               item.classList.toggle('active', item.dataset.id === h.id);
+           });
+       }
+
+       const actionsEl = document.getElementById('history-detail-actions-container');
+       if (actionsEl) actionsEl.style.display = 'flex';
+
+       const detailContainer = document.getElementById('history-detail-container');
+       if (!detailContainer) return;
+
+       let typeClass = 'type-color-other';
+       let iconName = 'file-text';
+       if (h.history_type === '電話') {
+           typeClass = 'type-color-phone';
+           iconName = 'phone';
+       } else if (h.history_type === 'メール') {
+           typeClass = 'type-color-mail';
+           iconName = 'mail';
+       } else if (h.history_type === '訪問') {
+           typeClass = 'type-color-visit';
+           iconName = 'users';
+       }
+
+       const rDate = h.response_date ? (h.response_date.toDate ? h.response_date.toDate() : new Date(h.response_date)) : null;
+       const dateStr = rDate ? formatHistoryDateTime(rDate) : '―';
+
+       const nextActionDate = h.next_action_date ? (h.next_action_date.toDate ? h.next_action_date.toDate() : new Date(h.next_action_date)) : null;
+       const nextActionStr = nextActionDate ? nextActionDate.toLocaleDateString('ja-JP') : '―';
+
+       const cAt = h.created_at ? (h.created_at.toDate ? h.created_at.toDate() : new Date(h.created_at)) : null;
+       const uAt = h.updated_at ? (h.updated_at.toDate ? h.updated_at.toDate() : new Date(h.updated_at)) : null;
+       const cAtStr = cAt ? cAt.toLocaleString('ja-JP') : '―';
+       const uAtStr = uAt ? uAt.toLocaleString('ja-JP') : '―';
+
+       detailContainer.innerHTML = `
+           <div class="detail-row">
+               <div class="detail-label">対応日時</div>
+               <div class="detail-value" style="font-weight: 600;">${dateStr}</div>
+           </div>
+           <div class="detail-row">
+               <div class="detail-label">種別</div>
+               <div class="detail-value">
+                   <span class="detail-type-badge ${typeClass}">
+                       <i data-lucide="${iconName}" style="width:14px; height:14px;"></i> ${h.history_type || 'その他'}
+                   </span>
+               </div>
+           </div>
+           <div class="detail-row">
+               <div class="detail-label">件名</div>
+               <div class="detail-value" style="font-weight: 600;">${escapeHtml(h.subject || '')}</div>
+           </div>
+           <div class="detail-row" style="flex-direction: column; gap: 8px;">
+               <div class="detail-label">内容</div>
+               <div class="detail-value-content">${escapeHtml(h.content || '')}</div>
+           </div>
+           <div class="detail-row">
+               <div class="detail-label">次回対応予定日</div>
+               <div class="detail-value">${nextActionStr}</div>
+           </div>
+           <div class="detail-row">
+               <div class="detail-label">登録者</div>
+               <div class="detail-value">${h.created_by_name || '―'}</div>
+           </div>
+           <div class="detail-row" style="font-size: 11pt; border-bottom: none; opacity: 0.7;">
+               <div class="detail-label">作成日時</div>
+               <div class="detail-value">${cAtStr}</div>
+           </div>
+           <div class="detail-row" style="font-size: 11pt; border-bottom: none; opacity: 0.7; padding-top: 0;">
+               <div class="detail-label">最終更新</div>
+               <div class="detail-value">${uAtStr}</div>
+           </div>
+       `;
+
+       if (typeof lucide !== 'undefined') {
+           lucide.createIcons({ root: detailContainer });
+       }
+   }
+
+   function clearHistoryDetail() {
+       selectedHistory = null;
+       const actionsEl = document.getElementById('history-detail-actions-container');
+       if (actionsEl) actionsEl.style.display = 'none';
+
+       const detailContainer = document.getElementById('history-detail-container');
+       if (detailContainer) {
+           detailContainer.innerHTML = `
+               <div class="select-history-placeholder">
+                   一覧から対応履歴を選択してください。
+               </div>
+           `;
+       }
+   }
+
+   function openHistoryModal(h = null) {
+       const modal = document.getElementById('history-form-modal');
+       const form = document.getElementById('history-modal-form');
+       const titleEl = document.getElementById('history-modal-title');
+       const editIdInput = document.getElementById('history-edit-id');
+       
+       if (!modal || !form) return;
+
+       form.reset();
+
+       if (h) {
+           titleEl.textContent = '対応履歴を編集';
+           editIdInput.value = h.id;
+           
+           const rDate = h.response_date ? (h.response_date.toDate ? h.response_date.toDate() : new Date(h.response_date)) : new Date();
+           const yyyymmdd = rDate.getFullYear() + '-' + String(rDate.getMonth() + 1).padStart(2, '0') + '-' + String(rDate.getDate()).padStart(2, '0');
+           const hhmm = String(rDate.getHours()).padStart(2, '0') + ':' + String(rDate.getMinutes()).padStart(2, '0');
+           
+           document.getElementById('history-input-date').value = yyyymmdd;
+           document.getElementById('history-input-time').value = hhmm;
+
+           const radio = form.querySelector(`input[name="history-type"][value="${h.history_type}"]`);
+           if (radio) radio.checked = true;
+
+           document.getElementById('history-input-subject').value = h.subject || '';
+           document.getElementById('history-input-content').value = h.content || '';
+
+           if (h.next_action_date) {
+               const nDate = h.next_action_date.toDate ? h.next_action_date.toDate() : new Date(h.next_action_date);
+               const nYmd = nDate.getFullYear() + '-' + String(nDate.getMonth() + 1).padStart(2, '0') + '-' + String(nDate.getDate()).padStart(2, '0');
+               document.getElementById('history-input-next-action').value = nYmd;
+           } else {
+               document.getElementById('history-input-next-action').value = '';
+           }
+           
+           document.getElementById('btn-confirm-history-save').textContent = '更新';
+       } else {
+           titleEl.textContent = '対応履歴を登録';
+           editIdInput.value = '';
+
+           const now = new Date();
+           const yyyymmdd = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+           const hhmm = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+           
+           document.getElementById('history-input-date').value = yyyymmdd;
+           document.getElementById('history-input-time').value = hhmm;
+           
+           form.querySelector('input[name="history-type"][value="電話"]').checked = true;
+           document.getElementById('history-input-next-action').value = '';
+           document.getElementById('btn-confirm-history-save').textContent = '登録';
+       }
+
+       updateCounter('history-input-subject', 'history-subject-counter', 100);
+       updateCounter('history-input-content', 'history-content-counter', 1000);
+
+       modal.style.display = 'flex';
+   }
+
+   function closeHistoryModal() {
+       const modal = document.getElementById('history-form-modal');
+       if (modal) modal.style.display = 'none';
+   }
+
+   function updateCounter(inputId, counterId, max) {
+       const input = document.getElementById(inputId);
+       const counter = document.getElementById(counterId);
+       if (input && counter) {
+           const len = input.value.length;
+           counter.textContent = `${len} / ${max}`;
+           if (len > max) {
+               counter.style.color = '#ef4444';
+           } else {
+               counter.style.color = '#94a3b8';
+           }
+       }
+   }
+
+   async function handleHistorySave(e) {
+       e.preventDefault();
+
+       const rawCId = document.getElementById('customer_id').value;
+       if (!rawCId) {
+           alert('顧客情報が特定できません。');
+           return;
+       }
+        const cId = Number(rawCId);
+        if (Number.isNaN(cId)) {
+            alert('顧客IDが無効な数値です。数値型である必要があります。');
+            return;
+        }
+
+       const editId = document.getElementById('history-edit-id').value;
+       const dateVal = document.getElementById('history-input-date').value;
+       const timeVal = document.getElementById('history-input-time').value;
+       const typeVal = document.querySelector('input[name="history-type"]:checked').value;
+       const subjectVal = document.getElementById('history-input-subject').value.trim();
+       const contentVal = document.getElementById('history-input-content').value.trim();
+       const nextActionVal = document.getElementById('history-input-next-action').value;
+
+       if (!dateVal || !timeVal || !subjectVal || !contentVal) {
+           alert('必須項目を入力してください。');
+           return;
+       }
+
+       if (subjectVal.length > 100) {
+           alert('件名は100文字以内で入力してください。');
+           return;
+       }
+
+       if (contentVal.length > 1000) {
+           alert('内容は1000文字以内で入力してください。');
+           return;
+       }
+
+       const responseDate = new Date(`${dateVal}T${timeVal}`);
+       if (isNaN(responseDate.getTime())) {
+           alert('無効な対応日時です。');
+           return;
+       }
+
+       let nextActionDate = null;
+       if (nextActionVal) {
+           nextActionDate = new Date(nextActionVal);
+           if (isNaN(nextActionDate.getTime())) {
+               alert('無効な次回対応予定日です。');
+               return;
+           }
+       }
+
+       const session = JSON.parse(localStorage.getItem('lapis3_session')) || {};
+       if (!session.staff_id || !session.staff_name) {
+           alert('セッション情報がありません。再度ログインしてください。');
+           return;
+       }
+
+       const data = {
+           customer_id: cId,
+           history_type: typeVal,
+           subject: subjectVal,
+           content: contentVal,
+           response_date: firebase.firestore.Timestamp.fromDate(responseDate),
+           next_action_date: nextActionDate ? firebase.firestore.Timestamp.fromDate(nextActionDate) : null,
+           deleted_at: null
+       };
+
+       try {
+           if (editId) {
+               await saveToFirestore('customer_histories', editId, data);
+               showToast('対応履歴を更新しました', 'success');
+           } else {
+               const docRef = db.collection('customer_histories').doc();
+               data.created_by_id = Number(session.staff_id);
+               data.created_by_name = session.staff_name;
+               data.created_at = firebase.firestore.FieldValue.serverTimestamp();
+               
+               await saveToFirestore('customer_histories', docRef.id, data);
+               showToast('対応履歴を登録しました', 'success');
+           }
+
+           closeHistoryModal();
+           await loadCustomerHistories(cId);
+           
+           const targetId = editId || (histories.length > 0 ? histories[0].id : null);
+           if (targetId) {
+               const target = histories.find(h => h.id === targetId);
+               if (target) selectHistory(target);
+           } else {
+               clearHistoryDetail();
+           }
+
+       } catch (err) {
+           console.error('Failed to save customer history:', err);
+           alert('保存に失敗しました: ' + err.message);
+       }
+   }
+
+   async function handleHistoryDelete() {
+       if (!selectedHistory) return;
+       if (!confirm('この対応履歴を削除しますか？（論理削除されます）')) return;
+
+               const rawCId = document.getElementById('customer_id').value;
+        const cId = Number(rawCId);
+        if (Number.isNaN(cId)) {
+            alert('顧客IDが無効な数値です。数値型である必要があります。');
+            return;
+        }
+       
+       try {
+           const data = {
+               deleted_at: firebase.firestore.FieldValue.serverTimestamp()
+           };
+
+           await saveToFirestore('customer_histories', selectedHistory.id, data);
+           showToast('対応履歴を削除しました', 'success');
+
+           clearHistoryDetail();
+           await loadCustomerHistories(cId);
+       } catch (err) {
+           console.error('Failed to delete customer history:', err);
+           alert('削除に失敗しました: ' + err.message);
+       }
+   }
+
+   function initHistoryEvents() {
+       document.getElementById('btn-open-history-modal')?.addEventListener('click', () => openHistoryModal());
+       document.getElementById('btn-close-history-modal')?.addEventListener('click', closeHistoryModal);
+       document.getElementById('btn-cancel-history-save')?.addEventListener('click', closeHistoryModal);
+       document.getElementById('history-modal-form')?.addEventListener('submit', handleHistorySave);
+
+       document.getElementById('history-input-subject')?.addEventListener('input', () => {
+           updateCounter('history-input-subject', 'history-subject-counter', 100);
+       });
+       document.getElementById('history-input-content')?.addEventListener('input', () => {
+           updateCounter('history-input-content', 'history-content-counter', 1000);
+       });
+
+       document.getElementById('history-search-keyword')?.addEventListener('input', applyHistoryFilters);
+
+       const filterAll = document.getElementById('filter-type-all');
+       const typeCheckboxes = document.querySelectorAll('input[name="filter-type"]');
+
+       if (filterAll) {
+           filterAll.addEventListener('change', (e) => {
+               if (e.target.checked) {
+                   typeCheckboxes.forEach(cb => cb.checked = false);
+               }
+               applyHistoryFilters();
+           });
+       }
+
+       typeCheckboxes.forEach(cb => {
+           cb.addEventListener('change', () => {
+               if (cb.checked && filterAll) {
+                   filterAll.checked = false;
+               }
+               const anyChecked = Array.from(typeCheckboxes).some(c => c.checked);
+               if (!anyChecked && filterAll) {
+                   filterAll.checked = true;
+               }
+               applyHistoryFilters();
+           });
+       });
+
+       document.getElementById('history-search-start')?.addEventListener('change', applyHistoryFilters);
+       document.getElementById('history-search-end')?.addEventListener('change', applyHistoryFilters);
+
+       document.getElementById('btn-clear-history-search')?.addEventListener('click', () => {
+           const kw = document.getElementById('history-search-keyword');
+           if (kw) kw.value = '';
+
+           const filterAll = document.getElementById('filter-type-all');
+           if (filterAll) filterAll.checked = true;
+
+           document.querySelectorAll('input[name="filter-type"]').forEach(cb => cb.checked = false);
+
+           const ds = document.getElementById('history-search-start');
+           const de = document.getElementById('history-search-end');
+           
+           if (ds) {
+               if (ds._flatpickr) ds._flatpickr.clear();
+               else ds.value = '';
+           }
+           if (de) {
+               if (de._flatpickr) de._flatpickr.clear();
+               else de.value = '';
+           }
+
+           applyHistoryFilters();
+       });
+
+       document.getElementById('btn-edit-history')?.addEventListener('click', () => {
+           if (selectedHistory) openHistoryModal(selectedHistory);
+       });
+       
+       document.getElementById('btn-delete-history-btn')?.addEventListener('click', handleHistoryDelete);
+   }
 
     await init();
 });

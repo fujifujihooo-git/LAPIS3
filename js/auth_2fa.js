@@ -14,10 +14,23 @@ const AUTH_2FA = {
     GAS_API_URL: 'https://script.google.com/macros/s/AKfycbxZO2KX9l01h7U9768DfHHnjG8I24k2hXux6ApL0Rl-TCkXs3GY_NHHXXfhzvQvDOv5yQ/exec', // 実際のURL
     SECRET_KEY: 'lapis_secret_2026',
 
+    // セキュリティ・テスト用定数
+    FORBIDDEN_EMAILS: ['nakamura@nakamuraj.com'],
+    ALLOWED_TEST_ACCOUNTS: ['lapis-test@lapis.local'],
+    TEST_OTP_CODE: '123456',
+
     // 信頼期間 (30日)
     TRUST_DURATION_DAYS: 30,
     // OTP有効期限 (10分)
     OTP_DURATION_MINUTES: 10,
+
+    /**
+     * テストモード（ローカル検証環境）か判定する
+     */
+    isTestModeEnabled: function () {
+        const hostname = window.location.hostname;
+        return hostname === "localhost" || hostname === "127.0.0.1";
+    },
 
     /**
      * デバイスIDを取得または生成する
@@ -126,8 +139,35 @@ const AUTH_2FA = {
      */
     sendOtp: async function (userId, email) {
         console.log('Preparing to send OTP for:', email);
+
+        // 禁止アドレスガード
+        if (this.FORBIDDEN_EMAILS.includes(email)) {
+            throw new Error('利用禁止アドレスです');
+        }
+
+        const isTest = this.isTestModeEnabled();
+
+        // テスト環境時のアカウント制限
+        if (isTest) {
+            if (!this.ALLOWED_TEST_ACCOUNTS.includes(email)) {
+                throw new Error('テスト環境では指定アカウント（lapis-test@lapis.local）以外使用禁止です');
+            }
+        }
+
         // 1. Generate 6-digit code
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        let code;
+        if (isTest) {
+            code = this.TEST_OTP_CODE;
+            console.log('【TEST MODE】OTP Code for validation:', code);
+        } else {
+            code = Math.floor(100000 + Math.random() * 900000).toString();
+        }
+
+        // テストモード時はFirestore保存とメール送信をスキップ
+        if (isTest) {
+            console.log('【TEST MODE】Firestore write and email sending skipped.');
+            return;
+        }
 
         // 2. Save to Firestore
         const now = new Date();
@@ -198,6 +238,11 @@ const AUTH_2FA = {
      */
     verifyOtp: async function (userId, inputCode) {
         if (!inputCode) return false;
+
+        // テストモード時は固定コードとの一致を確認し、Firestoreアクセスをスキップ
+        if (this.isTestModeEnabled()) {
+            return inputCode === this.TEST_OTP_CODE;
+        }
 
         try {
             const docRef = db.collection(this.COLLECTION_OTP).doc(userId);

@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- State ---
     let cases = [];
     let customers = [];
+    let selectedCustomer = null;  // オートコンプリートで選択された顧客
     let staffMembers = [];
     let statusHistory = [];
     let currentCase = null;
@@ -334,14 +335,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (caseId === 'new') {
             await masterPromise; // マスタを待つ
 
-            // 顧客リストのロード (新規時はドロップダウンに必要)
-            try {
-                const custSnap = await db.collection('customers').where('status', '==', '稼働中').get();
-                customers = custSnap.docs.map(d => d.data());
-                renderCustomerSelection(preCustomerId ? parseInt(preCustomerId) : null, false);
-            } catch (err) {
-                console.error('Customer fetch failed', err);
+            // Phase3-1: 顧客全件ロード廃止 → オートコンプリート検索に変更
+            // preCustomerIdが指定されている場合のみ1件取得（Read 1）
+            if (preCustomerId) {
+                try {
+                    const cDoc = await db.collection('customers').doc(`cust_${preCustomerId}`).get();
+                    if (cDoc.exists) {
+                        selectedCustomer = cDoc.data();
+                        customers = [selectedCustomer];
+                    }
+                } catch (err) {
+                    console.error('Pre-selected customer fetch failed', err);
+                }
             }
+            renderCustomerSelection(preCustomerId ? parseInt(preCustomerId) : null, false);
 
         } else {
             // 既存案件の並列データ取得
@@ -367,7 +374,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const customerPromise = currentCase.customer_id
                     ? db.collection('customers').doc(`cust_${currentCase.customer_id}`).get().then(cDoc => {
-                        if (cDoc.exists) customers = [cDoc.data()];
+                        if (cDoc.exists) {
+                            selectedCustomer = cDoc.data();
+                            customers = [selectedCustomer];
+                        }
                     })
                     : Promise.resolve();
 
@@ -459,29 +469,122 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!titleArea) return;
 
         if (caseId === 'new' && isInitialRender) {
-            // 初期描画時はローディング表示
             titleArea.innerHTML = `新規案件登録：<span style="color: var(--text-muted);">（顧客データ読み込み中...）</span>`;
             return;
         }
 
-        const cust = customers.find(c => c.customer_id === selectedId);
+        const cust = selectedCustomer || customers.find(c => c.customer_id === selectedId);
         const name = cust ? cust.customer_name : (caseId === 'new' ? '' : '不明な顧客');
 
         if (caseId === 'new' && !selectedId) {
-            titleArea.innerHTML = `新規案件登録：<select id="customer_id" required class="form-select" style="width: auto; display: inline-block;"><option value="">選択...</option></select>`;
-            const customerSelect = document.getElementById('customer_id');
-            customers.filter(c => c.status === '稼働中').forEach(cust => {
-                const opt = document.createElement('option');
-                opt.value = cust.customer_id;
-                opt.textContent = cust.customer_name;
-                customerSelect.appendChild(opt);
-            });
+            // Phase3-1: オートコンプリート検索UIに変更
+            titleArea.innerHTML = `新規案件登録：
+                <div style="display:inline-block; position:relative; width:320px; vertical-align:middle;">
+                    <input type="text" id="customer_search_input" class="form-control" placeholder="顧客名 or カナで検索（2文字以上）" autocomplete="off" style="width:100%;">
+                    <input type="hidden" id="customer_id" value="">
+                    <div id="customer-autocomplete-list" class="autocomplete-items" style="position:absolute; z-index:99; width:100%; max-height:240px; overflow-y:auto; background:#fff; border:1px solid #e2e8f0; border-top:none; border-radius:0 0 8px 8px; box-shadow:0 4px 12px rgba(0,0,0,0.1); display:none;"></div>
+                </div>`;
+            initCustomerAutocomplete();
         } else {
             titleArea.innerHTML = `${caseId === 'new' ? '新規案件登録' : '案件詳細'}：<span style="color: var(--text-main); font-weight: 600;">${name}</span><input type="hidden" id="customer_id" value="${selectedId}">`;
             if (selectedId && caseId !== 'new') {
                 titleArea.innerHTML += `<a href="customer_detail.html?id=${selectedId}" class="action-link" style="margin-left:12px">→ 顧客詳細</a>`;
             }
         }
+    }
+
+    // Phase3-1: 顧客オートコンプリート検索
+    function initCustomerAutocomplete() {
+        const searchInput = document.getElementById('customer_search_input');
+        const hiddenId = document.getElementById('customer_id');
+        const listEl = document.getElementById('customer-autocomplete-list');
+        if (!searchInput || !listEl) return;
+
+        let debounceTimer = null;
+
+        searchInput.addEventListener('input', function() {
+            const raw = this.value.trim();
+            clearTimeout(debounceTimer);
+            listEl.innerHTML = '';
+            listEl.style.display = 'none';
+
+            if (raw.length < 2) {
+                hiddenId.value = '';
+                selectedCustomer = null;
+                return;
+            }
+
+            debounceTimer = setTimeout(async () => {
+                const query = normalizeSearchText(raw);
+                if (!query) return;
+
+                try {
+                    // search_name 前方一致検索
+                    const nameSnap = await db.collection('customers')
+                        .where('status', '==', '稼働中')
+                        .where('search_name', '>=', query)
+                        .where('search_name', '<=', query + '\uf8ff')
+                        .limit(10)
+                        .get();
+
+                    // search_kana 前方一致検索
+                    const kanaSnap = await db.collection('customers')
+                        .where('status', '==', '稼働中')
+                        .where('search_kana', '>=', query)
+                        .where('search_kana', '<=', query + '\uf8ff')
+                        .limit(10)
+                        .get();
+
+                    // 重複排除してマージ
+                    const seen = new Set();
+                    const results = [];
+                    [nameSnap, kanaSnap].forEach(snap => {
+                        snap.docs.forEach(d => {
+                            if (!seen.has(d.id)) {
+                                seen.add(d.id);
+                                results.push(d.data());
+                            }
+                        });
+                    });
+
+                    listEl.innerHTML = '';
+                    if (results.length === 0) {
+                        const noResult = document.createElement('div');
+                        noResult.style.cssText = 'padding:10px 12px; color:#94a3b8; font-size:0.9rem;';
+                        noResult.textContent = '該当する顧客が見つかりません';
+                        listEl.appendChild(noResult);
+                    } else {
+                        results.forEach(c => {
+                            const item = document.createElement('div');
+                            item.style.cssText = 'padding:10px 12px; cursor:pointer; border-bottom:1px solid #f1f5f9; transition:background 0.15s;';
+                            item.innerHTML = `<strong>${c.customer_name}</strong> <span style="color:#94a3b8; font-size:0.85rem; margin-left:8px;">${c.customer_kana || ''}</span>`;
+                            item.addEventListener('mouseenter', () => item.style.background = '#f1f5f9');
+                            item.addEventListener('mouseleave', () => item.style.background = '#fff');
+                            item.addEventListener('click', () => {
+                                searchInput.value = c.customer_name;
+                                hiddenId.value = c.customer_id;
+                                selectedCustomer = c;
+                                customers = [c];
+                                listEl.innerHTML = '';
+                                listEl.style.display = 'none';
+                            });
+                            listEl.appendChild(item);
+                        });
+                    }
+                    listEl.style.display = 'block';
+                } catch (err) {
+                    console.error('Customer autocomplete search failed:', err);
+                }
+            }, 300); // 300msデバウンス
+        });
+
+        // リスト外クリックで閉じる
+        document.addEventListener('click', (e) => {
+            if (e.target !== searchInput && listEl) {
+                listEl.innerHTML = '';
+                listEl.style.display = 'none';
+            }
+        });
     }
 
     function populateForm(data) {
@@ -678,7 +781,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const updatedData = {
                 customer_id: customerIdVal,
-                customer_name: customers.find(c => c.customer_id === customerIdVal)?.customer_name || '',
+                customer_name: (selectedCustomer && selectedCustomer.customer_id === customerIdVal) ? selectedCustomer.customer_name : (customers.find(c => c.customer_id === customerIdVal)?.customer_name || ''),
                 license_type: document.getElementById('license_type')?.value || '',
                 procedure_name: document.getElementById('procedure_name')?.value || '',
                 government_office_id: parseInt(governmentOfficeId?.value) || null,

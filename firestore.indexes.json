@@ -31,6 +31,31 @@
         { "fieldPath": "customer_id", "order": "ASCENDING" },
         { "fieldPath": "last_updated", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "customers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "search_name", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "customers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "search_kana", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "customer_histories",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "customer_id", "order": "ASCENDING" },
+        { "fieldPath": "deleted_at", "order": "ASCENDING" },
+        { "fieldPath": "response_date", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

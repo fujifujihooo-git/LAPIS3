@@ -17,14 +17,28 @@ document.addEventListener('DOMContentLoaded', () => {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        const email = emailInput.value.trim();
+        const pass = passInput.value.trim();
+
+        // --- ガード (第1層: UX / 超早期ガード) ---
+        if (typeof AUTH_2FA !== 'undefined') {
+            if (AUTH_2FA.FORBIDDEN_EMAILS.includes(email)) {
+                alert('利用禁止アドレスです');
+                return;
+            }
+            if (AUTH_2FA.isTestModeEnabled()) {
+                if (!AUTH_2FA.ALLOWED_TEST_ACCOUNTS.includes(email)) {
+                    alert('テスト環境では指定アカウント（lapis-test@lapis.local）以外使用禁止です');
+                    return;
+                }
+            }
+        }
+
         // Disable UI
         const btnLogin = document.querySelector('.btn-login');
         if (btnLogin) { btnLogin.disabled = true; btnLogin.innerHTML = '処理中...'; }
         emailInput.disabled = true;
         passInput.disabled = true;
-
-        const email = emailInput.value.trim();
-        const pass = passInput.value.trim();
 
         console.log('Login Attempt (2FA Mode):', { email });
 
@@ -68,7 +82,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     await AUTH_2FA.sendOtp(userIdentifier, userIdentifier);
 
                     console.log('OTP Send completed. Showing modal.');
-                    alert('認証コードをメールで送信しました。');
+                    
+                    const isTest = typeof AUTH_2FA.isTestModeEnabled === 'function' && AUTH_2FA.isTestModeEnabled();
+                    if (isTest) {
+                        alert(`【テストモード】認証コード（${AUTH_2FA.TEST_OTP_CODE}）を生成しました。`);
+                    } else {
+                        alert('認証コードをメールで送信しました。');
+                    }
 
                     // Show OTP Modal - User MUST interact here to proceed
                     showOtpModal();
@@ -137,7 +157,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             await AUTH_2FA.sendOtp(tempUserEmail, tempUserEmail);
-            alert('認証コードを再送信しました。');
+            
+            const isTest = typeof AUTH_2FA.isTestModeEnabled === 'function' && AUTH_2FA.isTestModeEnabled();
+            if (isTest) {
+                alert(`【テストモード】認証コード（${AUTH_2FA.TEST_OTP_CODE}）を再生成しました。`);
+            } else {
+                alert('認証コードを再送信しました。');
+            }
         } catch (err) {
             alert('送信失敗: ' + err.message);
         }
@@ -153,6 +179,18 @@ document.addEventListener('DOMContentLoaded', () => {
         otpModal.style.display = 'block';
         otpInput.value = '';
         otpInput.focus();
+
+        // テストモードのヒント表示
+        const testOtpHint = document.getElementById('test-otp-hint');
+        const testOtpValue = document.getElementById('test-otp-value');
+        if (testOtpHint && testOtpValue && typeof AUTH_2FA !== 'undefined') {
+            if (AUTH_2FA.isTestModeEnabled()) {
+                testOtpValue.textContent = AUTH_2FA.TEST_OTP_CODE;
+                testOtpHint.style.display = 'block';
+            } else {
+                testOtpHint.style.display = 'none';
+            }
+        }
     }
 
     // --- Finalization ---
