@@ -5,9 +5,13 @@
     <meta name="google-site-verification" content="fmf6dKTEMqsG9Oudg3dR_ovFH5px_gmC--lvk27dMJE" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>顧客詳細 - LAPIS3</title>
     <!-- New Modern Style -->
     <link rel="stylesheet" href="style_modern.css?v=1">
+    <script>
+        if (window.location && window.location.protocol === 'file:') {
+            alert('ローカルのHTMLファイル (file://) から直接PDFを出力することはできません。Webサーバー (http://...) 経由で実行してください。');
+        }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -19,6 +23,11 @@
     <script src="report-system/report-engine/report_engine.js"></script>
     <script src="report-system/report-views/tax_certificate_view.js"></script>
     <script src="report-system/report-views/tax_certificate_national_view.js"></script>
+    <!-- 帳票共通基盤 ＆ 顧客カルテ概要票 -->
+    <script src="reports/report-engine.js"></script>
+    <script src="reports/report-utils.js"></script>
+    <script src="reports/base-report.js"></script>
+    <script src="reports/customer-summary-report.js"></script>
     <style>
         /* Local overrides for detail form */
 
@@ -1474,6 +1483,11 @@
                         <div class="block-content">
                             <!-- Tab Content: 概要（読取専用カルテ） -->
                             <div id="tab-overview" class="tab-content active">
+                                <div class="overview-actions" style="margin-bottom: 12px; display: flex; justify-content: flex-end;">
+                                    <button type="button" class="btn btn-pdf" id="btn-export-summary-pdf">
+                                        <i data-lucide="file-text"></i> PDF出力
+                                    </button>
+                                </div>
                                 <div class="overview-grid">
                                     <!-- 左カラム -->
                                     <div>
@@ -2201,7 +2215,11 @@
     <script src="detail_common.js"></script>
     <script src="js/validation_rules.js"></script>
     <script src="search_utils.js"></script>
-    <script src="customer_detail.js"></script>
+    <script src="reports/report-engine.js?v=2026061802"></script>
+    <script src="reports/report-utils.js?v=2026061802"></script>
+    <script src="reports/base-report.js?v=2026061802"></script>
+    <script src="reports/customer-summary-report.js?v=2026061802"></script>
+    <script src="customer_detail.js?v=2026061802"></script>
 
     <script>
         const btnTop = document.getElementById('back-to-top');

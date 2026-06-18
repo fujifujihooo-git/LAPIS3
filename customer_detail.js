@@ -2963,5 +2963,54 @@ document.addEventListener('DOMContentLoaded', async () => {
        document.getElementById('btn-delete-history-btn')?.addEventListener('click', handleHistoryDelete);
    }
 
-    await init();
+    // =========================================================
+    //  顧客カルテ概要票 PDF 出力ロジック
+    // =========================================================
+    async function handleExportSummaryPdf() {
+        if (!currentCustomer) {
+            alert('顧客データがロードされていません。先に保存するか画面を再読み込みしてください。');
+            return;
+        }
+
+        const btn = document.getElementById('btn-export-summary-pdf');
+        let originalHTML = '';
+        if (btn) {
+            originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader" class="spin"></i> PDF出力中...';
+            if (typeof lucide !== 'undefined') lucide.createIcons({ root: btn });
+        }
+
+        try {
+            // 顧客概要票レポートオブジェクトを作成してPDF生成
+            const report = new window.CustomerSummaryReport();
+            await report.generate(currentCustomer, licenses, cases, histories, staffMembers, licenseTypes);
+
+            // ファイル名の決定 (顧客名のサニタイズ + YYYYMMDD)
+            const safeName = (currentCustomer.customer_name || '名称未設定').replace(/[\\/:*?"<>|]/g, '_');
+            const today = new Date();
+            const yyyymmdd = today.getFullYear() +
+                String(today.getMonth() + 1).padStart(2, '0') +
+                String(today.getDate()).padStart(2, '0');
+            const filename = `顧客カルテ概要_${safeName}_${yyyymmdd}.pdf`;
+
+            // ダウンロード実行
+            report.download(filename);
+        } catch (err) {
+            console.error('[ExportSummaryPDF] Failed to generate PDF report:', err);
+            // エラー表示 (フォントロード失敗時などもここに集約される)
+            alert('PDF出力に失敗しました: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+                if (typeof lucide !== 'undefined') lucide.createIcons({ root: btn });
+            }
+        }
+    }
+
+    // イベント登録
+    document.getElementById('btn-export-summary-pdf')?.addEventListener('click', handleExportSummaryPdf);
+
+     await init();
 });
