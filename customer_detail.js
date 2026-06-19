@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let licenses = [];
     let licenseTypes = [];
     let staffMembers = [];
+    let governmentOffices = [];
     let currentCustomer = null;
     let customerIdParam = null;
 
@@ -462,6 +463,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await window.MasterDataManager.loadAll();
                 licenseTypes = window.MasterDataManager.getLicenseTypes();
                 staffMembers = window.MasterDataManager.getStaff();
+                governmentOffices = window.MasterDataManager.getGovernmentOffices();
                 console.log('[MasterLoaded]', staffMembers ? staffMembers.length : 0);
                 initAdditionalDropdowns();
             } catch(e) {
@@ -1269,13 +1271,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function getGovernmentOfficeName(license) {
+        if (!license) return '';
+        if (license.government_office_id) {
+            const office = governmentOffices.find(
+                o => Number(o.office_id) === Number(license.government_office_id)
+            );
+            if (office) {
+                return office.office_name;
+            }
+        }
+        return license.government_office || '';
+    }
+
     function renderLicenses(customerId) {
         if (!licensesListBody) return;
         const related = licenses.filter(l => Number(l.customer_id) === customerId);
         licensesListBody.innerHTML = '';
 
         if (related.length === 0) {
-            licensesListBody.innerHTML = '<tr><td colspan="5" class="no-data-cell">許認可データがありません</td></tr>';
+            licensesListBody.innerHTML = '<tr><td colspan="6" class="no-data-cell">許認可データがありません</td></tr>';
             return;
         }
 
@@ -1283,6 +1298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const type = licenseTypes.find(lt => lt.license_type_id === l.license_type_id);
             const typeName = type ? type.license_type_name : (l.license_type || '-');
             const licenseNum = typeof formatLicenseNumber === 'function' ? formatLicenseNumber(l) : (l.license_number || '-');
+            const officeName = getGovernmentOfficeName(l) || '-';
 
             // 残り日数（期限まで）
             const days = calculateRemainingDays(l.expiry_date);
@@ -1291,6 +1307,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td style="font-weight: 600;">${typeName}</td>
+                <td>${officeName}</td>
                 <td>${licenseNum}</td>
                 <td>${formatDate(l.expiry_date)}</td>
                 <td><span class="days-badge ${daysClass}">${formatRemainingDays(days)}</span></td>
@@ -1305,7 +1322,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (lastVisibleDoc.licenses && related.length >= 20) {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td colspan="5" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreLicenses(${customerId})">もっと見る <i data-lucide="chevron-down"></i></button></td>`;
+            tr.innerHTML = `<td colspan="6" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreLicenses(${customerId})">もっと見る <i data-lucide="chevron-down"></i></button></td>`;
             licensesListBody.appendChild(tr);
             if (window.lucide) lucide.createIcons();
         }
@@ -2236,14 +2253,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const pdfBytes = await window.ReportEngine.generateReport(templateUrl, fontUrl, mappingJson, viewData);
 
             // 5. Output
+            window.ReportEngine.previewPDF(pdfBytes);
             if (actionType === 'preview') {
-                window.ReportEngine.previewPDF(pdfBytes);
                 if (btnPreviewReport) btnPreviewReport.textContent = btnOriginalText;
             } else {
-                // ファイル出力時の名称を変更（禁則文字がある場合はここでサニタイズ処理を入れることを推奨）
-                const filename = `納税証明申請書_都税_${currentCustomer.customer_name}.pdf`;
-                window.ReportEngine.downloadPDF(pdfBytes, filename);
-                if(reportModal) reportModal.style.display = 'none'; // Close modal on download
+                if (reportModal) reportModal.style.display = 'none'; // Close modal
                 if (btnPrintReport) btnPrintReport.textContent = btnOriginalText;
             }
         } catch (err) {
@@ -2375,10 +2389,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const pdfBytes = await window.ReportEngine.generateReport(templateUrl, fontUrl, mappingJson, viewData);
 
             // 5. Output
-            const safeCustomerName = currentCustomer.customer_name.replace(/[\\/:*?"<>|]/g, '_');
-            const filename = `TaxPaymentCertificate_National_${safeCustomerName}.pdf`;
-            window.ReportEngine.downloadPDF(pdfBytes, filename);
-            if(reportNationalModal) reportNationalModal.style.display = 'none'; // Close modal on download
+            window.ReportEngine.previewPDF(pdfBytes);
+            if(reportNationalModal) reportNationalModal.style.display = 'none'; // Close modal
             if (btnPrintNationalReport) btnPrintNationalReport.textContent = btnOriginalText;
             
         } catch (err) {
@@ -2977,7 +2989,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (btn) {
             originalHTML = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i data-lucide="loader" class="spin"></i> PDF出力中...';
+            btn.innerHTML = '<i data-lucide="loader" class="spin"></i> 処理中...';
             if (typeof lucide !== 'undefined') lucide.createIcons({ root: btn });
         }
 
@@ -2986,16 +2998,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const report = new window.CustomerSummaryReport();
             await report.generate(currentCustomer, licenses, cases, histories, staffMembers, licenseTypes);
 
-            // ファイル名の決定 (顧客名のサニタイズ + YYYYMMDD)
-            const safeName = (currentCustomer.customer_name || '名称未設定').replace(/[\\/:*?"<>|]/g, '_');
-            const today = new Date();
-            const yyyymmdd = today.getFullYear() +
-                String(today.getMonth() + 1).padStart(2, '0') +
-                String(today.getDate()).padStart(2, '0');
-            const filename = `顧客カルテ概要_${safeName}_${yyyymmdd}.pdf`;
-
-            // ダウンロード実行
-            report.download(filename);
+            // プレビュー表示
+            report.preview();
         } catch (err) {
             console.error('[ExportSummaryPDF] Failed to generate PDF report:', err);
             // エラー表示 (フォントロード失敗時などもここに集約される)
