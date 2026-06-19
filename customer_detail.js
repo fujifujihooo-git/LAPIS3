@@ -342,9 +342,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const expStr = expDate ? expDate.toLocaleDateString('ja-JP') : '―';
                     const statusClass = l.status === '有効' ? 'badge-success-sm' : (l.status === '期限切れ' ? 'badge-danger-sm' : 'badge-warning-sm');
                     const licenseNum = typeof formatLicenseNumber === 'function' ? formatLicenseNumber(l) : (l.license_number || '―');
+                    const officeName = typeof getGovernmentOfficeName === 'function' ? getGovernmentOfficeName(l) || '―' : '―';
                     return `<tr>
                         <td>${type ? type.license_type_name : '―'}</td>
-                        <td>${licenseNum}</td>
+                        <td>
+                            <div class="overview-primary-text">${licenseNum}</div>
+                            <div class="overview-secondary-text">${officeName}</div>
+                        </td>
                         <td>${expStr}</td>
                         <td><span class="${statusClass}">${l.status || '―'}</span></td>
                     </tr>`;
