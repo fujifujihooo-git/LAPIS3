@@ -265,7 +265,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    /** サマリーカード4枚描画 */
+    /**
+     * サマリー情報描画
+     * TODO: 将来的にカード描画を伴わないため、renderCustomerSummary または updateCustomerSummary への改名を検討
+     */
     function renderSummaryCards(cId) {
         // 許認可サマリー
         const custLicenses = licenses.filter(l => l.customer_id === cId);
@@ -281,43 +284,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
-        el('sc-lic-active', activeLics.length);
-        el('sc-lic-total', custLicenses.length);
-        el('sc-lic-warn', warnCount);
-        el('sc-lic-expired', expiredCount);
+        el('header-lic-count', custLicenses.length);
 
         // 案件サマリー
         const custCases = cases.filter(c => c.customer_id === cId);
         const activeCases = custCases.filter(c => c.status && c.status !== '完了' && c.status !== '取下げ');
-        const doneCases = custCases.filter(c => c.status === '完了');
-        el('sc-case-active', activeCases.length);
-        el('sc-case-done', doneCases.length);
-        if (custCases.length > 0) {
-            const latest = custCases.sort((a, b) => {
-                const da = a.contract_date ? (a.contract_date.toDate ? a.contract_date.toDate() : new Date(a.contract_date)) : new Date(0);
-                const db2 = b.contract_date ? (b.contract_date.toDate ? b.contract_date.toDate() : new Date(b.contract_date)) : new Date(0);
-                return db2 - da;
-            })[0];
-            el('sc-case-recent', latest.license_type || latest.status || '―');
-        } else {
-            el('sc-case-recent', 'なし');
-        }
+        el('header-case-count', activeCases.length);
 
-        // 請求サマリー（プレースホルダー）
-        el('sc-inv-unpaid', '-');
-        el('sc-inv-amount', '（データ接続準備中）');
+        // 未請求サマリー（プレースホルダー：既存の '-' からチケット仕様に合わせ '0' に設定）
+        el('header-inv-count', '0');
 
         // 要対応アラート
         const alertCount = warnCount + expiredCount + activeCases.filter(c => c.status === '受任' || c.status === '申請中').length;
-        el('sc-alert-count', alertCount);
-        const alertDetailEl = document.getElementById('sc-alert-detail');
-        if (alertDetailEl) {
-            const details = [];
-            if (expiredCount > 0) details.push(`期限切れ ${expiredCount}件`);
-            if (warnCount > 0) details.push(`期限注意 ${warnCount}件`);
-            if (activeCases.length > 0) details.push(`進行中案件 ${activeCases.length}件`);
-            alertDetailEl.textContent = details.length > 0 ? details.join('、') : '対応事項なし';
-        }
+        el('header-alert-count', alertCount);
     }
 
     /** 概要タブ 許認可・案件ミニテーブル描画 */
@@ -553,8 +532,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (btnDelete) btnDelete.style.display = 'none';
             const nameDisp = document.getElementById('customer-name-display');
             if (nameDisp) nameDisp.textContent = '新規顧客';
-            const summaryCards = document.getElementById('summary-cards');
-            if (summaryCards) summaryCards.style.display = 'none';
+
+            // 新規登録画面では顧客IDが存在せず集計対象がないため、サマリーを非表示とする。
+            // ただし、将来的に新規作成直後の編集画面でも表示する可能性があるため、ハードコードせずupdateScreenModeで制御する。
+            const summaryBar = document.getElementById('header-summary-bar');
+            if (summaryBar) summaryBar.style.display = 'none';
             
             const tabs = document.querySelectorAll('.tab-btn');
             const contents = document.querySelectorAll('.tab-content');
@@ -572,8 +554,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (section) section.style.display = '';
             });
             if (btnDelete && isUserAdmin()) btnDelete.style.display = '';
-            const summaryCards = document.getElementById('summary-cards');
-            if (summaryCards) summaryCards.style.display = '';
+            const summaryBar = document.getElementById('header-summary-bar');
+            if (summaryBar) summaryBar.style.display = 'flex';
         }
     }
 
@@ -2033,11 +2015,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn-goto-basic-memo')?.addEventListener('click', () => switchToTab('basic'));
     document.getElementById('btn-goto-licenses')?.addEventListener('click', () => switchToTab('licenses'));
     document.getElementById('btn-goto-cases')?.addEventListener('click', () => switchToTab('projects'));
-    // サマリーカードリンク
-    document.getElementById('link-to-licenses')?.addEventListener('click', () => switchToTab('licenses'));
-    document.getElementById('link-to-cases')?.addEventListener('click', () => switchToTab('projects'));
-    document.getElementById('link-to-invoices')?.addEventListener('click', () => switchToTab('billing'));
-    document.getElementById('link-to-alerts')?.addEventListener('click', () => switchToTab('overview'));
+
 
     // --- Postal code address lookup ---
     const btnLookupZip = document.getElementById('btn-lookup-zip');

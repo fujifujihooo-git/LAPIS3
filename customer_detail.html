@@ -1257,6 +1257,33 @@
             line-height: 1.3;
             margin-top: 2px;
         }
+
+        /* --- 顧客ヘッダー サマリー情報 --- */
+        .header-summary-bar {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .header-summary-bar .summary-item {
+            font-size: 11pt;
+            color: var(--text-main);
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .header-summary-bar .summary-item i {
+            width: 16px;
+            height: 16px;
+            stroke-width: 2px;
+        }
+        .header-summary-bar .summary-separator {
+            color: var(--text-muted);
+        }
     </style>
 </head>
 
@@ -1402,56 +1429,20 @@
                         <span class="meta-item">決算期：<strong id="fiscal-display">―</strong></span>
                         <span class="meta-item">法人番号：<strong id="corp-num-display">―</strong></span>
                     </div>
+                    <div id="header-summary-bar" class="header-summary-bar">
+                        <span class="summary-item"><i data-lucide="file-text"></i> 許認可 <strong id="header-lic-count">0</strong>件</span>
+                        <span class="summary-separator">|</span>
+                        <span class="summary-item"><i data-lucide="briefcase"></i> 案件 <strong id="header-case-count">0</strong>件</span>
+                        <span class="summary-separator">|</span>
+                        <span class="summary-item"><i data-lucide="credit-card"></i> 未請求 <strong id="header-inv-count">0</strong>件</span>
+                        <span class="summary-separator">|</span>
+                        <span class="summary-item"><i data-lucide="alert-triangle"></i> アラート <strong id="header-alert-count">0</strong>件</span>
+                    </div>
                 </div>
 
                 <!-- ページ上部統合警告バナー -->
                 <div id="page-warning-container"></div>
 
-                <!-- サマリーカード -->
-                <div class="summary-cards-grid" id="summary-cards">
-                    <div class="summary-card sc-license" id="summary-license">
-                        <div class="summary-card-header"><span class="sc-icon">📜</span> 許認可サマリー</div>
-                        <div class="summary-card-body">
-                            <span class="summary-big-num" id="sc-lic-active">-</span>
-                            <span class="summary-sub">/</span>
-                            <span class="summary-sub"><span id="sc-lic-total">-</span>件</span>
-                            <span class="badge-success-sm">有効</span>
-                        </div>
-                        <div class="summary-card-detail">期限注意：<strong id="sc-lic-warn">0</strong>件　期限切れ：<strong id="sc-lic-expired">0</strong>件</div>
-                        <a href="javascript:void(0)" class="summary-card-link" id="link-to-licenses">許認可一覧へ ＞</a>
-                    </div>
-                    <div class="summary-card sc-case" id="summary-case">
-                        <div class="summary-card-header"><span class="sc-icon">📊</span> 案件サマリー</div>
-                        <div class="summary-card-body">
-                            <span class="summary-sub">進行中</span>
-                            <span class="summary-big-num" id="sc-case-active">-</span>
-                            <span class="summary-sub">件　完了</span>
-                            <span class="summary-big-num" id="sc-case-done" style="font-size:18pt;">-</span>
-                            <span class="summary-sub">件</span>
-                        </div>
-                        <div class="summary-card-detail">直近案件：<strong id="sc-case-recent">―</strong></div>
-                        <a href="javascript:void(0)" class="summary-card-link" id="link-to-cases">案件一覧へ ＞</a>
-                    </div>
-                    <div class="summary-card sc-invoice" id="summary-invoice">
-                        <div class="summary-card-header"><span class="sc-icon">💰</span> 請求サマリー</div>
-                        <div class="summary-card-body">
-                            <span class="summary-sub">未請求</span>
-                            <span class="summary-big-num" id="sc-inv-unpaid">-</span>
-                            <span class="summary-sub">件</span>
-                        </div>
-                        <div class="summary-card-detail">未請求金額 <strong id="sc-inv-amount">―</strong></div>
-                        <a href="javascript:void(0)" class="summary-card-link" id="link-to-invoices">請求一覧へ ＞</a>
-                    </div>
-                    <div class="summary-card sc-alert" id="summary-alert">
-                        <div class="summary-card-header"><span class="sc-icon">⚠️</span> 要対応アラート</div>
-                        <div class="summary-card-body">
-                            <span class="summary-big-num" id="sc-alert-count">-</span>
-                            <span class="summary-sub">件</span>
-                        </div>
-                        <div class="summary-card-detail" id="sc-alert-detail">―</div>
-                        <a href="javascript:void(0)" class="summary-card-link" id="link-to-alerts">アラート一覧へ ＞</a>
-                    </div>
-                </div>
 
                 <!-- アクションバー（保存=Primary, 削除=右端） -->
                 <div class="action-bar">
