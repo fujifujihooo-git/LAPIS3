@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnNewLicense = document.getElementById('btn-new-license');
     const btnReset = document.getElementById('btn-reset');
     const btnSearch = document.getElementById('btn-search-execute');
+    const btnExportPdf = document.getElementById('btn-export-pdf');
+    const btnExportExcel = document.getElementById('btn-export-excel');
 
     // --- State ---
     let licenses = [];
@@ -24,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let licenseTypes = [];
     let staffMembers = [];
     let governmentOffices = [];
-    let filteredData = [];
+    window.filteredData = [];
     let currentSort = { column: 'expiry_date', direction: 'asc' };
 
     // --- Functions ---
@@ -34,7 +36,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!expiryDate) return null;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const targetDate = new Date(expiryDate);
+        let targetDate;
+        if (typeof expiryDate.toDate === 'function') {
+            targetDate = expiryDate.toDate();
+        } else {
+            targetDate = new Date(expiryDate);
+        }
         targetDate.setHours(0, 0, 0, 0);
         const diffTime = targetDate - today;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -46,7 +53,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!noticeDate) return null;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const targetDate = new Date(noticeDate);
+        let targetDate;
+        if (typeof noticeDate.toDate === 'function') {
+            targetDate = noticeDate.toDate();
+        } else {
+            targetDate = new Date(noticeDate);
+        }
         targetDate.setHours(0, 0, 0, 0);
         const diffTime = targetDate - today;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -105,9 +117,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Format Date to Japanese Era (Wareki)
     function formatWareki(dateStr) {
-        if (!dateStr || dateStr === 'null' || !dateStr) return '';
+        if (!dateStr || dateStr === 'null') return '';
         try {
-            const date = new Date(dateStr);
+            let date;
+            if (typeof dateStr.toDate === 'function') {
+                date = dateStr.toDate();
+            } else {
+                date = new Date(dateStr);
+            }
             if (isNaN(date.getTime())) return '';
             const formatter = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', {
                 era: 'long',
@@ -400,7 +417,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             licenses = results;
-            filteredData = results;
+            window.filteredData = results;
             sortData(currentSort.column, currentSort.direction);
 
         } catch (err) {
@@ -430,7 +447,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentSort = { column, direction };
         const dir = direction === 'asc' ? 1 : -1;
 
-        filteredData.sort((a, b) => {
+        window.filteredData.sort((a, b) => {
             let valA, valB;
 
             if (column === 'customer_name') {
@@ -453,7 +470,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return dir * valA.localeCompare(valB);
         });
 
-        renderTable(filteredData);
+        renderTable(window.filteredData);
         updateSortIndicators();
     }
 
@@ -580,6 +597,291 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    if (btnExportPdf) btnExportPdf.addEventListener('click', exportPDF);
+    if (btnExportExcel) btnExportExcel.addEventListener('click', exportExcel);
+
+    // PDF出力
+    async function exportPDF() {
+        const data = window.filteredData;
+        if (data.length === 0) {
+            alert('出力するデータがありません。');
+            return;
+        }
+
+        try {
+            const report = new window.LicenseListReport();
+            
+            // 検索条件のオプションを取得して渡す
+            const filterOptions = {
+                customer: filterCustomer.value.trim(),
+                fieldStaff: filterFieldStaff ? filterFieldStaff.value : '',
+                status: filterStatus.value,
+                jurisdiction: filterJurisdiction ? filterJurisdiction.value.trim() : '',
+                licenseType: filterLicenseType.value,
+                noticeDue: filterNoticeDue.checked,
+                expiryStart: filterExpiryStart ? filterExpiryStart.value : '',
+                expiryEnd: filterExpiryEnd ? filterExpiryEnd.value : '',
+                noticeStart: filterNoticeStart ? filterNoticeStart.value : '',
+                noticeEnd: filterNoticeEnd ? filterNoticeEnd.value : ''
+            };
+
+            await report.generate(data, filterOptions, customers, licenseTypes, staffMembers);
+            report.preview();
+        } catch (error) {
+            console.error('PDF generation failed:', error);
+            alert('PDFの出力中にエラーが発生しました。');
+        }
+    }
+
+    // Excel出力（ExcelJS + FileSaver.js）
+    async function exportExcel() {
+        const data = window.filteredData;
+        if (data.length === 0) {
+            alert('出力するデータがありません。');
+            return;
+        }
+
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('許認可一覧');
+
+            // タイトルの設定 (A1セル)
+            worksheet.mergeCells('A1:G1');
+            const titleCell = worksheet.getCell('A1');
+            titleCell.value = '許認可一覧';
+            titleCell.font = { name: 'BIZ UDゴシック', size: 16, bold: true };
+            worksheet.getRow(1).height = 30;
+
+            // 出力日時 (A3)
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const nowStr = `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+            worksheet.getCell('A3').value = `出力日時: ${nowStr}`;
+            worksheet.getCell('A3').font = { name: 'BIZ UDゴシック', size: 11 };
+
+            // 検索条件の文字列構築
+            const condParts = [];
+            if (filterCustomer.value.trim()) condParts.push(`顧客名 [${filterCustomer.value.trim()}]`);
+            if (filterFieldStaff && filterFieldStaff.value) {
+                const staff = staffMembers.find(s => s.staff_id === Number(filterFieldStaff.value));
+                condParts.push(`外務担当者 [${staff ? staff.staff_name : filterFieldStaff.value}]`);
+            }
+            if (filterStatus.value) condParts.push(`状態 [${filterStatus.value}]`);
+            if (filterJurisdiction && filterJurisdiction.value.trim()) condParts.push(`管轄官公庁 [${filterJurisdiction.value.trim()}]`);
+            if (filterLicenseType.value) {
+                const lt = licenseTypes.find(l => l.license_type_id === Number(filterLicenseType.value));
+                condParts.push(`許認可種別 [${lt ? lt.license_type_name : filterLicenseType.value}]`);
+            }
+            if (filterNoticeDue.checked) condParts.push(`案内日が今日以前`);
+            const expiryStartVal = filterExpiryStart ? filterExpiryStart.value : '';
+            const expiryEndVal = filterExpiryEnd ? filterExpiryEnd.value : '';
+            if (expiryStartVal || expiryEndVal) {
+                condParts.push(`期限 [${expiryStartVal || ''} ～ ${expiryEndVal || ''}]`);
+            }
+            const noticeStartVal = filterNoticeStart ? filterNoticeStart.value : '';
+            const noticeEndVal = filterNoticeEnd ? filterNoticeEnd.value : '';
+            if (noticeStartVal || noticeEndVal) {
+                condParts.push(`案内日 [${noticeStartVal || ''} ～ ${noticeEndVal || ''}]`);
+            }
+
+            const condStr = condParts.length > 0 ? `検索条件: ${condParts.join(' / ')}` : '検索条件: なし';
+            worksheet.getCell('A4').value = condStr;
+            worksheet.getCell('A4').font = { name: 'BIZ UDゴシック', size: 11 };
+
+            // テーブルヘッダー (6行目)
+            const headers = ['顧客名', '許認可種別 / 番号', '期限（満了日）', '残り日数', '案内日', '案内まで', '状態'];
+            const headerRow = worksheet.getRow(6);
+            headerRow.height = 27;
+            
+            headers.forEach((header, index) => {
+                const cell = headerRow.getCell(index + 1);
+                cell.value = header;
+                cell.font = { name: 'BIZ UDゴシック', size: 12, bold: true };
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FFD3D3D3' }
+                };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+            });
+
+            // オートフィルタを設定
+            worksheet.autoFilter = 'A6:G6';
+
+            // 列幅設定
+            const colWidths = [35, 40, 30, 15, 30, 15, 15];
+            colWidths.forEach((width, index) => {
+                worksheet.getColumn(index + 1).width = width;
+            });
+
+            // 画面と同様のヘルパー関数
+            const calculateDays = (dateStr) => {
+                if (!dateStr) return null;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                let targetDate;
+                if (typeof dateStr.toDate === 'function') {
+                    targetDate = dateStr.toDate();
+                } else {
+                    targetDate = new Date(dateStr);
+                }
+                targetDate.setHours(0, 0, 0, 0);
+                return Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
+            };
+
+            const formatRemainingDays = (days, status) => {
+                const terminalStatuses = ['完了', '返却済', '取下げ', '失効', '取消'];
+                if (status && terminalStatuses.includes(status)) return 'ー';
+                if (days === null) return 'ー';
+                if (days < 0) return `${Math.abs(days)}日超過`;
+                return `${days}日`;
+            };
+
+            const formatDaysUntilNotice = (days) => {
+                if (days === null) return 'ー';
+                if (days < 0) return `${Math.abs(days)}日超過`;
+                return `${days}日`;
+            };
+
+            const formatLicenseNumber = (item) => {
+                const num1 = (item.license_number_1 || '').trim();
+                const num2 = (item.license_number_2 || '').trim();
+                if (!num1 && !num2) return 'ー';
+                if (!num1) return num2;
+                if (!num2) return num1;
+                return `${num1} _ ${num2}`;
+            };
+
+            const formatWareki = (dateStr) => {
+                if (!dateStr) return '';
+                try {
+                    let date;
+                    if (typeof dateStr.toDate === 'function') {
+                        date = dateStr.toDate();
+                    } else {
+                        date = new Date(dateStr);
+                    }
+                    if (isNaN(date.getTime())) return '';
+                    const formatter = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', {
+                        era: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                    return formatter.format(date);
+                } catch (e) {
+                    return '';
+                }
+            };
+
+            // 明細データの追加 (7行目以降)
+            data.forEach((item, rowIndex) => {
+                const customer = customers.find(c => c.customer_id === item.customer_id);
+                let customerText = customer ? (customer.customer_name || '―') : '―';
+                const staff = customer && customer.primary_staff_id
+                    ? staffMembers.find(s => s.staff_id === Number(customer.primary_staff_id))
+                    : null;
+                const staffName = staff ? staff.staff_name : '';
+                if (staffName) {
+                    customerText += ` (${staffName})`;
+                }
+
+                // 2. 許認可種別 / 番号
+                const licenseType = licenseTypes.find(lt => lt.license_type_id === item.license_type_id);
+                const gov = item.government_office ? `[${item.government_office}] ` : '';
+                const typeName = licenseType ? licenseType.license_type_name : '―';
+                const licNum = formatLicenseNumber(item);
+                const licText = `${gov}${typeName} / ${licNum}`;
+
+                // 3. 期限（満了日）
+                const expDate = window.ReportUtils.formatDate(item.expiry_date);
+                const expWareki = formatWareki(item.expiry_date);
+                const expText = expWareki ? `${expDate} (${expWareki})` : expDate;
+
+                // 4. 残り日数
+                const remDays = calculateDays(item.expiry_date);
+                const remText = formatRemainingDays(remDays, item.status);
+
+                // 5. 案内日
+                const noticeDate = window.ReportUtils.formatDate(item.notice_date);
+                const noticeWareki = formatWareki(item.notice_date);
+                const noticeText = noticeWareki ? `${noticeDate} (${noticeWareki})` : noticeDate;
+
+                // 6. 案内まで
+                const noticeDays = calculateDays(item.notice_date);
+                const noticeDaysText = formatDaysUntilNotice(noticeDays);
+
+                // 7. 状態
+                const statusText = item.status || '―';
+
+                const rowData = [customerText, licText, expText, remText, noticeText, noticeDaysText, statusText];
+                const dataRow = worksheet.addRow(rowData);
+                dataRow.height = 27;
+
+                // 交互縞模様の背景色
+                const fillBg = (rowIndex % 2 === 1) ? 'FFF0F4F8' : 'FFFFFFFF';
+
+                dataRow.eachCell({ includeEmpty: true }, (cell, colIndex) => {
+                    cell.font = { name: 'BIZ UDゴシック', size: 11 };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: fillBg }
+                    };
+
+                    if ([3, 4, 5, 6, 7].includes(colIndex)) {
+                        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    } else {
+                        cell.alignment = { vertical: 'middle', horizontal: 'left' };
+                    }
+                });
+            });
+
+            // --- ファイル出力（FileSaver.js）---
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+
+            const tsYear = now.getFullYear();
+            const tsMonth = String(now.getMonth() + 1).padStart(2, '0');
+            const tsDay = String(now.getDate()).padStart(2, '0');
+            const tsHours = String(now.getHours()).padStart(2, '0');
+            const tsMinutes = String(now.getMinutes()).padStart(2, '0');
+            const tsSeconds = String(now.getSeconds()).padStart(2, '0');
+            const fileTimestamp = `${tsYear}${tsMonth}${tsDay}_${tsHours}${tsMinutes}${tsSeconds}`;
+
+            saveAs(blob, `許認可一覧_${fileTimestamp}_${data.length}件.xlsx`);
+        } catch (error) {
+            console.error('Excel generation failed:', error);
+            alert('Excelの出力中にエラーが発生しました。');
+        }
+    }
+
     // Initial Start
     await init();
+
+    // Test Export
+    window.filteredData = filteredData;
+    window.customers = customers;
+    window.licenseTypes = licenseTypes;
+    window.staffMembers = staffMembers;
+    window.renderTable = renderTable;
 });

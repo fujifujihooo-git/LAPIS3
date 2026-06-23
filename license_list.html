@@ -260,6 +260,12 @@
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <p style="color: var(--text-muted); margin: 0; font-size: 13pt;">顧客の許認可情報を管理します。</p>
                     <div class="d-flex gap-2">
+                        <button class="btn btn-pdf" id="btn-export-pdf">
+                            <i data-lucide="file-text"></i> PDF出力
+                        </button>
+                        <button class="btn btn-excel" id="btn-export-excel">
+                            <i data-lucide="file-spreadsheet"></i> Excel出力
+                        </button>
                         <button id="btn-new-license" class="btn btn-new">
                             <i data-lucide="plus"></i> 新規許認可登録
                         </button>
@@ -397,8 +403,16 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <!-- ExcelJS: 書式設定対応のExcel出力ライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+    <!-- FileSaver: ブラウザからファイルを保存するためのライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
+    <script src="reports/report-engine.js"></script>
+    <script src="reports/report-utils.js"></script>
+    <script src="reports/base-report.js"></script>
+    <script src="reports/license-list-report.js"></script>
     <script src="license_list.js"></script>
 
     <script>
