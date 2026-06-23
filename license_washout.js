@@ -460,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             await report.generate(filteredData, filterOptions);
-            report.download(filename);
+            report.preview();
         } catch (error) {
             console.error('PDF generation failed:', error);
             alert('PDFの出力中にエラーが発生しました。');
