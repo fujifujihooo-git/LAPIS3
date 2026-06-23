@@ -254,16 +254,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // 従業員数: 人単位で表示
-        const employeesEl = document.getElementById('ov-employees');
-        if (employeesEl) {
-            if (data.employee_count && Number(data.employee_count) > 0) {
-                employeesEl.textContent = Number(data.employee_count).toLocaleString() + ' 人';
-            } else {
-                employeesEl.textContent = '―';
-            }
+        // 担当営業: contacts から is_primary === true の担当者を取得
+        const cId = Number(data.customer_id);
+        const primaryContact = contacts.find(c => Number(c.customer_id) === cId && c.is_primary === true);
+        if (primaryContact) {
+            setText('ov-primary-contact', primaryContact.contact_name || null);
+            // 所属拠点（office_id は string/number 混在の可能性があるため String 比較で統一）
+            const primaryOffice = offices.find(o =>
+                String(o.office_id) === String(primaryContact.office_id) && Number(o.customer_id) === cId
+            );
+            setText('ov-primary-office', primaryOffice ? primaryOffice.office_name : null);
+            // 担当メール（担当者個人のメール優先、なければ拠点メール、両方なければ '―'）
+            const contactEmail = primaryContact.email || (primaryOffice ? primaryOffice.email : null) || null;
+            setText('ov-primary-email', contactEmail);
+        } else {
+            setText('ov-primary-contact', null);
+            setText('ov-primary-office', null);
+            setText('ov-primary-email', null);
         }
     }
+
 
     /**
      * サマリー情報描画
@@ -396,6 +406,69 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    /** 概要タブ 直近の対応履歴描画 */
+    function renderOverviewHistories(cId) {
+        const container = document.getElementById('ov-history-list');
+        if (!container) return;
+
+        // 履歴データがない場合
+        if (!histories || histories.length === 0) {
+            container.innerHTML = '<div style="padding: 12px; text-align: center; color: #999; font-style: italic;">対応履歴はありません</div>';
+            return;
+        }
+
+        // 最新の5件を抽出（histories はすでに response_date の降順でソート済み）
+        const recentHistories = histories.slice(0, 5);
+
+        container.innerHTML = recentHistories.map(h => {
+            let badgeClass = 'ov-badge-other';
+            if (h.history_type === '電話') {
+                badgeClass = 'ov-badge-phone';
+            } else if (h.history_type === 'メール') {
+                badgeClass = 'ov-badge-mail';
+            } else if (h.history_type === '訪問') {
+                badgeClass = 'ov-badge-visit';
+            }
+
+            const rDate = h.response_date ? (h.response_date.toDate ? h.response_date.toDate() : new Date(h.response_date)) : null;
+            // 簡潔に YYYY/MM/DD HH:mm 形式にする
+            let dateStr = '―';
+            if (rDate) {
+                const year = rDate.getFullYear();
+                const month = String(rDate.getMonth() + 1).padStart(2, '0');
+                const day = String(rDate.getDate()).padStart(2, '0');
+                const hour = String(rDate.getHours()).padStart(2, '0');
+                const minute = String(rDate.getMinutes()).padStart(2, '0');
+                dateStr = `${year}/${month}/${day} ${hour}:${minute}`;
+            }
+
+            return `
+                <div class="ov-history-item" data-id="${h.id}">
+                    <div class="ov-history-meta">
+                        <div class="ov-history-meta-left">
+                            <span class="ov-history-date">${dateStr}</span>
+                            <span class="ov-history-badge ${badgeClass}">${escapeHtml(h.history_type || 'その他')}</span>
+                        </div>
+                        <span class="ov-history-author">担当：${escapeHtml(h.created_by_name || '―')}</span>
+                    </div>
+                    <div class="ov-history-subject">${escapeHtml(h.subject || '')}</div>
+                </div>
+            `;
+        }).join('');
+
+        // イベントバインド: 概要タブの履歴をクリックした際、履歴タブを開いて詳細を表示する
+        container.querySelectorAll('.ov-history-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const id = item.dataset.id;
+                const found = histories.find(h => h.id === id);
+                if (found) {
+                    switchToTab('history');
+                    selectHistory(found);
+                }
+            });
+        });
+    }
+
     /**
      * ページ上部統合警告バナーを表示
      * @param {string} title - 警告タイトル
@@ -501,6 +574,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         renderSummaryCards(cId);
         renderOverviewLists(cId);
+        renderOverviewHistories(cId);
 
         // [バッジ即時反映のための追加]
         // 各データセクション（拠点リストなど）と基本情報（登記上所在地IDを含む）のロードは非同期かつ並列で走るため、
@@ -509,6 +583,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         // そのため、全セクションの並列ロード（Promise.allSettled）がすべて完了したこの最終段階で、
         // 最新の顧客データと拠点データを用いて「登記上所在地」バッジを含む拠点一覧を確実に再描画します。
         renderOffices(cId);
+
+        // [担当営業情報の確実な反映]
+        // contacts/offices は並列ロードのため、loadCustomerBasicData 内の updateOverviewTab 呼び出し時点では
+        // まだデータが揃っていない場合がある。全セクションのロード完了後に再度呼び出して担当営業情報を反映する。
+        if (currentCustomer) {
+            updateOverviewTab(currentCustomer);
+        }
 
 
     }
@@ -2010,11 +2091,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         const contents = document.querySelectorAll('.tab-content');
         tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
         contents.forEach(c => c.classList.toggle('active', c.id === `tab-${tabName}`));
+
+        // 概要タブ切り替え時に、直近の対応履歴を自動で最新化する（UX改善）
+        if (tabName === 'overview') {
+            const customerId = document.getElementById('customer_id')?.value;
+            if (customerId && customerId !== 'new') {
+                renderOverviewHistories(Number(customerId));
+            }
+        }
     }
     document.getElementById('btn-goto-basic')?.addEventListener('click', () => switchToTab('basic'));
     document.getElementById('btn-goto-basic-memo')?.addEventListener('click', () => switchToTab('basic'));
     document.getElementById('btn-goto-licenses')?.addEventListener('click', () => switchToTab('licenses'));
     document.getElementById('btn-goto-cases')?.addEventListener('click', () => switchToTab('projects'));
+    document.getElementById('btn-goto-history')?.addEventListener('click', () => switchToTab('history'));
 
 
     // --- Postal code address lookup ---

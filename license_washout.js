@@ -434,57 +434,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // PDF出力
-    function exportPDF() {
+    async function exportPDF() {
         if (filteredData.length === 0) {
             alert('出力するデータがありません。');
             return;
         }
 
-        const template = document.getElementById('print-template-washout');
-        const printContent = template.cloneNode(true);
-        printContent.style.display = 'block';
+        try {
+            const mVal = filterFiscalMonth.value ? `${filterFiscalMonth.value}月` : '全決算月';
+            const tVal = filterLicenseType.value || '全許認可';
+            const selectedStaffId = filterStaff.value;
+            const selectedStaff = staffMembers.find(s => Number(s.staff_id) === Number(selectedStaffId));
+            const sVal = selectedStaff ? selectedStaff.staff_name : '全担当者';
+            const kVal = (filterSearch && filterSearch.value.trim()) ? `_キ-${filterSearch.value.trim()}` : '';
 
-        const fmVal = filterFiscalMonth.value;
-        const monthLabel = `${fmVal}月決算`;
+            const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+            const filename = `決算期別一覧_${mVal}_${tVal}_${sVal}${kVal}_${todayStr}.pdf`;
 
-        // Populate Template
-        printContent.querySelector('#p-print-now').textContent = new Date().toLocaleString();
-        printContent.querySelector('#p-target-month').textContent = monthLabel;
+            const report = new window.LicenseWashoutReport();
+            const filterOptions = {
+                fiscalMonth: filterFiscalMonth.value || '',
+                licenseType: filterLicenseType.value || '',
+                staffName: selectedStaff ? selectedStaff.staff_name : '',
+                keyword: (filterSearch && filterSearch.value.trim()) ? filterSearch.value.trim() : ''
+            };
 
-        const pBody = printContent.querySelector('#p-washout-body');
-        filteredData.forEach(item => {
-            const tr = document.createElement('tr');
-            const fiscalText = (item.customer.fiscal_year_end_month && item.customer.fiscal_year_end_day)
-                ? `${item.customer.fiscal_year_end_month}/${item.customer.fiscal_year_end_day}`
-                : '-';
-
-            tr.innerHTML = `
-                <td style="border: 1px solid #cbd5e1; padding: 8px;">
-                    <div style="font-weight: bold;">${item.customer.customer_name}</div>
-                    <div style="font-size: 0.75rem; color: #64748b;">${item.staff ? item.staff.staff_name : '(担当なし)'}</div>
-                </td>
-                <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: center;">${fiscalText}</td>
-                <td style="border: 1px solid #cbd5e1; padding: 8px;">
-                    <div>${item.licenseType ? item.licenseType.license_type_name : '不明'}</div>
-                    <div style="font-size: 0.7rem; color: #64748b;">[${item.officeName}] ${formatLicenseNumber(item.license)}</div>
-                </td>
-                <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: center;">${formatDate(item.license.expiry_date)}</td>
-                <td style="border: 1px solid #cbd5e1; padding: 8px; font-size: 0.8rem; color: #475569;">${item.customer.remarks || '-'}</td>
-            `;
-            pBody.appendChild(tr);
-        });
-
-        const opt = {
-            margin: [10, 10, 10, 10],
-            filename: `決算期別一覧_${monthLabel}_${new Date().toISOString().slice(0, 10)}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-        };
-
-        html2pdf().set(opt).from(printContent).save();
+            await report.generate(filteredData, filterOptions);
+            report.download(filename);
+        } catch (error) {
+            console.error('PDF generation failed:', error);
+            alert('PDFの出力中にエラーが発生しました。');
+        }
     }
+
 
     // --- Event Listeners ---
     // 決算月が変更されたら検索を実行

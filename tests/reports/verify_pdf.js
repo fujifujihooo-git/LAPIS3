@@ -2,7 +2,7 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 
-const BASE_URL = 'http://127.0.0.1:8080';
+const BASE_URL = 'http://127.0.0.1:5005';
 const DOWNLOAD_DIR = path.resolve(__dirname, 'download_test');
 
 if (!fs.existsSync(DOWNLOAD_DIR)) {
@@ -26,6 +26,42 @@ async function delay(ms) {
     });
 
     const page = await browser.newPage();
+
+    // Expose file saving to Puppeteer page
+    await page.exposeFunction('saveBlobAsFile', async (base64Data, filename) => {
+        const buffer = Buffer.from(base64Data, 'base64');
+        fs.writeFileSync(path.join(DOWNLOAD_DIR, filename), buffer);
+        console.log(`[Test Intercept] Intercepted and saved blob to: ${filename}`);
+    });
+
+    // Mock window.open to intercept blobs and save them locally
+    await page.evaluateOnNewDocument(() => {
+        window.open = function(url, target, features) {
+            if (url && url.startsWith('blob:')) {
+                fetch(url)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const base64 = reader.result.split(',')[1];
+                            const today = new Date();
+                            const yyyymmdd = today.getFullYear() +
+                                String(today.getMonth() + 1).padStart(2, '0') +
+                                String(today.getDate()).padStart(2, '0');
+                            const nameEl = document.getElementById('customer-name-display');
+                            const customerName = (nameEl ? nameEl.textContent.trim() : 'テスト建設株式会社') || 'テスト建設株式会社';
+                            const safeName = customerName.replace(/[\\/:*?"<>|]/g, '_');
+                            const filename = `顧客カルテ概要_${safeName}_${yyyymmdd}.pdf`;
+                            window.saveBlobAsFile(base64, filename);
+                        };
+                        reader.readAsDataURL(blob);
+                    })
+                    .catch(err => console.error('Error fetching blob in mock open:', err));
+                return null;
+            }
+            return null;
+        };
+    });
 
     // ダウンロード先ディレクトリの設定
     const client = await page.target().createCDPSession();
@@ -64,14 +100,16 @@ async function delay(ms) {
         await page.type('#login-pass', 'Lapis3_2026!');
         await page.click('#login-form button[type="submit"]');
 
-        // OTP入力画面が表示されるのを待つ
+        // OTP入力画面が表示されるのを待つ (表示された場合のみ)
         console.log("🔑 Waiting for 2FA / OTP Dialog...");
-        await page.waitForSelector('#otp-code', { timeout: 10000 });
-        await page.type('#otp-code', '123456');
-        await page.click('#otp-form button[type="submit"]');
-
-        // ダッシュボード遷移などを待つ
-        await delay(3000);
+        try {
+            await page.waitForSelector('#otp-code', { timeout: 4000 });
+            await page.type('#otp-code', '123456');
+            await page.click('#otp-form button[type="submit"]');
+            await delay(3000);
+        } catch (e) {
+            console.log("OTP not required or already bypassed.");
+        }
 
         console.log("📂 Navigating to Customer Detail...");
         // キャッシュバスター付きで遷移

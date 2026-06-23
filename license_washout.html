@@ -154,9 +154,14 @@
                 <!-- Actions Bar -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <p class="description-text">顧客の決算月ごとの一覧を表示します。</p>
-                    <button class="btn btn-excel" id="btn-export-excel">
-                        <i data-lucide="file-spreadsheet"></i> Excel出力
-                    </button>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-pdf" id="btn-export-pdf">
+                            <i data-lucide="file-text"></i> PDF出力
+                        </button>
+                        <button class="btn btn-excel" id="btn-export-excel">
+                            <i data-lucide="file-spreadsheet"></i> Excel出力
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Search & Filters -->
@@ -272,6 +277,10 @@
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
+    <script src="reports/report-engine.js"></script>
+    <script src="reports/report-utils.js"></script>
+    <script src="reports/base-report.js"></script>
+    <script src="reports/license-washout-report.js"></script>
     <script src="license_washout.js"></script>
 
     <script>

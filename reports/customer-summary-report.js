@@ -59,7 +59,7 @@
             // 基本情報グリッドの描画 (X: 15, Y: y, 幅: 160, 各行高: 7.5mm)
             const gridRowH = 7.5;
             const gridYStart = y;
-            const gridRows = 6;
+            const gridRows = 7;
             const gridH = gridRows * gridRowH;
 
             // グリッド外枠・内線描画
@@ -102,12 +102,12 @@
 
                 // データテキスト描画 (左寄せ、はみ出し防止切り詰め)
                 doc.setFontSize(9.5);
-                const safeVal = value || '―';
+                const safeVal = (value === null || value === undefined || value === '') ? '―' : String(value);
                 const truncatedVal = utils.truncateText(doc, safeVal, valW - 3, 9.5);
                 doc.text(truncatedVal, colX + labelW + 2, rowY + (gridRowH / 2) + 1.2);
             };
 
-            // 住所用特殊セル (1行ぶち抜き)
+            // 住所・顧客名・フリガナ用特殊セル (1行ぶち抜き、フォント縮小対応)
             const drawGridFullWidthCell = (rowIdx, label, value) => {
                 const rowY = gridYStart + (rowIdx * gridRowH);
                 const labelW = 22;
@@ -121,16 +121,30 @@
                 doc.setDrawColor(theme.BORDER[0], theme.BORDER[1], theme.BORDER[2]);
                 doc.line(leftX + labelW, rowY, leftX + labelW, rowY + gridRowH);
 
-                // ラベル
+                // ラベルテキスト描画
                 doc.setFontSize(8.5);
                 doc.setTextColor(theme.TEXT_MAIN[0], theme.TEXT_MAIN[1], theme.TEXT_MAIN[2]);
                 doc.text(label, leftX + (labelW / 2), rowY + (gridRowH / 2) + 1.2, { align: 'center' });
 
-                // データ
-                doc.setFontSize(9.5);
-                const safeVal = value || '―';
-                const truncatedVal = utils.truncateText(doc, safeVal, valW - 3, 9.5);
-                doc.text(truncatedVal, leftX + labelW + 2, rowY + (gridRowH / 2) + 1.2);
+                // データテキスト描画 (空値安全処理 & 動的縮小)
+                const safeVal = (value === null || value === undefined || value === '') ? '―' : String(value);
+                
+                let currentFontSize = 9.5;
+                doc.setFontSize(currentFontSize);
+                const maxValW = valW - 3;
+
+                // 横幅に収まるまで縮小 (最小7.0pt)
+                while (doc.getTextWidth(safeVal) > maxValW && currentFontSize > 7.0) {
+                    currentFontSize -= 0.5;
+                    doc.setFontSize(currentFontSize);
+                }
+
+                const finalVal = utils.truncateText(doc, safeVal, maxValW, currentFontSize);
+                
+                // 既存のセルのY座標補正基準に統一
+                const yOffset = (gridRowH / 2) + 1.2; 
+                doc.setTextColor(theme.TEXT_MAIN[0], theme.TEXT_MAIN[1], theme.TEXT_MAIN[2]);
+                doc.text(finalVal, leftX + labelW + 2, rowY + yOffset);
             };
 
             // 担当部署および担当者名解決
@@ -151,10 +165,10 @@
 
             // グリッド値書き込み
             drawGridCell(0, true, '顧客ID', custIdStr);
-            drawGridCell(0, false, '顧客名', custNameStr);
+            drawGridCell(0, false, '代表者名', customer ? customer.representative_name : '');
 
-            drawGridCell(1, true, 'フリガナ', customer ? customer.customer_kana : '');
-            drawGridCell(1, false, '代表者名', customer ? customer.representative_name : '');
+            drawGridFullWidthCell(1, '顧客名', custNameStr);
+            drawGridFullWidthCell(2, 'フリガナ', customer ? customer.customer_kana : '');
 
             // 住所は 郵便番号 + 住所 + ビル名
             let fullAddr = '';
@@ -164,20 +178,20 @@
                 const bld = customer.building_name ? ` ${customer.building_name}` : '';
                 fullAddr = zip + addr + bld;
             }
-            drawGridFullWidthCell(2, '住所', fullAddr);
+            drawGridFullWidthCell(3, '住所', fullAddr);
 
-            drawGridCell(3, true, '電話番号', customer ? customer.phone : '');
-            drawGridCell(3, false, 'FAX番号', customer ? customer.fax : '');
+            drawGridCell(4, true, '電話番号', customer ? customer.phone : '');
+            drawGridCell(4, false, 'FAX番号', customer ? customer.fax : '');
 
-            drawGridCell(4, true, 'メール', customer ? customer.email : '');
-            drawGridCell(4, false, '担当者', staffName);
+            drawGridCell(5, true, 'メール', customer ? customer.email : '');
+            drawGridCell(5, false, '担当者', staffName);
 
-            drawGridCell(5, true, '担当部署', deptName);
-            // 6行目右側は空き（斜線または空白）
+            drawGridCell(6, true, '担当部署', deptName);
+            // 7行目右側は空き（斜線または空白）
             doc.setFillColor(theme.LIGHT_BG[0], theme.LIGHT_BG[1], theme.LIGHT_BG[2]);
-            doc.rect(leftX + (leftW / 2), gridYStart + (5 * gridRowH), leftW / 2, gridRowH, 'F');
+            doc.rect(leftX + (leftW / 2), gridYStart + (6 * gridRowH), leftW / 2, gridRowH, 'F');
             doc.setDrawColor(theme.BORDER[0], theme.BORDER[1], theme.BORDER[2]);
-            doc.line(leftX + (leftW / 2), gridYStart + (5 * gridRowH), leftX + (leftW / 2), gridYStart + (6 * gridRowH));
+            doc.line(leftX + (leftW / 2), gridYStart + (6 * gridRowH), leftX + (leftW / 2), gridYStart + (7 * gridRowH));
 
             y += gridH + 8; // 余白を挟んで次のセクションへ
 

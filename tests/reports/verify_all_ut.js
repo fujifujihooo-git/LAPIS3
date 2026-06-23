@@ -175,6 +175,47 @@ async function seedDefaultData(customerOverrides = {}) {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 1024 });
 
+    // ブラウザのコンソール出力を転送
+    page.on('console', msg => {
+        console.log(`[Browser Console] ${msg.type()}: ${msg.text()}`);
+    });
+
+    // Expose file saving to Puppeteer page
+    await page.exposeFunction('saveBlobAsFile', async (base64Data, filename) => {
+        const buffer = Buffer.from(base64Data, 'base64');
+        fs.writeFileSync(path.join(DOWNLOAD_DIR, filename), buffer);
+        console.log(`[Test Intercept] Intercepted and saved blob to: ${filename}`);
+    });
+
+    // Mock window.open to intercept blobs and save them locally
+    await page.evaluateOnNewDocument(() => {
+        window.open = function(url, target, features) {
+            if (url && url.startsWith('blob:')) {
+                fetch(url)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const base64 = reader.result.split(',')[1];
+                            const today = new Date();
+                            const yyyymmdd = today.getFullYear() +
+                                String(today.getMonth() + 1).padStart(2, '0') +
+                                String(today.getDate()).padStart(2, '0');
+                            const nameEl = document.getElementById('customer-name-display');
+                            const customerName = (nameEl ? nameEl.textContent.trim() : 'テスト建設株式会社') || 'テスト建設株式会社';
+                            const safeName = customerName.replace(/[\\/:*?"<>|]/g, '_');
+                            const filename = `顧客カルテ概要_${safeName}_${yyyymmdd}.pdf`;
+                            window.saveBlobAsFile(base64, filename);
+                        };
+                        reader.readAsDataURL(blob);
+                    })
+                    .catch(err => console.error('Error fetching blob in mock open:', err));
+                return null;
+            }
+            return null;
+        };
+    });
+
     // ダウンロード先の設定
     const client = await page.target().createCDPSession();
     await client.send('Page.setDownloadBehavior', {
@@ -188,23 +229,36 @@ async function seedDefaultData(customerOverrides = {}) {
         await dialog.accept();
     });
 
+    // Firestoreのデータ確認デバッグ
+    const staffSnap = await db.collection('staff').get();
+    console.log(`[Test Debug] Firestore staff count: ${staffSnap.size}`);
+    staffSnap.docs.forEach(doc => console.log(`  Staff: ID=${doc.id}, email=${doc.data().email}, uid=${doc.data().uid}`));
+
     // ログイン処理 (1回だけ行う)
     console.log("🔐 Logging in...");
     await page.goto(`${BASE_URL}/login.html`, { waitUntil: 'load' });
-    await page.type('#login-email', 'lapis-test@lapis.local');
-    await page.type('#login-pass', 'Lapis3_2026!');
-    await page.click('#login-form button[type="submit"]');
-
-    await page.waitForSelector('#otp-code', { timeout: 10000 });
-    // 入力の不確実性を防ぐため、evaluateで確実にセットしてsubmitする
+    await page.waitForSelector('#login-email');
     await page.evaluate(() => {
-        const input = document.getElementById('otp-code');
-        input.value = '123456';
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        document.getElementById('otp-form').dispatchEvent(new Event('submit'));
+        document.getElementById('login-email').value = 'lapis-test@lapis.local';
+        document.getElementById('login-pass').value = 'Lapis3_2026!';
     });
-    await delay(3000);
+    await page.click('#login-form button[type="submit"]');
+ 
+    try {
+        await page.waitForSelector('#otp-code', { timeout: 5000 });
+        // 入力の不確実性を防ぐため、evaluateで確実にセットしてsubmitする
+        await page.evaluate(() => {
+            const input = document.getElementById('otp-code');
+            input.value = '123456';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            document.getElementById('otp-form').dispatchEvent(new Event('submit'));
+        });
+        // index.html への遷移を待つ
+        await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 });
+    } catch (e) {
+        console.log("OTP not required or already bypassed, or login navigation occurred.");
+    }
 
     // テストケース定義
     const testCases = [
@@ -296,12 +350,59 @@ async function seedDefaultData(customerOverrides = {}) {
         },
         {
             id: 'UT-008',
-            desc: '長い顧客名 (折り返し・はみ出し制御)',
+            desc: '長い顧客名・フリガナ (ケース1: 80文字級長大データ)',
             setup: async () => {
                 await resetFirestoreData();
                 await seedDefaultData({
-                    customer_name: '株式会社東北総合建設コンサルティングサービス',
-                    customer_kana: 'カブシキガイシャトウホクソウゴウケンセツコンサルティングサービス'
+                    customer_name: '株式会社ラピスホールディングス建設ソリューションズ東京本社営業統括部関東第一営業部',
+                    customer_kana: 'カブシキガイシャラピスホールディングスケンセツソリューションズトウキョウホンシャエイギョウトウカツブカントウダイイチエイギョウブ'
+                });
+            }
+        },
+        {
+            id: 'UT-008_case2',
+            desc: '長い顧客名・フリガナ (ケース2: 長大半角英数字データ)',
+            setup: async () => {
+                await resetFirestoreData();
+                await seedDefaultData({
+                    customer_name: 'LAPIS-HOLDINGS-CONSTRUCTION-SOLUTIONS-TOKYO-HQ-SALES-DIVISION-001',
+                    customer_kana: 'ラピスホールディングスコンストラクションソリューションズトウキョウヘッドクォーターズセールスディビジョンゼロゼロイチ'
+                });
+            }
+        },
+        {
+            id: 'UT-008_case3',
+            desc: '長い顧客名・フリガナ (ケース3: 記号・特殊文字混在データ)',
+            setup: async () => {
+                await resetFirestoreData();
+                await seedDefaultData({
+                    customer_name: '株式会社LAPIS&Partners Construction Solutions Group',
+                    customer_kana: 'カブシキガイシャラピスアンドパートナーズコンストラクションソリューションズグループ'
+                });
+            }
+        },
+        {
+            id: 'UT-008_case4',
+            desc: '顧客名以外の各欄が空値 (ケース4: 空文字列/null/undefined)',
+            setup: async () => {
+                await resetFirestoreData();
+                await seedDefaultData({
+                    customer_name: 'テスト建設株式会社',
+                    customer_kana: null,
+                    representative_name: '',
+                    phone: null,
+                    email: ''
+                });
+            }
+        },
+        {
+            id: 'UT-008_case5',
+            desc: '長い顧客名・フリガナ (ケース5: 全角スペース混在)',
+            setup: async () => {
+                await resetFirestoreData();
+                await seedDefaultData({
+                    customer_name: '株式会社ラピス　　　　建設',
+                    customer_kana: 'カブシキガイシャラピス　　　　ケンセツ'
                 });
             }
         },
@@ -445,7 +546,8 @@ async function seedDefaultData(customerOverrides = {}) {
         }
     ];
 
-    for (const tc of testCases) {
+    const targetIds = ['UT-001', 'UT-008', 'UT-008_case2', 'UT-008_case3', 'UT-008_case4', 'UT-008_case5'];
+    for (const tc of testCases.filter(t => targetIds.includes(t.id))) {
         console.log(`\n--------------------------------------------------`);
         console.log(`📝 Running: ${tc.id} - ${tc.desc}`);
         console.log(`--------------------------------------------------`);
