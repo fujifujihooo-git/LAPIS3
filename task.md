@@ -87,6 +87,12 @@
 - [ ] `_BACKUP_BEFORE_REDESIGN` 等の一時退避用フォルダや、未使用になったコードの整理
 - [ ] コメントの整理とドキュメント（README等）の最新化
 
+### 6. 決算期別一覧画面の改善 (完了)
+- [x] 検索条件の並び順変更（許認可種別を2番目に繰り上げる）
+  - [x] HTML変更 ([license_washout.html](file:///d:/Antigravity/LAPIS3/license_washout.html))
+  - [x] JS側のID参照依存確認（DOM順序非依存のためJS変更不要）
+  - [x] Firebaseエミュレータ及びPuppeteerによる画面表示・動作確認
+
 ---
 
 ## 📋 帳票基盤 (Version 1.0) のリリースおよび次期課題バックログ
