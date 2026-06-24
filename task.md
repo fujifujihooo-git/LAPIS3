@@ -63,6 +63,29 @@
 
 ## 🚧 進行中・残りのタスク (To Do / In Progress)
 
+### 10. カレンダー日付入力UI統一 (UnifiedDatePicker導入)
+- [x] **優先度：高（機能統一・不具合防止）**
+  - [x] `common.js` への `setDateControlValue()` および `setDateValueById()` の追加
+    - [x] `setDateControlValue` 優先順位（_udp 優先、_flatpickr 次点）の意図をコメントに明記
+  - [x] `customer_detail` (html/js) への UDP 導入
+    - [x] `founded_date` への `setDateValueById` unconditional 適用（値の有無に関わらず呼び出す）
+    - [x] 履歴入力欄等（3箇所）への `setDateValueById` 適用
+  - [x] `unpaid_invoice_list` (html/js) への UDP 導入 (`batch-receipt-date` への適用)
+  - [x] `staff_detail` (html/js) への UDP 導入
+    - [x] `hire_date` への `setDateValueById` 適用
+    - [x] マスキングロジックの判定条件を `el.type === 'date' || el._udp` に修正
+- [x] **優先度：中（既存画面JSのパターン統一・リファクタリング）**
+  - [x] `detail.js` への `setDateValueById()` 統一
+  - [x] `invoice_detail.js` への `setDateValueById()` 統一
+  - [x] `license_detail.js` への `setDateValueById()` 統一
+- [x] **優先度：低（UDP本体の改善）**
+  - [x] `unified_datepicker.js` 和暦「元年」表記の修正と2019年問題の調整
+  - [x] `unified_datepicker.js` clickオープン対応（Tabキー誤オープン対策含む）
+  - [x] `unified_datepicker.js` ポップアップFlip処理 (spaceBelow < popupH + margin && wrapperRect.top > popupH + margin に基づく上表示切り替え)
+- [x] **検証および受入確認**
+  - [x] 各画面の自動テスト・動作確認（エミュレータ起動テストなど）
+  - [x] `walkthrough.md` 報告書の作成
+
 ### 1. アカウント移行・運用環境の整理
 - [ ] **[WIP] AntigravityアカウントとFirebaseアカウントの統一（検討・実施）**
   - [ ] 新しい（または統一する）GoogleアカウントへのFirebaseプロジェクト権限の付与・移行
@@ -120,6 +143,25 @@
   - [x] 既存機能（顧客カルテ概要PDF）への回帰テストの実行。
 - [x] **ポップアップブロック・互換性確認**
   - [x] ChromeおよびEdgeでのプレビュー動作・印刷/保存機能の確認。
+
+### 9. 許認可管理一覧 PDF/Excel出力機能の追加
+- [x] **設計の確定と準備**
+  - [x] 実装計画の最終確認
+  - [x] `license_list.html` へのボタン追加とCDNライブラリ（ExcelJS, FileSaver.js, BaseReport関連）の読み込み設定
+- [x] **新規PDF帳票クラスの実装**
+  - [x] `reports/license-list-report.js` の新規作成 (`BaseReport` 継承)
+  - [x] テーブル描画 (`jspdf-autotable`)、ヘッダーの検索条件・件数の埋め込み
+  - [x] 画面表示（顧客名＋担当者、[管轄] 種別＋番号、期限・残り日数、案内日・案内まで、状態）と完全一致する7列レイアウト
+- [x] **JSへのPDF/Excel出力処理の追加**
+  - [x] `license_list.js` への `exportPDF()` 実実装 (別タブプレビュー)
+  - [x] `license_list.js` への `exportExcel()` 実実装 (`ExcelJS` を用いた書式付きxlsx、件数付ファイル名)
+  - [x] 0件バリデーション
+- [x] **動作検証と回帰テスト**
+  - [x] 0件時のアラート動作確認
+  - [x] PDFおよびExcel出力時のレイアウト、検索条件（入力した項目のみ）、件数の整合性、ファイル名確認
+  - [x] 既存機能（顧客カルテ、決算期別一覧）の回帰テスト実行
+- [x] **受入報告書の作成**
+  - [x] `walkthrough.md` に証跡を記録して提出
 
 ---
 

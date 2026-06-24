@@ -61,13 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
     btnReset.addEventListener('click', () => {
         filterPayer.value = '';
         filterStatus.value = 'active';
-        filterDateStart.value = '';
-        filterDateEnd.value = '';
+        window.setDateControlValue(filterDateStart, '');
+        window.setDateControlValue(filterDateEnd, '');
         filterUnallocated.checked = true;
-        
-        // Reset Datepickers if flatpickr exists
-        if (filterDateStart._flatpickr) filterDateStart._flatpickr.clear();
-        if (filterDateEnd._flatpickr) filterDateEnd._flatpickr.clear();
         
         tableWrapper.style.display = 'none';
         initialMessage.style.display = 'block';
@@ -224,11 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Defaults to today
         const todayStr = new Date().toISOString().split('T')[0];
-        if (modalReceiptDate._flatpickr) {
-            modalReceiptDate._flatpickr.setDate(todayStr);
-        } else {
-            modalReceiptDate.value = todayStr;
-        }
+        window.setDateControlValue(modalReceiptDate, todayStr);
 
         modalCancelledWarning.style.display = 'none';
         btnCancelModal.style.display = 'none';
@@ -239,8 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
             modalTitle.textContent = '入金編集';
             modalReceiptId.value = data.id;
             
-            if (modalReceiptDate._flatpickr) modalReceiptDate._flatpickr.setDate(data.receiptDate);
-            else modalReceiptDate.value = data.receiptDate;
+            window.setDateControlValue(modalReceiptDate, data.receiptDate);
             
             modalAmount.value = data.amount;
             modalPayerName.value = data.payerName || '';

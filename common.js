@@ -246,6 +246,40 @@ function initDatePicker() {
     console.warn('No date picker library found.');
 }
 
+/**
+ * 日付入力コントロール統合関数・本体（Element直接受取）
+ * UDP / flatpickr / ネイティブ date input を自動判定してセット。
+ *
+ * 【優先順位に関する重要設計】
+ * _udp が _flatpickr よりも先に評価されることが極めて重要です。
+ * UnifiedDatePicker は後方互換性のために el._flatpickr プロパティも自身にバインドします。
+ * そのため、先に _flatpickr 判定を行うと UDP 独自の setDate ではなく互換レイヤーの
+ * flatpickr メソッドが意図せず呼び出されてしまうリスクがあります。
+ * 
+ * @param {HTMLElement} el - input要素
+ * @param {string} value   - YYYY-MM-DD形式（空文字でクリア）
+ */
+window.setDateControlValue = function(el, value) {
+    if (!el) return;
+    var val = value || '';
+    if (el._udp && typeof el._udp.setDate === 'function') {
+        el._udp.setDate(val);              // UnifiedDatePicker
+    } else if (el._flatpickr && typeof el._flatpickr.setDate === 'function') {
+        el._flatpickr.setDate(val, true);  // flatpickr（既存）
+    } else {
+        el.value = val;                    // ネイティブフォールバック
+    }
+};
+
+/**
+ * 日付入力コントロール統合関数・IDラッパー（全画面から呼び出す標準I/F）
+ * @param {string} id    - input要素のID
+ * @param {string} value - YYYY-MM-DD形式（空文字でクリア）
+ */
+window.setDateValueById = function(id, value) {
+    window.setDateControlValue(document.getElementById(id), value);
+};
+
 // --- Format Utilities ---
 // Implementation lives under window.LapisFormat; legacy global functions below preserve compatibility.
 window.LapisFormat = {

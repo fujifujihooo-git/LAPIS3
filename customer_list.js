@@ -63,6 +63,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 customerListBody.innerHTML = '';
             });
         }
+
+        // 全セットアップ完了後にフォーカスを設定
+        // 将来的なローディング表示・描画アニメーション追加時も順序を保証するため、init()末尾に配置
+        filterSearch.focus();
     }
 
     async function executeSearch() {

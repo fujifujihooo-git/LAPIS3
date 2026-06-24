@@ -586,8 +586,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (filterCustomer) filterCustomer.value = '';
         filterDeadlineNear.checked = false;
         if (filterDateType) filterDateType.value = '';
-        if (filterDateStart) filterDateStart.value = '';
-        if (filterDateEnd) filterDateEnd.value = '';
+        if (filterDateStart) window.setDateControlValue(filterDateStart, '');
+        if (filterDateEnd) window.setDateControlValue(filterDateEnd, '');
         activeCardId = null;
         updateCardStyles();
         init();

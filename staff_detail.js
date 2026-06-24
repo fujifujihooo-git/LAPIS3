@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('role').value = data.role || '補助者';
         document.getElementById('authority').value = data.authority || 'staff';
         document.getElementById('qualification').value = data.qualification || '';
-        document.getElementById('hire_date').value = formatDateForInput(data.hire_date);
+        window.setDateValueById('hire_date', formatDateForInput(data.hire_date));
         document.getElementById('status').value = data.status || '在籍';
         document.getElementById('remarks').value = data.remarks || '';
 
@@ -152,7 +152,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 privateFields.forEach(fieldId => {
                     const el = document.getElementById(fieldId);
                     if (el) {
-                        el.value = (el.tagName === 'SELECT' || el.type === 'date') ? "" : "********";
+                        if (el.type === 'date' || el._udp) {
+                            window.setDateControlValue(el, '');
+                        } else if (el.tagName === 'SELECT') {
+                            el.value = '';
+                        } else {
+                            el.value = '********';
+                        }
                         el.setAttribute('disabled', 'disabled');
                         el.style.color = "transparent";
                         el.style.textShadow = "0 0 5px rgba(0,0,0,0.5)";

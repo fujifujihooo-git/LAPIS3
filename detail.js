@@ -256,22 +256,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (newStatus === '受任') {
                 const el = document.getElementById('contract_date');
                 if (el && !el.value) {
-                    if (el._flatpickr) el._flatpickr.setDate(today, true);
-                    else el.value = today;
+                    window.setDateValueById('contract_date', today);
                     updatedField = 'contract_date'; fieldLabel = '受任日';
                 }
             } else if (newStatus === '受付（受理）') {
                 const el = document.getElementById('acceptance_date');
                 if (el && !el.value) {
-                    if (el._flatpickr) el._flatpickr.setDate(today, true);
-                    else el.value = today;
+                    window.setDateValueById('acceptance_date', today);
                     updatedField = 'acceptance_date'; fieldLabel = '受付日';
                 }
             } else if (newStatus === '完了') {
                 const el = document.getElementById('completion_date');
                 if (el && !el.value) {
-                    if (el._flatpickr) el._flatpickr.setDate(today, true);
-                    else el.value = today;
+                    window.setDateValueById('completion_date', today);
                     updatedField = 'completion_date'; fieldLabel = '完了日';
                 }
             }
@@ -594,8 +591,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         fields.forEach(id => {
             const el = document.getElementById(id);
             if (el) {
-                if (el._flatpickr) {
-                    el._flatpickr.setDate(data[id] || '', true); // trueでonChangeイベントを発火
+                if (el.type === 'date' || el._udp || el._flatpickr) {
+                    window.setDateControlValue(el, data[id] || '');
                 } else {
                     el.value = data[id] || '';
                 }
@@ -697,9 +694,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 statusSelect.value = newStatus;
                 updateStatusPreview(newStatus);
                 const dateVal = newDateIso.split('T')[0];
-                if (newStatus === '受任') document.getElementById('contract_date').value = dateVal;
-                else if (newStatus === '受付（受理）') document.getElementById('acceptance_date').value = dateVal;
-                else if (newStatus === '完了') document.getElementById('completion_date').value = dateVal;
+                if (newStatus === '受任') window.setDateValueById('contract_date', dateVal);
+                else if (newStatus === '受付（受理）') window.setDateValueById('acceptance_date', dateVal);
+                else if (newStatus === '完了') window.setDateValueById('completion_date', dateVal);
             }
 
             renderHistory(caseId);

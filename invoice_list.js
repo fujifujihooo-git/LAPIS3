@@ -50,10 +50,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date();
         const threeMonthsAgo = new Date();
         threeMonthsAgo.setMonth(today.getMonth() - 3);
-        filterDateStart.value = threeMonthsAgo.toISOString().split('T')[0];
+        window.setDateControlValue(filterDateStart, threeMonthsAgo.toISOString().split('T')[0]);
 
         // 終了日は今日
-        filterDateEnd.value = today.toISOString().split('T')[0];
+        window.setDateControlValue(filterDateEnd, today.toISOString().split('T')[0]);
 
         // 「残高ありのみ表示」はデフォルトON
         if (filterUnpaid) filterUnpaid.checked = true;
@@ -244,18 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
         filterCustomer.value = '';
         filterStatus.value = '';
 
-        // 日付入力は UI(Flatpickr) が上書きしているため専用のクリアメソッドを呼ぶ
-        if (filterDateStart._flatpickr) {
-            filterDateStart._flatpickr.clear();
-        } else {
-            filterDateStart.value = '';
-        }
-
-        if (filterDateEnd._flatpickr) {
-            filterDateEnd._flatpickr.clear();
-        } else {
-            filterDateEnd.value = '';
-        }
+        window.setDateControlValue(filterDateStart, '');
+        window.setDateControlValue(filterDateEnd, '');
 
         if (includePaid) includePaid.checked = false;
         if (allPeriods) allPeriods.checked = false;

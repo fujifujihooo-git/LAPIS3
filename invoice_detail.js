@@ -141,11 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('invoice_number').value = formState.invoice_number;
         document.getElementById('invoice_number').placeholder = '保存時に自動採番（または入力）';
 
-        const iDateEl = document.getElementById('invoice_date');
-        if (iDateEl) {
-            if (iDateEl._flatpickr) iDateEl._flatpickr.setDate(formState.invoice_date);
-            else iDateEl.value = formState.invoice_date;
-        }
+        window.setDateValueById('invoice_date', formState.invoice_date);
 
         // Setup Autocomplete (Fetch all customers? Or use search?)
         // For scalability, simple search against 'customers' collection.
@@ -242,17 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const remarksEl = document.getElementById('remarks');
             if (remarksEl) remarksEl.value = formState.remarks;
 
-            const iDateEl = document.getElementById('invoice_date');
-            if (iDateEl) {
-                if (iDateEl._flatpickr) iDateEl._flatpickr.setDate(formState.invoice_date);
-                else iDateEl.value = formState.invoice_date;
-            }
-
-            const dDateEl = document.getElementById('due_date');
-            if (dDateEl) {
-                if (dDateEl._flatpickr) dDateEl._flatpickr.setDate(formState.due_date);
-                else dDateEl.value = formState.due_date;
-            }
+            window.setDateValueById('invoice_date', formState.invoice_date);
+            window.setDateValueById('due_date', formState.due_date);
 
             createdDateSpan.innerHTML = formatToJST(currentInvoice.created_date);
             lastUpdatedSpan.innerHTML = formatToJST(currentInvoice.last_updated);

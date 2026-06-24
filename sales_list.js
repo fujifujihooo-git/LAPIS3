@@ -100,8 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const m = String(now.getMonth() + 1).padStart(2, '0');
         // デフォルトを今月の月初〜末日に設定
         const lastDay = new Date(y, Number(m), 0).getDate();
-        filterDateStart.value = `${y}-${m}-01`;
-        filterDateEnd.value = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+        window.setDateControlValue(filterDateStart, `${y}-${m}-01`);
+        window.setDateControlValue(filterDateEnd, `${y}-${m}-${String(lastDay).padStart(2, '0')}`);
         // ★ デフォルト値セット後にボタン状態を即更新
         updateSearchButtonState();
     }
@@ -642,7 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const y = now.getFullYear();
             const m = String(now.getMonth() + 1).padStart(2, '0');
             const d = String(now.getDate()).padStart(2, '0');
-            closingDateInput.value = `${y}-${m}-${d}`;
+            window.setDateControlValue(closingDateInput, `${y}-${m}-${d}`);
         }
 
         /**

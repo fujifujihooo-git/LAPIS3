@@ -9,11 +9,22 @@
 
     // --- 和暦変換 ---
     function toWareki(year) {
-        if (year >= 2019) return '令和' + (year - 2018) + '年';
-        if (year >= 1989) return '平成' + (year - 1988) + '年';
-        if (year >= 1926) return '昭和' + (year - 1925) + '年';
-        if (year >= 1912) return '大正' + (year - 1911) + '年';
-        return '明治' + (year - 1867) + '年';
+        if (year === 2019) return '平成31年/令和元年';
+        if (year === 1989) return '昭和64年/平成元年';
+        var eras = [
+            { start: 2019, name: '令和' },
+            { start: 1989, name: '平成' },
+            { start: 1926, name: '昭和' },
+            { start: 1912, name: '大正' },
+            { start: 1868, name: '明治' }
+        ];
+        for (var i = 0; i < eras.length; i++) {
+            if (year >= eras[i].start) {
+                var n = year - eras[i].start + 1;
+                return eras[i].name + (n === 1 ? '元' : n) + '年';
+            }
+        }
+        return year + '年';
     }
 
     function daysInMonth(year, month) {
@@ -289,17 +300,25 @@
             self.toggle();
         });
 
-        // Open on display input focus
-        this.displayInput.addEventListener('focus', function () {
-            self.open();
+        // Open on display input click
+        this.displayInput.addEventListener('click', function () {
+            if (!self.isOpen) self.open();
         });
 
-        // Manual input — Enter key
+        // Manual input & Accessibility keydown handler
         this.displayInput.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                self._handleManualInput();
-                self.close();
+                if (self.isOpen) {
+                    self._handleManualInput();
+                    self.close();
+                } else {
+                    self.open();
+                }
+            }
+            if (e.key === ' ' && !self.isOpen) {
+                e.preventDefault();
+                self.open();
             }
             if (e.key === 'Escape') {
                 self.close();
@@ -411,6 +430,23 @@
         this._renderCalendar();
         this.popup.style.display = 'block';
         this.isOpen = true;
+
+        // ── Flip処理（offsetHeight基準 + margin=8px でスクロールバー誤判定を防止）──
+        var popupH = this.popup.offsetHeight;
+        var wrapperRect = this.wrapper.getBoundingClientRect();
+        var viewportH = window.innerHeight;
+        var margin = 8;
+        var spaceBelow = viewportH - wrapperRect.bottom;
+
+        if ((spaceBelow < popupH + margin) && (wrapperRect.top > popupH + margin)) {
+            // 下に不足（余裕込み） かつ 上に十分スペース → 上表示
+            this.popup.style.top = 'auto';
+            this.popup.style.bottom = 'calc(100% + 4px)';
+        } else {
+            // 通常 → 下表示
+            this.popup.style.top = 'calc(100% - 18px)';
+            this.popup.style.bottom = 'auto';
+        }
     };
 
     UnifiedDatePicker.prototype.close = function () {

@@ -166,6 +166,14 @@
                     <div class="block-content">
                         <div class="filter-bar">
                             <div class="filter-item">
+                                <label for="filter-search">顧客名・フリガナ</label>
+                                <input type="text" id="filter-search" class="form-control" placeholder="顧客名またはカナで検索...">
+                            </div>
+                            <div class="filter-item">
+                                <label for="filter-phone">電話番号</label>
+                                <input type="text" id="filter-phone" class="form-control" placeholder="番号で検索..." data-validate="tel">
+                            </div>
+                            <div class="filter-item">
                                 <label for="filter-status">状態</label>
                                 <select id="filter-status" class="form-select">
                                     <option value="">すべて</option>
@@ -173,14 +181,6 @@
                                     <option value="休眠">休眠</option>
                                     <option value="取引終了">取引終了</option>
                                 </select>
-                            </div>
-                            <div class="filter-item">
-                                <label for="filter-search">顧客名・フリガナ</label>
-                                <input type="text" id="filter-search" class="form-control" placeholder="顧客名またはカナで検索...">
-                            </div>
-                            <div class="filter-item">
-                                <label for="filter-phone">電話番号</label>
-                                <input type="text" id="filter-phone" class="form-control" placeholder="番号で検索..." data-validate="tel">
                             </div>
                         </div>
                         <!-- ボタンを下部に分離 -->

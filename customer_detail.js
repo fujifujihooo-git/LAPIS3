@@ -877,7 +877,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (c.corporate_number) document.getElementById('corporate_number').value = c.corporate_number;
         if (c.primary_staff_id) document.getElementById('primary_staff_id').value = c.primary_staff_id;
 
-        if (c.founded_date) document.getElementById('founded_date').value = c.founded_date;
+        window.setDateValueById('founded_date', c.founded_date);
         if (c.capital) {
             document.getElementById('capital').value = c.capital;
             document.getElementById('capital_display').value = c.capital.toLocaleString();
@@ -2210,13 +2210,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                         initialEndDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
                     }
                     
-                    periodEndInput.value = initialEndDate;
-                    periodStartInput.value = calculateStartDate(initialEndDate);
+                    window.setDateControlValue(periodEndInput, initialEndDate);
+                    window.setDateControlValue(periodStartInput, calculateStartDate(initialEndDate));
                 }
 
                 if (!periodEndInput.dataset.listenerAttached) {
                     periodEndInput.addEventListener('change', (e) => {
-                        periodStartInput.value = calculateStartDate(e.target.value);
+                        window.setDateControlValue(periodStartInput, calculateStartDate(e.target.value));
                     });
                     periodEndInput.dataset.listenerAttached = 'true';
                 }
@@ -2788,7 +2788,7 @@ document.addEventListener('DOMContentLoaded', async () => {
            const yyyymmdd = rDate.getFullYear() + '-' + String(rDate.getMonth() + 1).padStart(2, '0') + '-' + String(rDate.getDate()).padStart(2, '0');
            const hhmm = String(rDate.getHours()).padStart(2, '0') + ':' + String(rDate.getMinutes()).padStart(2, '0');
            
-           document.getElementById('history-input-date').value = yyyymmdd;
+           window.setDateValueById('history-input-date', yyyymmdd);
            document.getElementById('history-input-time').value = hhmm;
 
            const radio = form.querySelector(`input[name="history-type"][value="${h.history_type}"]`);
@@ -2800,9 +2800,9 @@ document.addEventListener('DOMContentLoaded', async () => {
            if (h.next_action_date) {
                const nDate = h.next_action_date.toDate ? h.next_action_date.toDate() : new Date(h.next_action_date);
                const nYmd = nDate.getFullYear() + '-' + String(nDate.getMonth() + 1).padStart(2, '0') + '-' + String(nDate.getDate()).padStart(2, '0');
-               document.getElementById('history-input-next-action').value = nYmd;
+               window.setDateValueById('history-input-next-action', nYmd);
            } else {
-               document.getElementById('history-input-next-action').value = '';
+               window.setDateValueById('history-input-next-action', '');
            }
            
            document.getElementById('btn-confirm-history-save').textContent = '更新';
@@ -2814,11 +2814,11 @@ document.addEventListener('DOMContentLoaded', async () => {
            const yyyymmdd = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
            const hhmm = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
            
-           document.getElementById('history-input-date').value = yyyymmdd;
+           window.setDateValueById('history-input-date', yyyymmdd);
            document.getElementById('history-input-time').value = hhmm;
            
            form.querySelector('input[name="history-type"][value="電話"]').checked = true;
-           document.getElementById('history-input-next-action').value = '';
+           window.setDateValueById('history-input-next-action', '');
            document.getElementById('btn-confirm-history-save').textContent = '登録';
        }
 
@@ -3029,12 +3029,10 @@ document.addEventListener('DOMContentLoaded', async () => {
            const de = document.getElementById('history-search-end');
            
            if (ds) {
-               if (ds._flatpickr) ds._flatpickr.clear();
-               else ds.value = '';
+               window.setDateControlValue(ds, '');
            }
            if (de) {
-               if (de._flatpickr) de._flatpickr.clear();
-               else de.value = '';
+               window.setDateControlValue(de, '');
            }
 
            applyHistoryFilters();

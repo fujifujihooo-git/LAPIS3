@@ -564,17 +564,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         licenseNumber1.value = l.license_number_1 || '';
         licenseNumber2.value = l.license_number_2 || '';
         status.value = l.status || '有効';
-        const sDateStr = formatDateForInput(l.start_date);
-        if (startDate._flatpickr) startDate._flatpickr.setDate(sDateStr);
-        else startDate.value = sDateStr;
-
-        const eDateStr = formatDateForInput(l.expiry_date);
-        if (expiryDate._flatpickr) expiryDate._flatpickr.setDate(eDateStr);
-        else expiryDate.value = eDateStr;
-
-        const nDateStr = formatDateForInput(l.notice_date);
-        if (noticeDate._flatpickr) noticeDate._flatpickr.setDate(nDateStr);
-        else noticeDate.value = nDateStr;
+        window.setDateValueById('start-date', formatDateForInput(l.start_date));
+        window.setDateValueById('expiry-date', formatDateForInput(l.expiry_date));
+        window.setDateValueById('notice-date', formatDateForInput(l.notice_date));
 
         remarks.value = l.remarks || '';
         createdDateDisplay.textContent = l.created_date || '-';

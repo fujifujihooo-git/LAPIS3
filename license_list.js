@@ -555,11 +555,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Flatpickr-aware date input clearing
         [filterExpiryStart, filterExpiryEnd, filterNoticeStart, filterNoticeEnd].forEach(el => {
-            if (el && el._flatpickr) {
-                el._flatpickr.clear();
-            } else if (el) {
-                el.value = '';
-            }
+            window.setDateControlValue(el, '');
         });
 
         if (filterFieldStaff) filterFieldStaff.value = '';

@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const batchTotalAmount = document.getElementById('batch-total-amount');
 
     if (batchReceiptDate) {
-        batchReceiptDate.value = new Date().toISOString().split('T')[0];
+        window.setDateValueById('batch-receipt-date', new Date().toISOString().split('T')[0]);
     }
 
     // --- Autocomplete for Customer ---
@@ -898,7 +898,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // 今日の日付をセット
             const dateInput = document.getElementById('inline-receipt-date');
-            dateInput.value = new Date().toISOString().split('T')[0];
+            window.setDateControlValue(dateInput, new Date().toISOString().split('T')[0]);
             // 金額を未収残高でセット
             const amtInput = document.getElementById('inline-receipt-amount');
             if (selectedInvoiceData) amtInput.value = selectedInvoiceData.balance || '';

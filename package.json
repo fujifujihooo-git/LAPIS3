@@ -5,5 +5,8 @@
   "devDependencies": {
     "http-server": "^14.1.1",
     "puppeteer": "^24.42.0"
+  },
+  "scripts": {
+    "audit-date-input": "node scripts/audit_date_inputs.js"
   }
 }
