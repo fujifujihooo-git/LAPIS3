@@ -56,14 +56,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderStaffOptions();
             await renderLicenseTypeOptions();
 
-            // Initial Fetch: Recent 50 cases
+            // Initial Fetch: 仕掛中（アクティブ）案件のみ全件取得
             const snapshot = await db.collection('cases')
-                .orderBy('created_date', 'desc')
-                .limit(50)
+                .where('status', 'in', ACTIVE_STATUSES)
                 .get();
 
             cases = snapshot.docs.map(d => d.data());
-            console.log(`Initial data loaded: ${cases.length} cases`);
+            // 受任日降順でソート（初期表示の並び順）
+            cases.sort((a, b) => {
+                const da = a.created_date ? new Date(a.created_date).getTime() : 0;
+                const db_ = b.created_date ? new Date(b.created_date).getTime() : 0;
+                return db_ - da;
+            });
+            console.log(`Initial data loaded: ${cases.length} cases (仕掛中のみ)`);
 
             renderStats(cases);
             renderTable(cases);
