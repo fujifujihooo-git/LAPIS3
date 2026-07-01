@@ -481,14 +481,10 @@
                             <label for="input-customer-search">顧客検索 <span class="required">*</span></label>
                             <div style="display: flex; gap: 8px;">
                                 <input type="text" id="input-customer-search" class="form-control"
-                                    placeholder="顧客名を入力して検索..." autocomplete="off">
-                                <button type="button" class="btn btn-secondary" id="btn-customer-search"
-                                    style="flex-shrink: 0; padding: 0 16px;">
-                                    <i data-lucide="search" style="width: 16px; height: 16px;"></i> 検索
-                                </button>
+                                    placeholder="顧客名・フリガナの一部を入力して選択..." autocomplete="off">
                             </div>
                             <small
-                                style="display: block; color: #64748b; margin-top: 6px; font-size: 11.5pt;">※頭文字からの前方一致検索となります（部分一致での検索はできません）</small>
+                                style="display: block; color: #64748b; margin-top: 6px; font-size: 11.5pt;">※部分一致で検索できます。候補リストから選択して確定させてください。</small>
                             <input type="hidden" id="customer_id">
                             <div id="autocomplete-list" class="autocomplete-items"></div>
                         </div>
@@ -506,6 +502,9 @@
                             </div>
                             <div id="customer-snapshot-preview"
                                 style="font-size: 13pt; line-height: 1.6; color: #1e293b;">
+                                <div id="preview-customer-id-row" style="font-size: 12pt; font-weight: bold; color: var(--primary); margin-bottom: 8px;">
+                                    顧客コード: <span id="preview-customer-id" style="font-family: monospace;"></span>
+                                </div>
                                 <div id="preview-zip"></div>
                                 <div id="preview-address"></div>
                                 <div id="preview-building"></div>
@@ -677,7 +676,11 @@
                     <option value="その他">その他</option>
                 </select>
             </div>
-            <div class="form-group" style="margin-top: 12px;">
+            <div class="form-group" style="margin-top: 12px; display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="modal-filter-billable" checked style="width: auto;">
+                <label for="modal-filter-billable" style="margin: 0; font-size: 0.9rem; font-weight: normal; color: var(--text-main);">請求対象案件のみ表示</label>
+            </div>
+            <div class="form-group" style="margin-top: 4px;">
                 <label>案件（任意）</label>
                 <select id="modal-case-id" class="form-select">
                     <option value="">-- 選択してください --</option>
@@ -763,6 +766,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="common.js"></script>
+    <script src="search_utils.js?v=20260305"></script>
+    <script src="js/billing_summary.js"></script>
     <!-- jsPDF + AutoTable for PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>

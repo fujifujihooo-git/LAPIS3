@@ -91,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("window.location.search: ", window.location.search);
         console.log("currentInvoiceId parsed: ", currentInvoiceId);
         
+        loadCustomersForSearch(); // 検索用顧客リストを非同期プリロード
         bindBasicInfoEvents();
         
         if (currentInvoiceId && currentInvoiceId !== 'new' && currentInvoiceId !== 'undefined' && currentInvoiceId !== 'null') {
@@ -273,7 +274,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let allCustomers = []; // 軽量顧客データを保持する配列
+
+    async function loadCustomersForSearch() {
+        try {
+            // Firestoreから一括ロード（JS側で非アクティブを弾くためstatus関係なくロード）
+            const snap = await db.collection('customers').get();
+            allCustomers = snap.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    customer_id: data.customer_id,
+                    customer_name: data.customer_name || '',
+                    customer_kana: data.customer_kana || '',
+                    customer_type: data.customer_type || '法人',
+                    postal_code: data.postal_code || '',
+                    address: data.address || '',
+                    building_name: data.building_name || '',
+                    status: data.status || '稼働中',
+                    // ロード時に事前正規化して保持（パフォーマンス最適化）
+                    search_name: typeof normalizeSearchText === 'function' ? normalizeSearchText(data.customer_name || '') : (data.customer_name || '').toLowerCase(),
+                    search_kana: typeof normalizeSearchText === 'function' ? normalizeSearchText(data.customer_kana || '') : (data.customer_kana || '').toLowerCase()
+                };
+            }).filter(c => c.status !== '取引終了'); // 取引終了顧客は除外
+            console.log(`[Autocomplete] Loaded ${allCustomers.length} active customers.`);
+        } catch (e) {
+            console.error("Failed to load customers for autocomplete:", e);
+        }
+    }
+
+    function getDisplayAddress(customer) {
+        if (!customer) return '';
+        const parts = [];
+        if (customer.postal_code) parts.push(`〒${customer.postal_code}`);
+        if (customer.address) parts.push(customer.address);
+        if (customer.building_name) parts.push(customer.building_name);
+        return parts.join(' ').trim();
+    }
+
     function renderCustomerPreview(data) {
+        const previewCustomerId = document.getElementById('preview-customer-id');
+        if (previewCustomerId) {
+            previewCustomerId.textContent = data.customer_id || '';
+        }
         previewZip.textContent = data.postal_code ? `〒${data.postal_code}` : '';
         previewAddress.textContent = data.address || '';
         previewBuilding.textContent = data.building_name || '';
@@ -289,48 +331,110 @@ document.addEventListener('DOMContentLoaded', () => {
                 customerInput.value = '';
                 customerIdInput.value = '';
                 currentCustomerSnapshot = null;
+                // フォーカスを検索インプットへ戻す
+                setTimeout(() => customerInput.focus(), 50);
             });
         }
 
-        const handleSearch = async () => {
+        let activeIndex = -1; // キーボード選択用のアクティブインデックス
+        let currentMatches = [];
+
+        const handleSearch = () => {
             const val = customerInput.value;
             autocompleteList.innerHTML = '';
+            activeIndex = -1;
+            currentMatches = [];
             if (!val) return;
 
-            try {
-                const snap = await db.collection('customers')
-                    .orderBy('customer_name')
-                    .startAt(val)
-                    .endAt(val + '\uf8ff')
-                    .limit(5)
-                    .get();
+            // 検索キーワードの正規化
+            const keyword = typeof normalizeSearchText === 'function' ? normalizeSearchText(val) : val.toLowerCase();
+            if (!keyword) return;
 
-                snap.forEach(doc => {
-                    const m = doc.data();
-                    const div = document.createElement('div');
-                    div.textContent = m.customer_name;
-                    div.addEventListener('click', async () => {
-                        customerInput.value = m.customer_name;
-                        customerIdInput.value = m.customer_id;
-                        autocompleteList.innerHTML = '';
-                        currentCustomerSnapshot = m;
-                        renderCustomerPreview(m);
-                        customerSelectGroup.style.display = 'none';
-                        customerDisplayGroup.style.display = 'block';
-                        await loadCasesForSelect(m.customer_id);
-                    });
-                    autocompleteList.appendChild(div);
-                });
-            } catch (e) {
-                console.error('Autocomplete Error:', e);
-            }
+            // 部分一致でフィルタリング（事前正規化されたプロパティを使用）
+            currentMatches = allCustomers.filter(c => 
+                c.search_name.includes(keyword) || 
+                c.search_kana.includes(keyword)
+            ).slice(0, 10); // 最大10件
+
+            currentMatches.forEach((m, idx) => {
+                const div = document.createElement('div');
+                div.className = 'autocomplete-item-row';
+                div.style.padding = '8px 12px';
+                div.style.borderBottom = '1px solid #e2e8f0';
+                div.style.cursor = 'pointer';
+                div.dataset.index = idx;
+
+                const addr = getDisplayAddress(m);
+                div.innerHTML = `
+                    <div style="font-weight: 600; font-size: 11.5pt; color: #1e293b;">
+                        <span style="color: #64748b; font-family: monospace; margin-right: 8px;">[${m.customer_id}]</span>${m.customer_name}
+                    </div>
+                    ${addr ? `<div style="font-size: 9.5pt; color: #64748b; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${addr}</div>` : ''}
+                `;
+
+                div.addEventListener('click', () => selectCustomer(m));
+                autocompleteList.appendChild(div);
+            });
+        };
+
+        const selectCustomer = async (m) => {
+            customerInput.value = m.customer_name;
+            customerIdInput.value = m.customer_id;
+            autocompleteList.innerHTML = '';
+            currentCustomerSnapshot = m;
+            renderCustomerPreview(m);
+            customerSelectGroup.style.display = 'none';
+            customerDisplayGroup.style.display = 'block';
+            await loadCasesForSelect(m.customer_id);
+        };
+
+        const updateActiveItem = () => {
+            const items = autocompleteList.querySelectorAll('.autocomplete-item-row');
+            items.forEach((item, idx) => {
+                if (idx === activeIndex) {
+                    item.classList.add('autocomplete-active');
+                    item.style.backgroundColor = 'var(--primary)';
+                    item.style.color = '#ffffff';
+                    // 子要素の文字色も白へ補正
+                    const subText = item.querySelector('div:last-child');
+                    if (subText) subText.style.color = '#ffffff';
+                } else {
+                    item.classList.remove('autocomplete-active');
+                    item.style.backgroundColor = '';
+                    item.style.color = '';
+                    const subText = item.querySelector('div:last-child');
+                    if (subText) subText.style.color = '#64748b';
+                }
+            });
         };
 
         customerInput.addEventListener('input', handleSearch);
-        if (btnCustomerSearch) btnCustomerSearch.addEventListener('click', handleSearch);
+
+        // キーボード操作の制御
+        customerInput.addEventListener('keydown', (e) => {
+            const items = autocompleteList.querySelectorAll('.autocomplete-item-row');
+            if (items.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeIndex = (activeIndex + 1) % items.length;
+                updateActiveItem();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeIndex = (activeIndex - 1 + items.length) % items.length;
+                updateActiveItem();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (activeIndex >= 0 && activeIndex < currentMatches.length) {
+                    selectCustomer(currentMatches[activeIndex]);
+                }
+            } else if (e.key === 'Escape') {
+                autocompleteList.innerHTML = '';
+            }
+        });
 
         document.addEventListener('click', (e) => {
-            if (e.target !== customerInput && e.target !== btnCustomerSearch) {
+            if (e.target !== customerInput) {
                 autocompleteList.innerHTML = '';
             }
         });
@@ -338,32 +442,93 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadCasesForSelect(custId) {
         if (!custId) return;
-        const select = document.getElementById('modal-case-id');
-        select.innerHTML = '<option value="">-- 選択してください --</option>';
 
+        // Firestore から案件を全件取得 ( customer_id に紐づくもの )
         const snap = await db.collection('cases').where('customer_id', '==', Number(custId)).get();
-        // Update cache (全件保持：getCaseName等で使用)
         casesCache = snap.docs.map(d => d.data());
 
-        // 完了・取下げを除外した請求可能な案件のみプルダウンに表示
-        const billableCases = casesCache.filter(c => !EXCLUDED_CASE_STATUSES.includes(c.status));
+        renderCasesDropdown();
+    }
 
-        if (billableCases.length === 0) {
+    function renderCasesDropdown() {
+        const select = document.getElementById('modal-case-id');
+        const filterCheckbox = document.getElementById('modal-filter-billable');
+        const showOnlyBillable = filterCheckbox ? filterCheckbox.checked : true;
+
+        select.innerHTML = '<option value="">-- 選択してください --</option>';
+
+        if (casesCache.length === 0) {
             const opt = document.createElement('option');
             opt.value = '';
-            opt.textContent = '選択可能な未請求案件がありません';
+            opt.textContent = '選択可能な案件がありません';
             opt.disabled = true;
             select.appendChild(opt);
             return;
         }
 
-        billableCases.forEach(c => {
+        let addedCount = 0;
+
+        casesCache.forEach(c => {
+            const summary = c.billing_summary;
+
+            // フォールバック条件の判定 (TEST-03, TEST-04, TEST-05)
+            const isFallback = !summary || summary.schema_version !== 1 || summary.source_version !== 1;
+
+            if (isFallback) {
+                console.warn(`[BillingSummary] Case ${c.case_id} has invalid or missing billing summary. Falling back to default display.`);
+            }
+
+            // フィルタリング判定
+            if (showOnlyBillable && !isFallback && summary.has_billable_items !== true) {
+                return; // スキップ
+            }
+
+            // 表示テキストの構築 (仕様 3.2)
+            let statusText = '';
+            if (isFallback || !summary) {
+                statusText = ''; // 未設定・フォールバック
+            } else if (summary.has_billable_items === true) {
+                statusText = `（未請求 ${summary.unbilled_count}件）`;
+            } else if (summary.active_estimate_count > 0) {
+                statusText = '（請求完了）';
+            } else if (summary.has_legacy_items === true) {
+                statusText = '（追跡対象外）';
+            } else {
+                statusText = '（見積なし）';
+            }
+
             const opt = document.createElement('option');
             opt.value = c.case_id;
-            opt.textContent = c.procedure_name || `案件 #${c.case_id}`;
+            opt.textContent = `${c.procedure_name || `案件 #${c.case_id}`}${statusText}`;
             select.appendChild(opt);
+            addedCount++;
         });
+
+        if (addedCount === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '該当する案件がありません';
+            opt.disabled = true;
+            select.appendChild(opt);
+        }
     }
+
+    // チェックボックス変更イベントの紐付け
+    document.addEventListener('DOMContentLoaded', () => {
+        // DOMContentLoaded は外側で設定されているので、この関数内では後ほどイベントをバインドするか、
+        // もしくは loadCasesForSelect の外側でイベントバインドする。
+    });
+    
+    // イベントバインドは document.getElementById('modal-filter-billable') の有無を確認し、あればバインド
+    setTimeout(() => {
+        const filterCheckbox = document.getElementById('modal-filter-billable');
+        if (filterCheckbox) {
+            filterCheckbox.addEventListener('change', () => {
+                renderCasesDropdown();
+            });
+        }
+    }, 100);
+
 
     function getCaseName(id) {
         if (!id) return 'ー';
@@ -511,6 +676,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return (
             item.item_type !== orig.item_type ||
             item.case_id !== orig.case_id ||
+            item.estimate_item_id !== orig.estimate_item_id ||
             item.description !== orig.description ||
             Number(item.unit_price) !== Number(orig.unit_price) ||
             Number(item.quantity) !== Number(orig.quantity) ||
@@ -533,9 +699,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const remarksEl = document.getElementById('remarks');
         if (remarksEl) formState.remarks = remarksEl.value;
 
-        const custId = Number(customerIdInput.value);
-        if (!custId) {
-            alert('顧客を選択してください。');
+        const custId = parseInt(customerIdInput.value);
+        if (!customerIdInput.value || isNaN(custId) || custId <= 0) {
+            alert('顧客が確定していません。検索候補リストから顧客を選択して確定させてください。');
+            if (customerInput) customerInput.focus();
             return;
         }
 
@@ -550,6 +717,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const { taxable, tax, nontaxable, total, payTotal, balance } = calculateTotals();
+
+        const beforeCaseIds = currentItems
+            .map(item => (item._original ? item._original.case_id : item.case_id))
+            .filter(Boolean);
 
         isSaving = true;
         btnSave.disabled = true;
@@ -624,6 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     invoice_id: iId,
                     item_type: item.item_type,
                     case_id: item.case_id || null,
+                    estimate_item_id: item.estimate_item_id || null,
                     description: item.description || '',
                     unit_price: Number(item.unit_price),
                     quantity: Number(item.quantity),
@@ -658,6 +830,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             await batch.commit();
+
+            const afterCaseIds = currentItems
+                .map(item => item.case_id)
+                .filter(Boolean);
+            const affectedCaseIds = [...new Set([...beforeCaseIds, ...afterCaseIds])].filter(Boolean);
+            triggerBillingSummaryRebuild(affectedCaseIds);
 
             // 成功後にフラグ等のリセット
             deletedItemDocIds = [];
@@ -710,6 +888,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     status: 'cancelled',
                     last_updated: firebase.firestore.FieldValue.serverTimestamp()
                 });
+
+                const affectedCaseIds = currentItems
+                    .map(item => item.case_id)
+                    .filter(Boolean);
+                const uniqueCaseIds = [...new Set(affectedCaseIds)].filter(Boolean);
+                triggerBillingSummaryRebuild(uniqueCaseIds);
             }
 
             showToast('無効化が完了しました', 'success');
@@ -720,6 +904,63 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Delete/Cancel failed:', err);
             alert('無効化処理に失敗しました');
         }
+    }
+
+    // --- Billing Summary Rebuild Hook ---
+    async function rebuildWithRetry(caseId, maxRetries = 3) {
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                await rebuildCaseBillingSummary(caseId);
+                return;
+            } catch (err) {
+                if (i === maxRetries - 1) throw err;
+                console.warn(`[BillingSummary] Retry ${i + 1}/${maxRetries} for case ${caseId}`);
+                await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+            }
+        }
+    }
+
+    function triggerBillingSummaryRebuild(affectedCaseIds) {
+        if (!affectedCaseIds || affectedCaseIds.length === 0) return;
+        
+        console.info(`[BillingSummary] Rebuild started for cases: ${affectedCaseIds.join(', ')}`);
+        
+        Promise.allSettled(
+            affectedCaseIds.map(id => rebuildWithRetry(id))
+        ).then(results => {
+            results.forEach((result, idx) => {
+                if (result.status === 'rejected') {
+                    const caseId = affectedCaseIds[idx];
+                    console.error(`[BillingSummary] Rebuild FAILED for case ${caseId}:`, result.reason);
+                    
+                    const errorRef = db.collection('billing_summary_errors').doc(`case_${caseId}`);
+                    
+                    errorRef.get().then(docSnap => {
+                        const data = docSnap.exists ? docSnap.data() : null;
+                        const isNewError = !data || data.resolved === true;
+                        
+                        let recentErrors = data && data.recent_errors ? data.recent_errors : [];
+                        const errorMsg = String(result.reason);
+                        recentErrors = [errorMsg, ...recentErrors].slice(0, 5);
+
+                        const updateData = {
+                            case_id: caseId,
+                            error_type: 'REBUILD_FAILED',
+                            last_error: errorMsg,
+                            last_error_at: firebase.firestore.FieldValue.serverTimestamp(),
+                            recent_errors: recentErrors,
+                            total_error_count: firebase.firestore.FieldValue.increment(1),
+                            resolved: false
+                        };
+                        if (isNewError) {
+                            updateData.first_error_at = firebase.firestore.FieldValue.serverTimestamp();
+                        }
+                        return errorRef.set(updateData, { merge: true });
+                    }).catch(logErr => console.error('[BillingSummary] Failed to write error log:', logErr));
+                }
+            });
+            console.info(`[BillingSummary] Rebuild completed. ${results.filter(r => r.status === 'fulfilled').length}/${results.length} succeeded.`);
+        });
     }
 
     // --- Modal Helpers ---
@@ -826,7 +1067,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Populate Cases
             importCaseSelect.innerHTML = '<option value="">-- 案件を選択してください --</option>';
-            importItemList.innerHTML = '<tr><td colspan="4" style="padding: 16px; text-align: center; color: #64748b;">案件を選択してください</td></tr>';
+            importItemList.innerHTML = '<tr><td colspan="5" style="padding: 16px; text-align: center; color: #64748b;">案件を選択してください</td></tr>';
             importCandidatesState.items = [];
             importCheckAll.checked = false;
 
@@ -839,14 +1080,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             casesCache = snap.docs.map(d => d.data()); // Update cache
 
-            // 完了・取下げを除外した請求可能な案件のみ表示
-            const billableCases = casesCache.filter(c => !EXCLUDED_CASE_STATUSES.includes(c.status));
-            if (billableCases.length === 0) {
-                alert('選択可能な未請求案件がありません。\nすべての案件が完了または取下げ済みです。');
-                return;
-            }
-
-            billableCases.forEach(c => {
+            casesCache.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.case_id;
                 opt.textContent = c.procedure_name || `案件 #${c.case_id}`;
@@ -858,16 +1092,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (importCaseSelect) {
-        importCaseSelect.addEventListener('change', () => {
+        importCaseSelect.addEventListener('change', async () => {
             const caseId = Number(importCaseSelect.value);
             if (!caseId) {
-                importItemList.innerHTML = '<tr><td colspan="4" style="padding: 16px; text-align: center; color: #64748b;">案件を選択してください</td></tr>';
+                importItemList.innerHTML = '<tr><td colspan="5" style="padding: 16px; text-align: center; color: #64748b;">案件を選択してください</td></tr>';
                 importCandidatesState.items = [];
                 return;
             }
 
             const selectedCase = casesCache.find(c => c.case_id === caseId);
             if (!selectedCase) return;
+
+            // 読み込み中表示
+            importItemList.innerHTML = '<tr><td colspan="5" style="padding: 16px; text-align: center; color: #64748b;"><i data-lucide="loader" class="spin"></i> 読み込み中...</td></tr>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
 
             let items = [];
             if (selectedCase.estimate_items && Array.isArray(selectedCase.estimate_items) && selectedCase.estimate_items.length > 0) {
@@ -879,16 +1117,66 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (reimbursement > 0) items.push({ type: '仮受金', description: '仮受金', unit_price: reimbursement, quantity: 1, amount: reimbursement, is_taxable: false });
             }
 
+            // 請求履歴の動的集計
+            let billedEstimateItemsMap = new Map();
+            try {
+                const custId = Number(customerIdInput.value);
+                const [invSnap, invItemsSnap] = await Promise.all([
+                    db.collection('invoices').where('customer_id', '==', custId).get(),
+                    db.collection('invoice_items').where('case_id', '==', caseId).get()
+                ]);
+
+                const activeInvoicesMap = new Map();
+                invSnap.docs.forEach(d => {
+                    const inv = d.data();
+                    if (inv.status !== '取消') {
+                        activeInvoicesMap.set(inv.invoice_id, inv.invoice_number || `ID:${inv.invoice_id}`);
+                    }
+                });
+
+                invItemsSnap.docs.forEach(d => {
+                    const item = d.data();
+                    if (item.estimate_item_id && activeInvoicesMap.has(item.invoice_id)) {
+                        billedEstimateItemsMap.set(item.estimate_item_id, activeInvoicesMap.get(item.invoice_id));
+                    }
+                });
+            } catch (e) {
+                console.error('Failed to load billing history for import:', e);
+            }
+
             importCandidatesState.items = items;
 
             importItemList.innerHTML = '';
             if (items.length === 0) {
-                importItemList.innerHTML = '<tr><td colspan="4" style="padding: 16px; text-align: center; color: #64748b;">見積明細がありません。</td></tr>';
+                importItemList.innerHTML = '<tr><td colspan="5" style="padding: 16px; text-align: center; color: #64748b;">見積明細がありません。</td></tr>';
                 return;
             }
 
             items.forEach((item, index) => {
                 const row = document.createElement('tr');
+                
+                // 状態判定
+                let statusText = '';
+                let statusStyle = '';
+                let rowStyle = '';
+                
+                if (item.is_legacy === true || !item.estimate_item_id) {
+                    statusText = '⚠️ 追跡対象外 (旧データ等)';
+                    statusStyle = 'color: #d97706; font-size: 0.85rem; font-weight: bold;';
+                } else if (billedEstimateItemsMap.has(item.estimate_item_id)) {
+                    const invNum = billedEstimateItemsMap.get(item.estimate_item_id);
+                    statusText = `🔄 請求履歴あり (請求書 #${invNum})`;
+                    statusStyle = 'color: #2563eb; font-size: 0.85rem; font-weight: bold;';
+                    rowStyle = 'background-color: #f8fafc;'; // 薄いグレー背景
+                } else {
+                    statusText = '未請求';
+                    statusStyle = 'color: #10b981; font-size: 0.85rem;';
+                }
+
+                if (rowStyle) {
+                    row.style.cssText = rowStyle;
+                }
+
                 row.innerHTML = `
                     <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: center;">
                         <input type="checkbox" class="import-checkbox" data-index="${index}" checked>
@@ -896,6 +1184,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${item.type}</td>
                     <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${item.description}</td>
                     <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatCurrency(item.amount)}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; ${statusStyle}">${statusText}</td>
                 `;
                 importItemList.appendChild(row);
             });
@@ -920,6 +1209,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newItem = {
                     item_type: srcItem.type,
                     case_id: caseId,
+                    estimate_item_id: srcItem.estimate_item_id || null,
                     description: srcItem.description,
                     unit_price: srcItem.unit_price,
                     quantity: srcItem.quantity,
