@@ -1489,7 +1489,14 @@
                     <div class="customer-meta-bar">
                         <span class="badge-customer-type" id="customer-type-badge">法人</span>
                         <span class="meta-item">顧客コード：<strong id="customer-code-display">―</strong></span>
-                        <span class="meta-item">最終更新：<strong id="last-updated-meta">―</strong></span>
+                        <span class="meta-item meta-item-refresh-wrapper">
+                            最終更新：<strong id="last-updated-meta">―</strong>
+                            <button type="button" id="btn-refresh-cache" class="refresh-icon-btn" title="最新データを取得">
+                                <span class="refresh-icon-wrapper">
+                                    <i data-lucide="refresh-cw"></i>
+                                </span>
+                            </button>
+                        </span>
                     </div>
                     <div class="customer-meta-bar-sub">
                         <span class="meta-item">担当者：<strong id="staff-display">―</strong></span>
@@ -1519,9 +1526,6 @@
                         </button>
                     </div>
                     <div class="action-bar-right">
-                        <button type="button" class="btn" id="btn-refresh-cache" style="background:#f8fafc; border:1px solid #cbd5e1; color:#334155;">
-                            <i data-lucide="refresh-cw"></i> 更新
-                        </button>
                         <button type="button" class="btn btn-excel" id="btn-export-excel">
                             <i data-lucide="file-spreadsheet"></i> Excel出力
                         </button>
@@ -2042,12 +2046,28 @@
 
                             <!-- Tab Content: 請求・売上 -->
                             <div id="tab-billing" class="tab-content">
-                                <div class="tab-placeholder">
-                                    <div class="tab-placeholder-icon">💰</div>
-                                    <div class="tab-placeholder-title">請求・売上管理</div>
-                                    <div class="tab-placeholder-desc">
-                                        この顧客に対する請求書、入金状況、売上推移を一元管理します。請求書発行や入金消込にもこちらから対応可能です。
-                                    </div>
+                                <div class="billing-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <h3 class="form-section-title" style="margin-bottom: 0;">請求書一覧</h3>
+                                    <button type="button" class="btn btn-secondary btn-icon-only" id="btn-refresh-billing" title="最新の情報に更新" style="padding: 6px 10px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; background: #f1f5f9; border: 1px solid #cbd5e1; cursor: pointer; color: #475569;">
+                                        <i data-lucide="rotate-cw" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="form-table billing-table" id="customer-billing-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 15%;">請求番号</th>
+                                                <th style="width: 15%;">請求日</th>
+                                                <th style="width: 20%; text-align: right;">請求額</th>
+                                                <th style="width: 20%; text-align: right;">入金額</th>
+                                                <th style="width: 20%; text-align: right;">残高</th>
+                                                <th style="width: 10%; text-align: center;">ステータス</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="customer-billing-list-body">
+                                            <!-- JavaScriptから内容を挿入 -->
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 

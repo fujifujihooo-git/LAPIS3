@@ -1486,3 +1486,93 @@ textarea.invalid {
 .btn-retry:hover {
     background-color: #dc2626;
 }
+
+/* ─────────────────────────────────────────────────────────
+   請求・売上タブ 関連スタイル (フェーズ1-A)
+   ───────────────────────────────────────────────────────── */
+.billing-header-row {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+}
+
+.billing-table th {
+    font-size: 11pt !important;
+    padding: 8px 12px !important;
+    background-color: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.billing-table td {
+    padding: 8px 12px !important;
+    font-size: 11pt !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.billing-table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+.billing-table tbody tr:hover {
+    background-color: #f8fafc !important;
+}
+
+/* スピナー回転アニメーション */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spinner {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+#btn-refresh-billing:hover {
+    background-color: #e2e8f0 !important;
+    color: var(--text-main) !important;
+}
+
+#btn-refresh-billing:active i {
+    transform: rotate(180deg);
+    transition: transform 0.2s ease;
+}
+
+/* 最終更新横のリフレッシュボタンとラッパー */
+.meta-item-refresh-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.refresh-icon-btn {
+    background: none;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s, opacity 0.2s;
+}
+
+.refresh-icon-btn:hover {
+    color: var(--primary-color);
+}
+
+.refresh-icon-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.refresh-icon-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.refresh-icon-wrapper svg,
+.refresh-icon-wrapper i {
+    width: 14px;
+    height: 14px;
+}

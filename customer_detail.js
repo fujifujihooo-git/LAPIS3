@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let governmentOffices = [];
     let currentCustomer = null;
     let customerIdParam = null;
+    const billingCacheMap = {};
 
     // Sorting state for Related Cases
     let currentRelatedSort = { key: null, order: null };
@@ -141,8 +142,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (btnRefresh) {
             btnRefresh.addEventListener('click', async () => {
                 if (customerIdParam !== 'new') {
-                    window.AppCache.invalidate(`customer_${customerIdParam}`);
-                    await refreshCustomerUI(parseInt(customerIdParam));
+                    const wrapper = btnRefresh.querySelector('.refresh-icon-wrapper');
+                    if (wrapper) wrapper.classList.add('spinner');
+                    btnRefresh.disabled = true;
+                    try {
+                        window.AppCache.invalidate(`customer_${customerIdParam}`);
+                        await refreshCustomerUI(parseInt(customerIdParam));
+                    } catch (e) {
+                        console.error('リフレッシュエラー:', e);
+                        showToast('最新データの取得に失敗しました', 'error');
+                    } finally {
+                        if (wrapper) wrapper.classList.remove('spinner');
+                        btnRefresh.disabled = false;
+                    }
                 }
             });
         }
@@ -599,6 +611,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function updateScreenMode(mode) {
+        const btnRefresh = document.getElementById('btn-refresh-cache');
         if (mode === 'new') {
             ['offices-table', 'contacts-table', 'licenses-table', 'related-cases-table'].forEach(id => {
                 const el = document.getElementById(id);
@@ -611,6 +624,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const headerTitle = document.getElementById('header-title');
             if (headerTitle) headerTitle.textContent = '顧客詳細：';
             if (btnDelete) btnDelete.style.display = 'none';
+            if (btnRefresh) btnRefresh.style.display = 'none';
             const nameDisp = document.getElementById('customer-name-display');
             if (nameDisp) nameDisp.textContent = '新規顧客';
 
@@ -635,6 +649,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (section) section.style.display = '';
             });
             if (btnDelete && isUserAdmin()) btnDelete.style.display = '';
+            if (btnRefresh) btnRefresh.style.display = '';
             const summaryBar = document.getElementById('header-summary-bar');
             if (summaryBar) summaryBar.style.display = 'flex';
         }
@@ -2099,6 +2114,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderOverviewHistories(Number(customerId));
             }
         }
+
+        // 請求・売上タブ切り替え時に、請求一覧を遅延ロード（フェーズ1-A）
+        if (tabName === 'billing') {
+            const customerId = document.getElementById('customer_id')?.value;
+            if (customerId && customerId !== 'new') {
+                loadBillingTab(Number(customerId));
+            }
+        }
     }
     document.getElementById('btn-goto-basic')?.addEventListener('click', () => switchToTab('basic'));
     document.getElementById('btn-goto-basic-memo')?.addEventListener('click', () => switchToTab('basic'));
@@ -3085,6 +3108,159 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // イベント登録
     document.getElementById('btn-export-summary-pdf')?.addEventListener('click', handleExportSummaryPdf);
+
+    // ─────────────────────────────────────────────────────────
+    // 請求・売上タブ 関連ロジック (フェーズ1-A)
+    // ─────────────────────────────────────────────────────────
+    function normalizeStatus(status) {
+        return String(status || '').trim().toLowerCase();
+    }
+
+    const KPI_EXCLUDED_STATUSES = ['cancelled', 'draft', '下書き'];
+
+    async function loadBillingTab(cId) {
+        if (!cId || isNaN(cId)) return;
+        const listBody = document.getElementById('customer-billing-list-body');
+        if (!listBody) return;
+
+        // 1. キャッシュが存在し、有効な場合はキャッシュから描画
+        if (billingCacheMap[cId]) {
+            console.log(`[BillingCache] Hit cache for customerId: ${cId}`);
+            renderBillingUI(billingCacheMap[cId].invoices);
+            return;
+        }
+
+        // 2. キャッシュがない場合はローディング表示を行い、Firestoreから取得
+        listBody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 24px; color: #64748b;">
+                    <div style="display: inline-flex; align-items: center; gap: 8px;">
+                        <span class="spinner" style="display: inline-block; width: 16px; height: 16px; border: 2px solid #cbd5e1; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></span>
+                        データを読み込み中...
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        try {
+            const querySnap = await db.collection('invoices')
+                .where('customer_id', '==', cId)
+                .get();
+
+            const invoices = querySnap.docs.map(doc => ({
+                doc_id: doc.id,
+                ...doc.data()
+            }));
+
+            // ソート処理（日付降順 ➔ 作成日時降順 ➔ 請求番号降順）
+            invoices.sort((a, b) => {
+                const dateCompare = (b.invoice_date || '').localeCompare(a.invoice_date || '');
+                if (dateCompare !== 0) return dateCompare;
+
+                const timeA = a.created_date && typeof a.created_date.toDate === 'function'
+                    ? a.created_date.toDate().getTime()
+                    : 0;
+                const timeB = b.created_date && typeof b.created_date.toDate === 'function'
+                    ? b.created_date.toDate().getTime()
+                    : 0;
+                if (timeA !== timeB) return timeB - timeA;
+
+                return (b.invoice_number || '').localeCompare(a.invoice_number || '');
+            });
+
+            // キャッシュに保存
+            billingCacheMap[cId] = {
+                loadedAt: Date.now(),
+                invoices: invoices
+            };
+
+            renderBillingUI(invoices);
+        } catch (err) {
+            console.error('[Billing] Failed to load invoices:', err);
+            listBody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 24px; color: #ef4444; font-weight: 500;">
+                        請求データの取得に失敗しました
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    function renderBillingUI(invoices) {
+        const listBody = document.getElementById('customer-billing-list-body');
+        if (!listBody) return;
+
+        listBody.innerHTML = '';
+
+        if (!invoices || invoices.length === 0) {
+            listBody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 24px; color: #94a3b8;">
+                        請求データはありません
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        invoices.forEach(inv => {
+            const tr = document.createElement('tr');
+
+            // 取消 (cancelled) の場合はグレーアウト
+            const isCancelled = normalizeStatus(inv.status) === 'cancelled';
+            if (isCancelled) {
+                tr.style.opacity = '0.6';
+                tr.style.background = '#f8fafc';
+            }
+
+            // 未収あり (balance > 0) かつ 取消以外の場合、薄い赤背景で強調
+            const hasBalance = (inv.balance || 0) > 0 && !isCancelled;
+            if (hasBalance) {
+                tr.style.backgroundColor = 'rgba(239, 68, 68, 0.04)';
+            }
+
+            const balanceColor = hasBalance ? '#dc2626' : '#64748b';
+            const balanceWeight = hasBalance ? 'bold' : 'normal';
+
+            // ステータスバッジのCSSクラス決定
+            const statusClass = typeof window.getInvoiceStatusClass === 'function' 
+                ? window.getInvoiceStatusClass(inv.status) 
+                : 'status-draft';
+
+            tr.innerHTML = `
+                <td><strong>${inv.invoice_number || 'ー'}</strong></td>
+                <td>${formatDate(inv.invoice_date)}</td>
+                <td style="text-align: right; font-weight: 600;">${formatCurrency(inv.total_amount)}</td>
+                <td style="text-align: right; color: #059669;">${formatCurrency(inv.allocatedAmount || 0)}</td>
+                <td style="text-align: right; color: ${balanceColor}; font-weight: ${balanceWeight};">${formatCurrency(inv.balance)}</td>
+                <td style="text-align: center;"><span class="badge ${statusClass}">${inv.status || 'ー'}</span></td>
+            `;
+            listBody.appendChild(tr);
+        });
+    }
+
+    // イベント登録（手動更新 ＆ タブクリックによる遅延ロード）
+    document.getElementById('btn-refresh-billing')?.addEventListener('click', () => {
+        const cId = document.getElementById('customer_id')?.value;
+        if (cId && cId !== 'new') {
+            console.log(`[BillingCache] Clearing cache for customerId: ${cId}`);
+            delete billingCacheMap[Number(cId)];
+            loadBillingTab(Number(cId));
+        }
+    });
+
+    document.querySelectorAll('.tab-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const tabId = button.getAttribute('data-tab');
+            if (tabId === 'billing') {
+                const cId = document.getElementById('customer_id')?.value;
+                if (cId && cId !== 'new') {
+                    loadBillingTab(Number(cId));
+                }
+            }
+        });
+    });
 
      await init();
 });
