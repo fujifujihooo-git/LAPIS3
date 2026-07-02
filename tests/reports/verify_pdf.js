@@ -36,6 +36,7 @@ async function delay(ms) {
 
     // Mock window.open to intercept blobs and save them locally
     await page.evaluateOnNewDocument(() => {
+        window.__TEST__ = true;
         window.open = function(url, target, features) {
             if (url && url.startsWith('blob:')) {
                 fetch(url)

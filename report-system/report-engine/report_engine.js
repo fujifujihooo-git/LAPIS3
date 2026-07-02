@@ -3,7 +3,7 @@
  * 共通のPDF生成処理を提供します。
  */
 
-window.ReportEngine = {
+window.ReportEngine = Object.assign(window.ReportEngine || {}, {
     /**
      * 帳票を生成する
      * @param {string} templateUrl - ベースとなるPDFのURL
@@ -156,14 +156,6 @@ window.ReportEngine = {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-    },
-
-    /**
-     * 生成したPDFを別タブでプレビューする
-     */
-    previewPDF(pdfBytes) {
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
     }
-};
+});
+

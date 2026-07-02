@@ -2298,6 +2298,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             } : null
         };
 
+        const previewWindow = window.ReportEngine.openPreviewWindow();
+        if (!previewWindow) {
+            alert('プレビュー画面を開けませんでした。ブラウザのポップアップブロック設定を確認してください。');
+            return;
+        }
+
         try {
             // Disable buttons
             if (btnPreviewReport) btnPreviewReport.disabled = true;
@@ -2348,7 +2354,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const pdfBytes = await window.ReportEngine.generateReport(templateUrl, fontUrl, mappingJson, viewData);
 
             // 5. Output
-            window.ReportEngine.previewPDF(pdfBytes);
+            window.ReportEngine.previewPDF(pdfBytes, previewWindow);
             if (actionType === 'preview') {
                 if (btnPreviewReport) btnPreviewReport.textContent = btnOriginalText;
             } else {
@@ -2358,6 +2364,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (err) {
             console.error('Report Generation Error:', err);
             alert('帳票の生成に失敗しました: ' + err.message);
+            window.ReportEngine.closePreviewWindow(previewWindow);
             if (btnPreviewReport) btnPreviewReport.textContent = 'プレビュー';
             if (btnPrintReport) btnPrintReport.textContent = '印刷（ダウンロード）';
         } finally {
@@ -2453,6 +2460,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             } : null
         };
 
+        const previewWindow = window.ReportEngine.openPreviewWindow();
+        if (!previewWindow) {
+            alert('プレビュー画面を開けませんでした。ブラウザのポップアップブロック設定を確認してください。');
+            return;
+        }
+
         try {
             if (btnPrintNationalReport) btnPrintNationalReport.disabled = true;
             let btnOriginalText = btnPrintNationalReport.textContent;
@@ -2484,13 +2497,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const pdfBytes = await window.ReportEngine.generateReport(templateUrl, fontUrl, mappingJson, viewData);
 
             // 5. Output
-            window.ReportEngine.previewPDF(pdfBytes);
+            window.ReportEngine.previewPDF(pdfBytes, previewWindow);
             if(reportNationalModal) reportNationalModal.style.display = 'none'; // Close modal
             if (btnPrintNationalReport) btnPrintNationalReport.textContent = btnOriginalText;
             
         } catch (err) {
             console.error('Report Generation Error:', err);
             alert('国税帳票の生成に失敗しました: ' + err.message);
+            window.ReportEngine.closePreviewWindow(previewWindow);
             if (btnPrintNationalReport) btnPrintNationalReport.textContent = '印刷（ダウンロード）';
         } finally {
             if (btnPrintNationalReport) btnPrintNationalReport.disabled = false;
@@ -3077,6 +3091,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        const previewWindow = window.ReportEngine.openPreviewWindow();
+        if (!previewWindow) {
+            alert('プレビュー画面を開けませんでした。ブラウザのポップアップブロック設定を確認してください。');
+            return;
+        }
+
         const btn = document.getElementById('btn-export-summary-pdf');
         let originalHTML = '';
         if (btn) {
@@ -3092,11 +3112,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             await report.generate(currentCustomer, licenses, cases, histories, staffMembers, licenseTypes);
 
             // プレビュー表示
-            report.preview();
+            report.preview(previewWindow);
         } catch (err) {
             console.error('[ExportSummaryPDF] Failed to generate PDF report:', err);
             // エラー表示 (フォントロード失敗時などもここに集約される)
             alert('PDF出力に失敗しました: ' + err.message);
+            window.ReportEngine.closePreviewWindow(previewWindow);
         } finally {
             if (btn) {
                 btn.disabled = false;

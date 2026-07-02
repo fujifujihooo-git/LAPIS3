@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let invoiceItems = [];
     let payments = [];
     let autoUpdatedDatesTracker = [];
+    let usedEstimateIds = new Set();
 
     // --- Selectors (Estimate Modal) ---
     const estimateItemTableBody = document.getElementById('estimate-item-list-body');
@@ -130,6 +131,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('modal-is-taxable').checked = item.is_taxable;
         modalTitle.textContent = '見積明細編集';
         btnModalDeleteItem.style.display = 'block';
+
+        if (item.estimate_item_id && typeof usedEstimateIds !== 'undefined' && usedEstimateIds.has(item.estimate_item_id)) {
+            btnModalDeleteItem.disabled = true;
+            btnModalDeleteItem.title = '請求履歴が存在する見積明細は削除できません。';
+            btnModalDeleteItem.style.opacity = '0.5';
+            btnModalDeleteItem.style.cursor = 'not-allowed';
+        } else {
+            btnModalDeleteItem.disabled = false;
+            btnModalDeleteItem.title = '';
+            btnModalDeleteItem.style.opacity = '1.0';
+            btnModalDeleteItem.style.cursor = 'pointer';
+        }
+
         btnModalSaveItem.textContent = '保存';
         itemModal.style.display = 'block';
     };
@@ -143,6 +157,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('modal-is-taxable').checked = true;
         modalTitle.textContent = '見積明細追加';
         btnModalDeleteItem.style.display = 'none';
+        btnModalDeleteItem.disabled = false;
+        btnModalDeleteItem.style.opacity = '1.0';
+        btnModalDeleteItem.style.cursor = 'pointer';
         btnModalSaveItem.textContent = '追加';
         itemModal.style.display = 'block';
     }
@@ -156,6 +173,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     window.closeHistoryModal = closeHistoryModal;
 
+    function generateUUID() {
+        if (typeof self !== 'undefined' && self.crypto && typeof self.crypto.randomUUID === 'function') {
+            return self.crypto.randomUUID();
+        }
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
     function saveEstimateItem() {
         const type = document.getElementById('modal-item-type').value;
         const desc = document.getElementById('modal-description').value;
@@ -168,7 +195,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        const itemData = { type, description: desc, unit_price: price, quantity: qty, amount: price * qty, is_taxable: isTaxable };
+        const existingItem = editingEstimateIndex >= 0 ? estimateItems[editingEstimateIndex] : null;
+        const itemId = existingItem && existingItem.estimate_item_id ? existingItem.estimate_item_id : generateUUID();
+        const isLegacy = existingItem && existingItem.is_legacy ? existingItem.is_legacy : undefined;
+
+        // 警告ダイアログのガード（請求済明細の金額・内容などの変更時）
+        if (existingItem && existingItem.estimate_item_id && typeof usedEstimateIds !== 'undefined' && usedEstimateIds.has(existingItem.estimate_item_id)) {
+            const isChanged = existingItem.type !== type || 
+                              existingItem.description !== desc || 
+                              Number(existingItem.unit_price) !== price || 
+                              Number(existingItem.quantity) !== qty || 
+                              existingItem.is_taxable !== isTaxable;
+            
+            if (isChanged) {
+                const proceed = confirm('【警告】この見積明細は既に請求書で使用されています。\n変更すると請求履歴との整合性が失われる可能性があります。本当に変更しますか？');
+                if (!proceed) return;
+            }
+        }
+
+        const itemData = {
+            estimate_item_id: itemId,
+            type,
+            description: desc,
+            unit_price: price,
+            quantity: qty,
+            amount: price * qty,
+            is_taxable: isTaxable
+        };
+
+        if (isLegacy) {
+            itemData.is_legacy = true;
+        }
+
         if (editingEstimateIndex >= 0) estimateItems[editingEstimateIndex] = itemData;
         else estimateItems.push(itemData);
 
@@ -179,6 +237,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function deleteEstimateItemFromModal() {
         if (editingEstimateIndex >= 0) {
+            const item = estimateItems[editingEstimateIndex];
+            if (item && item.estimate_item_id && typeof usedEstimateIds !== 'undefined' && usedEstimateIds.has(item.estimate_item_id)) {
+                alert('この見積明細は既に請求に使用されているため削除できません。');
+                return;
+            }
             if (confirm('本当に削除しますか？')) {
                 estimateItems.splice(editingEstimateIndex, 1);
                 renderEstimateItems();
@@ -367,6 +430,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     statusHistory = historySnap.docs.map(d => d.data());
                     invoices = invSnap.docs.map(d => d.data());
                     invoiceItems = invItemSnap.docs.map(d => d.data());
+
+                    // 有効な（'取消'以外の）請求書IDを取得
+                    const activeInvoiceIds = new Set(
+                        invoices
+                            .filter(inv => inv.status !== '取消')
+                            .map(inv => inv.invoice_id)
+                    );
+
+                    // 有効な請求書に紐付いている invoice_items から estimate_item_id を抽出し、使用済IDのSetを構築
+                    usedEstimateIds = new Set(
+                        invoiceItems
+                            .filter(item => item.estimate_item_id && activeInvoiceIds.has(item.invoice_id))
+                            .map(item => item.estimate_item_id)
+                    );
                 });
 
                 const customerPromise = currentCase.customer_id
@@ -801,10 +878,60 @@ document.addEventListener('DOMContentLoaded', async () => {
                 suspense_receipt_amount: Number(document.getElementById('suspense_receipt_amount')?.value) || 0
             };
 
+            // --- estimate_items バリデーション開始 ---
+            const afterEstimateItems = updatedData.estimate_items || [];
+
+            // 1. 同一案件内での estimate_item_id 重複保存の永久禁止
+            const activeIds = afterEstimateItems
+                .map(item => item.estimate_item_id)
+                .filter(Boolean);
+            if (new Set(activeIds).size !== activeIds.length) {
+                throw new Error('同一案件内に同じ見積明細IDを複数登録することはできません。');
+            }
+
+            // 2. ID必須・空文字/未設定バリデーション
+            for (const item of afterEstimateItems) {
+                if (isTrackableEstimateItem(item) && (!item.estimate_item_id || item.estimate_item_id.trim() === '')) {
+                    throw new Error('見積明細IDが未設定または空文字です。一意なIDが必要です。');
+                }
+            }
+
+            // 3. 請求済み見積明細の完全不変（Immutable）原則のチェック
+            if (caseId !== 'new' && currentCase && currentCase.estimate_items) {
+                const beforeEstimateItems = currentCase.estimate_items || [];
+                for (const beforeItem of beforeEstimateItems) {
+                    if (beforeItem.estimate_item_id && typeof usedEstimateIds !== 'undefined' && usedEstimateIds.has(beforeItem.estimate_item_id)) {
+                        const targetId = beforeItem.estimate_item_id;
+                        const afterItem = afterEstimateItems.find(x => x.estimate_item_id === targetId);
+                        if (!afterItem) {
+                            throw new Error(`請求書に登録済みの見積明細「${beforeItem.description}」を削除することはできません。`);
+                        }
+                        const normalizedBefore = normalizeEstimateItem(beforeItem);
+                        const normalizedAfter = normalizeEstimateItem(afterItem);
+                        if (!deepEqual(normalizedBefore, normalizedAfter)) {
+                            throw new Error(`請求書に登録済みの見積明細「${beforeItem.description}」の内容を変更することはできません。`);
+                        }
+                    }
+                }
+            }
+            // --- estimate_items バリデーション終了 ---
+
             const batch = db.batch();
 
             if (caseId === 'new') {
                 const nextId = await getNextSequence('cases');
+                
+                // 新規案件登録時（複製コピー時を含む）に、見積明細のIDをすべて新規UUIDに再生成し、is_legacyをクリアする
+                if (estimateItems && estimateItems.length > 0) {
+                    estimateItems = estimateItems.map(item => {
+                        const copy = { ...item };
+                        copy.estimate_item_id = generateUUID();
+                        delete copy.is_legacy; // 複製された明細は新規扱い（追跡対象）とする
+                        return copy;
+                    });
+                }
+                updatedData.estimate_items = estimateItems;
+
                 updatedData.case_id = nextId;
                 updatedData.created_date = new Date().toISOString();
                 currentCase = updatedData;
@@ -840,6 +967,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             await batch.commit();
             console.log("Batch commit successful.");
 
+            triggerBillingSummaryRebuild(caseId);
+
             currentCase = { ...currentCase, ...updatedData };
             showToast('保存しました', 'success');
             renderHistory(caseId);
@@ -858,5 +987,72 @@ document.addEventListener('DOMContentLoaded', async () => {
                 setTimeout(() => { window.location.href = 'index.html'; }, 1000);
             } catch (err) { alert('削除に失敗しました'); }
         }
+    }
+
+    // --- Helper Functions for Estimate Items & Rebuild ---
+    function deepEqual(x, y) {
+        if (x === y) {
+            return true;
+        } else if ((typeof x == "object" && x != null) && (typeof y == "object" && y != null)) {
+            if (Object.keys(x).length != Object.keys(y).length) return false;
+            for (var prop in x) {
+                if (y.hasOwnProperty(prop)) {
+                    if (!deepEqual(x[prop], y[prop])) return false;
+                } else {
+                    return false;
+                }
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    async function rebuildWithRetry(caseId, maxRetries = 3) {
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                await rebuildCaseBillingSummary(caseId);
+                return;
+            } catch (err) {
+                if (i === maxRetries - 1) throw err;
+                console.warn(`[BillingSummary] Retry ${i + 1}/${maxRetries} for case ${caseId}`);
+                await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+            }
+        }
+    }
+
+    function triggerBillingSummaryRebuild(caseId) {
+        console.info(`[BillingSummary] Rebuild started for case: ${caseId}`);
+        rebuildWithRetry(caseId)
+            .then(() => {
+                console.info(`[BillingSummary] Rebuild completed for case: ${caseId}`);
+            })
+            .catch(err => {
+                console.error(`[BillingSummary] Rebuild FAILED for case ${caseId}:`, err);
+                
+                const errorRef = db.collection('billing_summary_errors').doc(`case_${caseId}`);
+                errorRef.get().then(docSnap => {
+                    const data = docSnap.exists ? docSnap.data() : null;
+                    const isNewError = !data || data.resolved === true;
+                    
+                    let recentErrors = data && data.recent_errors ? data.recent_errors : [];
+                    const errorMsg = String(err.message || err);
+                    recentErrors = [errorMsg, ...recentErrors].slice(0, 5);
+
+                    const updateData = {
+                        case_id: caseId,
+                        error_type: 'REBUILD_FAILED',
+                        last_error: errorMsg,
+                        last_error_at: firebase.firestore.FieldValue.serverTimestamp(),
+                        recent_errors: recentErrors,
+                        total_error_count: firebase.firestore.FieldValue.increment(1),
+                        resolved: false
+                    };
+                    if (isNewError) {
+                        updateData.first_error_at = firebase.firestore.FieldValue.serverTimestamp();
+                    }
+                    return errorRef.set(updateData, { merge: true });
+                }).catch(logErr => console.error('[BillingSummary] Failed to write error log:', logErr));
+            });
     }
 });

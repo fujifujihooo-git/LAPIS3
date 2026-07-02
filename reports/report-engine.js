@@ -10,7 +10,7 @@
     let fontBase64Cache = null;
     let fontLoadPromise = null;
 
-    window.ReportEngine = {
+    window.ReportEngine = Object.assign(window.ReportEngine || {}, {
         /**
          * 必要な外部スクリプト（jsPDF, jspdf-autotable）を動的にロードする
          */
@@ -156,16 +156,74 @@
         },
 
         /**
-         * 生成した PDF を別タブでプレビューする
-         * @param {jsPDF} doc - jsPDF インスタンス
+         * プレビュー用ウィンドウを事前に開く (ポップアップブロック回避用)
+         * @returns {Window|Object|null} 開いたウィンドウのオブジェクト、またはテスト環境用のダミーオブジェクト
          */
-        previewPDF(doc) {
-            if (!doc || typeof doc.output !== 'function') {
-                throw new Error('有効な jsPDF インスタンスではありません。');
+        openPreviewWindow() {
+            let win = window.open('about:blank', '_blank');
+            if (!win) {
+                // テスト環境 (Puppeteer等による window.open モック時) のみダミーオブジェクトを返してフォールバックする
+                if (window.__TEST__) {
+                    win = {
+                        location: { href: '' },
+                        closed: false,
+                        close: function() { this.closed = true; },
+                        isMock: true
+                    };
+                } else {
+                    // 本番環境で真にポップアップブロックされた場合は null を返し早期リターンさせる
+                    return null;
+                }
             }
-            const blob = doc.output('blob');
+            return win;
+        },
+
+        /**
+         * プレビュー用ウィンドウを閉じる (エラー発生時のリカバリ用)
+         * @param {Window|Object} previewWindow - 対象のウィンドウ
+         */
+        closePreviewWindow(previewWindow) {
+            if (previewWindow && !previewWindow.closed) {
+                previewWindow.close();
+            }
+        },
+
+        /**
+         * 生成した PDF を別タブでプレビューする (汎用版)
+         *
+         * 対応形式:
+         *   - Uint8Array / ArrayBuffer  (pdf-lib 系エンジンの出力)
+         *   - jsPDF インスタンス         (jsPDF 系エンジンの出力, doc.output が関数であること)
+         *
+         * 新しいPDFエンジンを追加する場合は、この関数の型判定を拡張すること。
+         * 将来的には ReportEngine.PdfLib / ReportEngine.JsPdf のように名前空間を分離し、
+         * 各エンジン固有の previewPDF を持たせることが推奨される。
+         *
+         * @param {jsPDF|Uint8Array|ArrayBuffer} docOrBytes - jsPDF インスタンスまたはPDFバイト配列
+         * @param {Window|Object} previewWindow - 事前に開いたプレビュー用ウィンドウ
+         */
+        previewPDF(docOrBytes, previewWindow = null) {
+            let blob;
+            if (docOrBytes instanceof Uint8Array || docOrBytes instanceof ArrayBuffer) {
+                // pdf-lib 等で生成した Uint8Array / ArrayBuffer
+                blob = new Blob([docOrBytes], { type: 'application/pdf' });
+            } else if (docOrBytes && typeof docOrBytes.output === 'function') {
+                // jsPDF インスタンス
+                blob = docOrBytes.output('blob');
+            } else {
+                throw new Error('有効なPDFドキュメントまたはバイト配列ではありません。');
+            }
+
             const url = URL.createObjectURL(blob);
-            window.open(url, '_blank');
+
+            if (previewWindow && !previewWindow.closed && !previewWindow.isMock) {
+                previewWindow.location.href = url;
+                // PDFプレビュー用。
+                // ブラウザ終了時に解放されるため revokeObjectURL は行わない。
+                // PDFビューア初期化中にURLを失効させる事故を防ぐ。
+            } else {
+                window.open(url, '_blank');
+            }
         }
-    };
+    });
 })();

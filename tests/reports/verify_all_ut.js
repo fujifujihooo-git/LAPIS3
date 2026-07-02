@@ -189,6 +189,7 @@ async function seedDefaultData(customerOverrides = {}) {
 
     // Mock window.open to intercept blobs and save them locally
     await page.evaluateOnNewDocument(() => {
+        window.__TEST__ = true;
         window.open = function(url, target, features) {
             if (url && url.startsWith('blob:')) {
                 fetch(url)
@@ -245,7 +246,7 @@ async function seedDefaultData(customerOverrides = {}) {
     await page.click('#login-form button[type="submit"]');
  
     try {
-        await page.waitForSelector('#otp-code', { timeout: 5000 });
+        await page.waitForSelector('#otp-code', { visible: true, timeout: 5000 });
         // 入力の不確実性を防ぐため、evaluateで確実にセットしてsubmitする
         await page.evaluate(() => {
             const input = document.getElementById('otp-code');

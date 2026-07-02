@@ -144,9 +144,10 @@
 
         /**
          * 生成した PDF を別タブでプレビューする
+         * @param {Window|null} previewWindow - 事前に開いたプレビュー用ウィンドウ
          */
-        preview() {
-            window.ReportEngine.previewPDF(this.doc);
+        preview(previewWindow = null) {
+            window.ReportEngine.previewPDF(this.doc, previewWindow);
         }
     }
 

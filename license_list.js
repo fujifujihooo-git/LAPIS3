@@ -598,9 +598,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // PDF出力
     async function exportPDF() {
+        const previewWindow = window.ReportEngine.openPreviewWindow();
+        if (!previewWindow) {
+            alert('プレビュー画面を開けませんでした。ブラウザのポップアップブロック設定を確認してください。');
+            return;
+        }
+
         const data = window.filteredData;
         if (data.length === 0) {
             alert('出力するデータがありません。');
+            window.ReportEngine.closePreviewWindow(previewWindow);
             return;
         }
 
@@ -622,10 +629,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             await report.generate(data, filterOptions, customers, licenseTypes, staffMembers);
-            report.preview();
+            report.preview(previewWindow);
         } catch (error) {
             console.error('PDF generation failed:', error);
             alert('PDFの出力中にエラーが発生しました。');
+            window.ReportEngine.closePreviewWindow(previewWindow);
         }
     }
 

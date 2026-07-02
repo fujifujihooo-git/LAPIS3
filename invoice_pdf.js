@@ -90,7 +90,7 @@ function pdfFormatCurrency(val) {
  *   data.totalAmount    - 合計金額
  *   data.remarks        - 備考
  */
-async function generateInvoicePDF(data) {
+async function generateInvoicePDF(data, previewWindow = null) {
     // ===== 1. フォント読み込み (プログレス表示) =====
     const btn = document.getElementById('btn-pdf-export');
     const originalHtml = btn ? btn.innerHTML : '';
@@ -419,10 +419,9 @@ async function generateInvoicePDF(data) {
         }
 
         // ============================================================
-        // ===== 12. ダウンロード =====
+        // ===== 12. プレビュー表示 =====
         // ============================================================
-        const fileName = '請求書_' + (data.invoiceNumber || 'draft') + '.pdf';
-        doc.save(fileName);
+        window.ReportEngine.previewPDF(doc, previewWindow);
 
         if (typeof showToast === 'function') {
             showToast('PDFを生成しました', 'success');
@@ -431,6 +430,7 @@ async function generateInvoicePDF(data) {
     } catch (e) {
         console.error('PDF Generation Error:', e);
         alert('PDF生成に失敗しました。\n' + e.message);
+        window.ReportEngine.closePreviewWindow(previewWindow);
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -444,7 +444,13 @@ async function generateInvoicePDF(data) {
  * 現在の画面データからPDFを生成
  * invoice_detail.js の変数にアクセスする
  */
-function exportInvoicePDF() {
+async function exportInvoicePDF() {
+    const previewWindow = window.ReportEngine.openPreviewWindow();
+    if (!previewWindow) {
+        alert('プレビュー画面を開けませんでした。ブラウザのポップアップブロック設定を確認してください。');
+        return;
+    }
+
     // 画面のDOMから直接データを収集
     const invoiceNumber = document.getElementById('invoice_number')?.value || '';
     const invoiceDate = document.getElementById('invoice_date')?.value?.replace(/-/g, '/') || '';
@@ -491,21 +497,26 @@ function exportInvoicePDF() {
         }
     }
 
-    generateInvoicePDF({
-        invoiceNumber,
-        invoiceDate,
-        dueDate,
-        customerName,
-        customerTitle,
-        customerPostal,
-        customerAddress,
-        customerBuilding,
-        items,
-        taxableSubtotal,
-        taxAmount,
-        nontaxableSubtotal,
-        totalAmount,
-        remarks,
-        salesRep
-    });
+    try {
+        await generateInvoicePDF({
+            invoiceNumber,
+            invoiceDate,
+            dueDate,
+            customerName,
+            customerTitle,
+            customerPostal,
+            customerAddress,
+            customerBuilding,
+            items,
+            taxableSubtotal,
+            taxAmount,
+            nontaxableSubtotal,
+            totalAmount,
+            remarks,
+            salesRep
+        }, previewWindow);
+    } catch (e) {
+        console.error('PDF Generation failed in exportInvoicePDF:', e);
+        window.ReportEngine.closePreviewWindow(previewWindow);
+    }
 }
