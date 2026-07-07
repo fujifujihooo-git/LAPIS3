@@ -14,6 +14,7 @@ window.TaxCertificateNationalView = {
             TAX_PAYER_ADDRESS: currentCustomer.address || '',
             REPRESENTATIVE_NAME: currentCustomer.representative_name || '',
             PHONE_NUMBER: currentCustomer.phone || '',
+            CORPORATE_NUMBER: currentCustomer.corporate_number || '',
         };
 
         // 使用目的チェックボックスおよび「その他」のテキスト

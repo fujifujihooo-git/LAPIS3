@@ -1,20 +1,20 @@
 {
     "TAX_PAYER_NAME": {
         "type": "text",
-        "x": 330,
-        "y": 715,
+        "x": 300,
+        "y": 680,
         "size": 10
     },
     "TAX_PAYER_ADDRESS": {
         "type": "text",
-        "x": 330,
-        "y": 750,
+        "x": 320,
+        "y": 710,
         "size": 10
     },
     "REPRESENTATIVE_NAME": {
         "type": "text",
-        "x": 330,
-        "y": 698,
+        "x": 300,
+        "y": 660,
         "size": 10
     },
     "PHONE_NUMBER": {
@@ -26,147 +26,147 @@
     "TYPE_SONO_1": {
         "type": "checkbox",
         "check_mark": "○",
-        "x": 222,
-        "y": 608,
+        "x": 150,
+        "y": 580,
         "size": 12
     },
     "TYPE_SONO_2": {
         "type": "checkbox",
         "check_mark": "○",
-        "x": 335,
-        "y": 608,
+        "x": 260,
+        "y": 580,
         "size": 12
     },
     "TYPE_SONO_3_3": {
         "type": "checkbox",
         "check_mark": "○",
         "x": 350,
-        "y": 587,
+        "y": 570,
         "size": 12
     },
     "SONO_1_TAX_INCOME": {
         "type": "checkbox",
         "check_mark": "○",
-        "x": 120,
-        "y": 580,
+        "x": 150,
+        "y": 550,
         "size": 12
     },
     "SONO_1_TAX_CORPORATE": {
         "type": "checkbox",
         "check_mark": "○",
-        "x": 120,
-        "y": 560,
+        "x": 150,
+        "y": 520,
         "size": 12
     },
     "SONO_1_TAX_CONSUMPTION": {
         "type": "checkbox",
         "check_mark": "○",
-        "x": 120,
-        "y": 540,
+        "x": 150,
+        "y": 490,
         "size": 12
     },
     "SONO_1_PERIOD_START_YEAR": {
         "type": "text",
-        "x": 360,
-        "y": 510,
+        "x": 140,
+        "y": 450,
         "size": 9
     },
     "SONO_1_PERIOD_START_MONTH": {
         "type": "text",
-        "x": 384,
-        "y": 510,
+        "x": 164,
+        "y": 450,
         "size": 9
     },
     "SONO_1_PERIOD_START_DAY": {
         "type": "text",
-        "x": 404,
-        "y": 510,
+        "x": 184,
+        "y": 450,
         "size": 9
     },
     "SONO_1_PERIOD_END_YEAR": {
         "type": "text",
-        "x": 360,
-        "y": 492,
+        "x": 140,
+        "y": 440,
         "size": 9
     },
     "SONO_1_PERIOD_END_MONTH": {
         "type": "text",
-        "x": 384,
-        "y": 492,
+        "x": 164,
+        "y": 440,
         "size": 9
     },
     "SONO_1_PERIOD_END_DAY": {
         "type": "text",
-        "x": 404,
-        "y": 492,
+        "x": 184,
+        "y": 440,
         "size": 9
     },
     "SONO_1_COPIES": {
         "type": "text",
-        "x": 480,
-        "y": 310,
+        "x": 200,
+        "y": 290,
         "size": 12
     },
     "SONO_2_TAX_INCOME": {
         "type": "checkbox",
         "check_mark": "○",
-        "x": 235,
-        "y": 580,
+        "x": 220,
+        "y": 550,
         "size": 12
     },
     "SONO_2_TAX_CORPORATE": {
         "type": "checkbox",
         "check_mark": "○",
-        "x": 235,
-        "y": 560,
+        "x": 220,
+        "y": 520,
         "size": 12
     },
     "SONO_2_PERIOD_START_YEAR": {
         "type": "text",
-        "x": 360,
-        "y": 474,
+        "x": 240,
+        "y": 450,
         "size": 9
     },
     "SONO_2_PERIOD_START_MONTH": {
         "type": "text",
-        "x": 384,
-        "y": 474,
+        "x": 264,
+        "y": 450,
         "size": 9
     },
     "SONO_2_PERIOD_START_DAY": {
         "type": "text",
-        "x": 404,
-        "y": 474,
+        "x": 284,
+        "y": 450,
         "size": 9
     },
     "SONO_2_PERIOD_END_YEAR": {
         "type": "text",
-        "x": 360,
-        "y": 456,
+        "x": 240,
+        "y": 440,
         "size": 9
     },
     "SONO_2_PERIOD_END_MONTH": {
         "type": "text",
-        "x": 384,
-        "y": 456,
+        "x": 264,
+        "y": 440,
         "size": 9
     },
     "SONO_2_PERIOD_END_DAY": {
         "type": "text",
-        "x": 404,
-        "y": 456,
+        "x": 284,
+        "y": 440,
         "size": 9
     },
     "SONO_2_COPIES": {
         "type": "text",
-        "x": 480,
-        "y": 292,
+        "x": 280,
+        "y": 290,
         "size": 12
     },
     "SONO_3_3_COPIES": {
         "type": "text",
-        "x": 480,
-        "y": 274,
+        "x": 390,
+        "y": 290,
         "size": 12
     },
     "PURPOSE_BANK": {
@@ -179,15 +179,15 @@
     "PURPOSE_BID": {
         "type": "checkbox",
         "check_mark": "○",
-        "x": 204,
-        "y": 285,
+        "x": 200,
+        "y": 270,
         "size": 12
     },
     "PURPOSE_LICENSE": {
         "type": "checkbox",
         "check_mark": "○",
-        "x": 315,
-        "y": 285,
+        "x": 280,
+        "y": 270,
         "size": 12
     },
     "PURPOSE_GUARANTOR": {
@@ -200,8 +200,8 @@
     "PURPOSE_OTHER": {
         "type": "checkbox",
         "check_mark": "○",
-        "x": 490,
-        "y": 285,
+        "x": 200,
+        "y": 250,
         "size": 12
     },
     "PURPOSE_OTHER_TEXT": {
@@ -212,20 +212,26 @@
     },
     "APPLICANT_NAME": {
         "type": "text",
-        "x": 80,
-        "y": 732,
+        "x": 100,
+        "y": 680,
         "size": 10
     },
     "APPLICANT_ADDRESS": {
         "type": "text",
         "x": 80,
-        "y": 752,
-        "size": 9
+        "y": 700,
+        "size": 6
     },
     "APPLICANT_PHONE": {
         "type": "text",
-        "x": 80,
-        "y": 715,
+        "x": 100,
+        "y": 655,
         "size": 9
+    },
+    "CORPORATE_NUMBER": {
+        "type": "text",
+        "x": 300,
+        "y": 643,
+        "size": 11
     }
 }
