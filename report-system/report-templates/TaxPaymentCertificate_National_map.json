@@ -25,42 +25,42 @@
     },
     "TYPE_SONO_1": {
         "type": "checkbox",
-        "check_mark": "○",
+        "check_mark": "レ",
         "x": 150,
         "y": 580,
         "size": 12
     },
     "TYPE_SONO_2": {
         "type": "checkbox",
-        "check_mark": "○",
+        "check_mark": "レ",
         "x": 260,
         "y": 580,
         "size": 12
     },
     "TYPE_SONO_3_3": {
         "type": "checkbox",
-        "check_mark": "○",
+        "check_mark": "レ",
         "x": 350,
         "y": 570,
         "size": 12
     },
     "SONO_1_TAX_INCOME": {
         "type": "checkbox",
-        "check_mark": "○",
+        "check_mark": "レ",
         "x": 150,
         "y": 550,
         "size": 12
     },
     "SONO_1_TAX_CORPORATE": {
         "type": "checkbox",
-        "check_mark": "○",
+        "check_mark": "レ",
         "x": 150,
         "y": 520,
         "size": 12
     },
     "SONO_1_TAX_CONSUMPTION": {
         "type": "checkbox",
-        "check_mark": "○",
+        "check_mark": "レ",
         "x": 150,
         "y": 490,
         "size": 12
@@ -109,14 +109,14 @@
     },
     "SONO_2_TAX_INCOME": {
         "type": "checkbox",
-        "check_mark": "○",
+        "check_mark": "レ",
         "x": 220,
         "y": 550,
         "size": 12
     },
     "SONO_2_TAX_CORPORATE": {
         "type": "checkbox",
-        "check_mark": "○",
+        "check_mark": "レ",
         "x": 220,
         "y": 520,
         "size": 12
@@ -171,35 +171,35 @@
     },
     "PURPOSE_BANK": {
         "type": "checkbox",
-        "check_mark": "○",
+        "check_mark": "レ",
         "x": 105,
         "y": 285,
         "size": 12
     },
     "PURPOSE_BID": {
         "type": "checkbox",
-        "check_mark": "○",
+        "check_mark": "レ",
         "x": 200,
         "y": 270,
         "size": 12
     },
     "PURPOSE_LICENSE": {
         "type": "checkbox",
-        "check_mark": "○",
+        "check_mark": "レ",
         "x": 280,
         "y": 270,
         "size": 12
     },
     "PURPOSE_GUARANTOR": {
         "type": "checkbox",
-        "check_mark": "○",
+        "check_mark": "レ",
         "x": 427,
         "y": 285,
         "size": 12
     },
     "PURPOSE_OTHER": {
         "type": "checkbox",
-        "check_mark": "○",
+        "check_mark": "レ",
         "x": 200,
         "y": 250,
         "size": 12
