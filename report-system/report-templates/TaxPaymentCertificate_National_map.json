@@ -1,113 +1,231 @@
 {
     "TAX_PAYER_NAME": {
         "type": "text",
-        "x": 150,
-        "y": 700,
-        "size": 12
+        "x": 330,
+        "y": 715,
+        "size": 10
     },
     "TAX_PAYER_ADDRESS": {
         "type": "text",
-        "x": 150,
-        "y": 720,
+        "x": 330,
+        "y": 750,
         "size": 10
     },
     "REPRESENTATIVE_NAME": {
         "type": "text",
-        "x": 150,
-        "y": 680,
-        "size": 12
+        "x": 330,
+        "y": 698,
+        "size": 10
     },
     "PHONE_NUMBER": {
         "type": "text",
+        "x": 420,
+        "y": 690,
+        "size": 10
+    },
+    "TYPE_SONO_1": {
+        "type": "checkbox",
+        "check_mark": "○",
+        "x": 222,
+        "y": 608,
+        "size": 12
+    },
+    "TYPE_SONO_2": {
+        "type": "checkbox",
+        "check_mark": "○",
+        "x": 335,
+        "y": 608,
+        "size": 12
+    },
+    "TYPE_SONO_3_3": {
+        "type": "checkbox",
+        "check_mark": "○",
         "x": 350,
-        "y": 680,
-        "size": 10
+        "y": 587,
+        "size": 12
     },
-    "TAX_TYPE_CORPORATE": {
-        "type": "text",
-        "value": "○",
+    "SONO_1_TAX_INCOME": {
+        "type": "checkbox",
+        "check_mark": "○",
         "x": 120,
-        "y": 560,
-        "size": 16
+        "y": 580,
+        "size": 12
     },
-    "TAX_TYPE_CONSUMPTION": {
-        "type": "text",
-        "value": "○",
+    "SONO_1_TAX_CORPORATE": {
+        "type": "checkbox",
+        "check_mark": "○",
         "x": 120,
-        "y": 540,
-        "size": 16
-    },
-    "TAX_TYPE_WITHHOLDING": {
-        "type": "text",
-        "value": "○",
-        "x": 120,
-        "y": 520,
-        "size": 16
-    },
-    "PERIOD_START_YEAR": {
-        "type": "text",
-        "x": 200,
-        "y": 560,
-        "size": 10
-    },
-    "PERIOD_START_MONTH": {
-        "type": "text",
-        "x": 230,
-        "y": 560,
-        "size": 10
-    },
-    "PERIOD_START_DAY": {
-        "type": "text",
-        "x": 250,
-        "y": 560,
-        "size": 10
-    },
-    "PERIOD_END_YEAR": {
-        "type": "text",
-        "x": 300,
-        "y": 560,
-        "size": 10
-    },
-    "PERIOD_END_MONTH": {
-        "type": "text",
-        "x": 330,
-        "y": 560,
-        "size": 10
-    },
-    "PERIOD_END_DAY": {
-        "type": "text",
-        "x": 350,
-        "y": 560,
-        "size": 10
-    },
-    "COPIES": {
-        "type": "text",
-        "x": 450,
         "y": 560,
         "size": 12
     },
-    "PURPOSE": {
+    "SONO_1_TAX_CONSUMPTION": {
+        "type": "checkbox",
+        "check_mark": "○",
+        "x": 120,
+        "y": 540,
+        "size": 12
+    },
+    "SONO_1_PERIOD_START_YEAR": {
         "type": "text",
-        "x": 150,
-        "y": 400,
+        "x": 360,
+        "y": 510,
+        "size": 9
+    },
+    "SONO_1_PERIOD_START_MONTH": {
+        "type": "text",
+        "x": 384,
+        "y": 510,
+        "size": 9
+    },
+    "SONO_1_PERIOD_START_DAY": {
+        "type": "text",
+        "x": 404,
+        "y": 510,
+        "size": 9
+    },
+    "SONO_1_PERIOD_END_YEAR": {
+        "type": "text",
+        "x": 360,
+        "y": 492,
+        "size": 9
+    },
+    "SONO_1_PERIOD_END_MONTH": {
+        "type": "text",
+        "x": 384,
+        "y": 492,
+        "size": 9
+    },
+    "SONO_1_PERIOD_END_DAY": {
+        "type": "text",
+        "x": 404,
+        "y": 492,
+        "size": 9
+    },
+    "SONO_1_COPIES": {
+        "type": "text",
+        "x": 480,
+        "y": 310,
+        "size": 12
+    },
+    "SONO_2_TAX_INCOME": {
+        "type": "checkbox",
+        "check_mark": "○",
+        "x": 235,
+        "y": 580,
+        "size": 12
+    },
+    "SONO_2_TAX_CORPORATE": {
+        "type": "checkbox",
+        "check_mark": "○",
+        "x": 235,
+        "y": 560,
+        "size": 12
+    },
+    "SONO_2_PERIOD_START_YEAR": {
+        "type": "text",
+        "x": 360,
+        "y": 474,
+        "size": 9
+    },
+    "SONO_2_PERIOD_START_MONTH": {
+        "type": "text",
+        "x": 384,
+        "y": 474,
+        "size": 9
+    },
+    "SONO_2_PERIOD_START_DAY": {
+        "type": "text",
+        "x": 404,
+        "y": 474,
+        "size": 9
+    },
+    "SONO_2_PERIOD_END_YEAR": {
+        "type": "text",
+        "x": 360,
+        "y": 456,
+        "size": 9
+    },
+    "SONO_2_PERIOD_END_MONTH": {
+        "type": "text",
+        "x": 384,
+        "y": 456,
+        "size": 9
+    },
+    "SONO_2_PERIOD_END_DAY": {
+        "type": "text",
+        "x": 404,
+        "y": 456,
+        "size": 9
+    },
+    "SONO_2_COPIES": {
+        "type": "text",
+        "x": 480,
+        "y": 292,
+        "size": 12
+    },
+    "SONO_3_3_COPIES": {
+        "type": "text",
+        "x": 480,
+        "y": 274,
+        "size": 12
+    },
+    "PURPOSE_BANK": {
+        "type": "checkbox",
+        "check_mark": "○",
+        "x": 105,
+        "y": 285,
+        "size": 12
+    },
+    "PURPOSE_BID": {
+        "type": "checkbox",
+        "check_mark": "○",
+        "x": 204,
+        "y": 285,
+        "size": 12
+    },
+    "PURPOSE_LICENSE": {
+        "type": "checkbox",
+        "check_mark": "○",
+        "x": 315,
+        "y": 285,
+        "size": 12
+    },
+    "PURPOSE_GUARANTOR": {
+        "type": "checkbox",
+        "check_mark": "○",
+        "x": 427,
+        "y": 285,
+        "size": 12
+    },
+    "PURPOSE_OTHER": {
+        "type": "checkbox",
+        "check_mark": "○",
+        "x": 490,
+        "y": 285,
+        "size": 12
+    },
+    "PURPOSE_OTHER_TEXT": {
+        "type": "text",
+        "x": 540,
+        "y": 285,
         "size": 10
     },
     "APPLICANT_NAME": {
         "type": "text",
-        "x": 150,
-        "y": 200,
-        "size": 12
+        "x": 80,
+        "y": 732,
+        "size": 10
     },
     "APPLICANT_ADDRESS": {
         "type": "text",
-        "x": 150,
-        "y": 220,
-        "size": 10
+        "x": 80,
+        "y": 752,
+        "size": 9
     },
     "APPLICANT_PHONE": {
         "type": "text",
-        "x": 350,
-        "y": 200,
-        "size": 10
+        "x": 80,
+        "y": 715,
+        "size": 9
     }
 }

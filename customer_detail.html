@@ -2240,34 +2240,99 @@
     <div id="report-national-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
         <div style="background:#fff; width: 600px; max-width: 90%; border-radius:8px; padding:24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto;">
             <h3 style="margin-top:0; border-bottom:1px solid var(--border-color); padding-bottom:12px; font-size: 14pt;">税務署用（国税）納税証明書交付申請書 出力設定</h3>
-            <div class="form-grid" style="grid-template-columns: 1fr;">
+            <div class="form-grid" style="grid-template-columns: 1fr; gap: 16px;">
                 <div class="form-group">
-                    <label>税目</label>
-                    <select id="report_national_tax_type" class="form-select">
-                        <option value="法人税">法人税</option>
-                        <option value="消費税及地方消費税">消費税及地方消費税</option>
-                        <option value="源泉所得税">源泉所得税</option>
-                    </select>
+                    <label>種類 (複数選択可)</label>
+                    <div style="display: flex; gap: 16px; align-items: center; margin-top: 4px;">
+                        <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0;">
+                            <input type="checkbox" id="national_cert_sono1" style="width: auto; margin-right: 0;"> その1
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0;">
+                            <input type="checkbox" id="national_cert_sono2" style="width: auto; margin-right: 0;"> その2
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0;">
+                            <input type="checkbox" id="national_cert_sono33" style="width: auto; margin-right: 0;"> その3の3
+                        </label>
+                    </div>
                 </div>
-                <div style="display:flex; gap: 20px;">
-                    <div class="form-group" style="flex:1;">
-                        <label>事業年度 / 課税期間</label>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <input type="date" id="report_national_period_start" class="form-control">
-                            <span>〜</span>
-                            <input type="date" id="report_national_period_end" class="form-control">
+
+                <!-- その1 入力グループ -->
+                <div id="group_national_sono1" style="display: none; border: 1px solid var(--border-color); padding: 16px; border-radius: 6px; background-color: #f8fafc;">
+                    <h4 style="margin-top: 0; margin-bottom: 12px; font-size: 11pt; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; color: #1e293b;">その1（納税額等証明用）</h4>
+                    <div class="form-group">
+                        <label style="font-weight: bold; margin-bottom: 8px;">税目 (複数選択可)</label>
+                        <div style="display: flex; gap: 16px; align-items: center;">
+                            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0;">
+                                <input type="checkbox" id="national_sono1_tax_income" style="width: auto; margin-right: 0;"> 所得税
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0;">
+                                <input type="checkbox" id="national_sono1_tax_corporate" style="width: auto; margin-right: 0;"> 法人税
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0;">
+                                <input type="checkbox" id="national_sono1_tax_consumption" style="width: auto; margin-right: 0;"> 消費税
+                            </label>
                         </div>
                     </div>
-                    <div class="form-group" style="width: 100px;">
-                        <label>枚数</label>
-                        <input type="number" id="report_national_copies" class="form-control" value="1" min="1">
+                    <div style="display:flex; gap: 20px; margin-top: 12px;">
+                        <div class="form-group" style="flex:1;">
+                            <label style="font-weight: bold;">事業年度 / 課税期間</label>
+                            <div style="display:flex; align-items:center; gap:8px; margin-top: 4px;">
+                                <input type="date" id="national_sono1_period_start" class="form-control">
+                                <span>〜</span>
+                                <input type="date" id="national_sono1_period_end" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-group" style="width: 100px;">
+                            <label style="font-weight: bold;">枚数</label>
+                            <input type="number" id="national_sono1_copies" class="form-control" value="1" min="1">
+                        </div>
                     </div>
                 </div>
+
+                <!-- その2 入力グループ -->
+                <div id="group_national_sono2" style="display: none; border: 1px solid var(--border-color); padding: 16px; border-radius: 6px; background-color: #f8fafc;">
+                    <h4 style="margin-top: 0; margin-bottom: 12px; font-size: 11pt; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; color: #1e293b;">その2（所得金額証明用）</h4>
+                    <div class="form-group">
+                        <label style="font-weight: bold; margin-bottom: 8px;">税目 (複数選択可)</label>
+                        <div style="display: flex; gap: 16px; align-items: center;">
+                            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0;">
+                                <input type="checkbox" id="national_sono2_tax_income" style="width: auto; margin-right: 0;"> 所得税
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0;">
+                                <input type="checkbox" id="national_sono2_tax_corporate" style="width: auto; margin-right: 0;"> 法人税
+                            </label>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap: 20px; margin-top: 12px;">
+                        <div class="form-group" style="flex:1;">
+                            <label style="font-weight: bold;">事業年度 / 課税期間</label>
+                            <div style="display:flex; align-items:center; gap:8px; margin-top: 4px;">
+                                <input type="date" id="national_sono2_period_start" class="form-control">
+                                <span>〜</span>
+                                <input type="date" id="national_sono2_period_end" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-group" style="width: 100px;">
+                            <label style="font-weight: bold;">枚数</label>
+                            <input type="number" id="national_sono2_copies" class="form-control" value="1" min="1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- その3の3 入力グループ -->
+                <div id="group_national_sono33" style="display: none; border: 1px solid var(--border-color); padding: 16px; border-radius: 6px; background-color: #f8fafc;">
+                    <h4 style="margin-top: 0; margin-bottom: 12px; font-size: 11pt; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; color: #1e293b;">その3の3（未納なし証明用）</h4>
+                    <div class="form-group" style="width: 100px; margin-bottom: 0;">
+                        <label style="font-weight: bold;">枚数</label>
+                        <input type="number" id="national_sono33_copies" class="form-control" value="1" min="1">
+                    </div>
+                </div>
+
                 <div class="form-group">
-                    <label>使用目的 / 提出先</label>
+                    <label>使用目的</label>
                     <select id="report_national_purpose" class="form-select">
-                        <option value="金融機関提出用">金融機関等への提出</option>
-                        <option value="入札参加資格審査用">入札参加資格審査等</option>
+                        <option value="入札参加指名願">入札参加指名願</option>
+                        <option value="登録申請（更新）">登録申請（更新）</option>
                         <option value="その他">その他</option>
                     </select>
                 </div>

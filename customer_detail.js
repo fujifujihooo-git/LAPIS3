@@ -2389,6 +2389,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const groupNationalStaffSelect = document.getElementById('group_national_staff_select');
     const selNationalReportStaff = document.getElementById('report_national_staff_id');
 
+    // Redesigned DOM elements for national certificate types
+    const chkNationalCertSono1 = document.getElementById('national_cert_sono1');
+    const chkNationalCertSono2 = document.getElementById('national_cert_sono2');
+    const chkNationalCertSono33 = document.getElementById('national_cert_sono33');
+    const groupNationalSono1 = document.getElementById('group_national_sono1');
+    const groupNationalSono2 = document.getElementById('group_national_sono2');
+    const groupNationalSono33 = document.getElementById('group_national_sono33');
+
+    const toggleNationalGroups = () => {
+        if (groupNationalSono1) groupNationalSono1.style.display = (chkNationalCertSono1 && chkNationalCertSono1.checked) ? 'block' : 'none';
+        if (groupNationalSono2) groupNationalSono2.style.display = (chkNationalCertSono2 && chkNationalCertSono2.checked) ? 'block' : 'none';
+        if (groupNationalSono33) groupNationalSono33.style.display = (chkNationalCertSono33 && chkNationalCertSono33.checked) ? 'block' : 'none';
+    };
+
+    if (chkNationalCertSono1) chkNationalCertSono1.addEventListener('change', toggleNationalGroups);
+    if (chkNationalCertSono2) chkNationalCertSono2.addEventListener('change', toggleNationalGroups);
+    if (chkNationalCertSono33) chkNationalCertSono33.addEventListener('change', toggleNationalGroups);
+
     if (btnOpenNationalTaxCert) {
         btnOpenNationalTaxCert.addEventListener('click', () => {
             if (!currentCustomer) {
@@ -2407,6 +2425,82 @@ document.addEventListener('DOMContentLoaded', async () => {
                     opt.textContent = s.staff_name;
                     selNationalReportStaff.appendChild(opt);
                 });
+            }
+
+            // Reset modal state
+            if (chkNationalCertSono1) chkNationalCertSono1.checked = false;
+            if (chkNationalCertSono2) chkNationalCertSono2.checked = false;
+            if (chkNationalCertSono33) chkNationalCertSono33.checked = false;
+            toggleNationalGroups();
+
+            const resetCheckboxes = (ids) => {
+                ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.checked = false;
+                });
+            };
+
+            const resetValues = (ids, val) => {
+                ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = val;
+                });
+            };
+
+            resetCheckboxes([
+                'national_sono1_tax_income', 'national_sono1_tax_corporate', 'national_sono1_tax_consumption',
+                'national_sono2_tax_income', 'national_sono2_tax_corporate'
+            ]);
+            resetValues([
+                'national_sono1_copies', 'national_sono2_copies', 'national_sono33_copies'
+            ], '1');
+
+            // 自動計算による期間のデフォルト初期設定
+            const sono1Start = document.getElementById('national_sono1_period_start');
+            const sono1End = document.getElementById('national_sono1_period_end');
+            const sono2Start = document.getElementById('national_sono2_period_start');
+            const sono2End = document.getElementById('national_sono2_period_end');
+
+            function calculateStartDate(endDateStr) {
+                if (!endDateStr) return '';
+                const endDate = new Date(endDateStr);
+                if (isNaN(endDate.getTime())) return '';
+                const startDate = new Date(endDate);
+                startDate.setFullYear(startDate.getFullYear() - 1);
+                startDate.setDate(startDate.getDate() + 1);
+                return Math.max(startDate.getFullYear(), 1900) + '-' + String(startDate.getMonth() + 1).padStart(2, '0') + '-' + String(startDate.getDate()).padStart(2, '0');
+            }
+
+            let initialEndDate = '';
+            if (currentCustomer && currentCustomer.fiscal_year_end_month && currentCustomer.fiscal_year_end_day) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const m = parseInt(currentCustomer.fiscal_year_end_month, 10);
+                const d = parseInt(currentCustomer.fiscal_year_end_day, 10);
+                
+                let candidateEndDate = new Date(today.getFullYear(), m - 1, d);
+                if (candidateEndDate >= today) {
+                    candidateEndDate.setFullYear(candidateEndDate.getFullYear() - 1);
+                }
+                
+                const yStr = candidateEndDate.getFullYear();
+                const mStr = String(candidateEndDate.getMonth() + 1).padStart(2, '0');
+                const dStr = String(candidateEndDate.getDate()).padStart(2, '0');
+                
+                initialEndDate = `${yStr}-${mStr}-${dStr}`;
+            } else {
+                const today = new Date();
+                initialEndDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+            }
+
+            if (sono1Start && sono1End) {
+                window.setDateControlValue(sono1End, initialEndDate);
+                window.setDateControlValue(sono1Start, calculateStartDate(initialEndDate));
+            }
+            if (sono2Start && sono2End) {
+                window.setDateControlValue(sono2End, initialEndDate);
+                window.setDateControlValue(sono2Start, calculateStartDate(initialEndDate));
             }
 
             if(reportNationalModal) reportNationalModal.style.display = 'flex';
@@ -2435,7 +2529,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function handleNationalReportAction() {
         if (!currentCustomer) return;
 
-        // Validation
+        // Validation - Types selection
+        const isSono1 = chkNationalCertSono1 && chkNationalCertSono1.checked;
+        const isSono2 = chkNationalCertSono2 && chkNationalCertSono2.checked;
+        const isSono33 = chkNationalCertSono33 && chkNationalCertSono33.checked;
+
+        if (!isSono1 && !isSono2 && !isSono33) {
+            alert('その1・その2・その3の3のいずれかを選択してください。');
+            return;
+        }
+
+        // Validation - Applicant
         const appType = selNationalApplicantType ? selNationalApplicantType.value : '本人';
         const staffId = selNationalReportStaff ? selNationalReportStaff.value : '';
         if (appType === '代理人' && !staffId) {
@@ -2443,13 +2547,89 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        // Validation - Group specific inputs
+        if (isSono1) {
+            const hasTax = document.getElementById('national_sono1_tax_income').checked ||
+                           document.getElementById('national_sono1_tax_corporate').checked ||
+                           document.getElementById('national_sono1_tax_consumption').checked;
+            if (!hasTax) {
+                alert('その1の税目を1つ以上選択してください。');
+                return;
+            }
+            const start = document.getElementById('national_sono1_period_start').value;
+            const end = document.getElementById('national_sono1_period_end').value;
+            if (!start || !end) {
+                alert('その1の開始日と終了日を入力してください。');
+                return;
+            }
+            const copies = Number(document.getElementById('national_sono1_copies').value);
+            if (isNaN(copies) || copies < 1) {
+                alert('その1の枚数は1以上を入力してください。');
+                return;
+            }
+        }
+
+        if (isSono2) {
+            const hasTax = document.getElementById('national_sono2_tax_income').checked ||
+                           document.getElementById('national_sono2_tax_corporate').checked;
+            if (!hasTax) {
+                alert('その2の税目を1つ以上選択してください。');
+                return;
+            }
+            const start = document.getElementById('national_sono2_period_start').value;
+            const end = document.getElementById('national_sono2_period_end').value;
+            if (!start || !end) {
+                alert('その2の開始日と終了日を入力してください。');
+                return;
+            }
+            const copies = Number(document.getElementById('national_sono2_copies').value);
+            if (isNaN(copies) || copies < 1) {
+                alert('その2の枚数は1以上を入力してください。');
+                return;
+            }
+        }
+
+        if (isSono33) {
+            const copies = Number(document.getElementById('national_sono33_copies').value);
+            if (isNaN(copies) || copies < 1) {
+                alert('その3の3の枚数は1以上を入力してください。');
+                return;
+            }
+        }
+
         const selectedStaff = staffMembers.find(s => String(s.staff_id) === String(staffId)) || null;
-        
+
+        const buildTaxesArray = (prefix, list) => {
+            const result = [];
+            list.forEach(t => {
+                if (document.getElementById(`${prefix}_tax_${t}`).checked) {
+                    result.push(t === 'income' ? '所得税' : t === 'corporate' ? '法人税' : '消費税');
+                }
+            });
+            return result;
+        };
+
         const formData = {
-            taxType: document.getElementById('report_national_tax_type') ? document.getElementById('report_national_tax_type').value : '',
-            period_start: document.getElementById('report_national_period_start') ? document.getElementById('report_national_period_start').value : '',
-            period_end: document.getElementById('report_national_period_end') ? document.getElementById('report_national_period_end').value : '',
-            copies: document.getElementById('report_national_copies') ? document.getElementById('report_national_copies').value : '1',
+            certificateTypes: {
+                sono1: {
+                    enabled: isSono1,
+                    taxes: isSono1 ? buildTaxesArray('national_sono1', ['income', 'corporate', 'consumption']) : [],
+                    startDate: isSono1 ? document.getElementById('national_sono1_period_start').value : '',
+                    endDate: isSono1 ? document.getElementById('national_sono1_period_end').value : '',
+                    copies: isSono1 ? Number(document.getElementById('national_sono1_copies').value) : 0
+                },
+                sono2: {
+                    enabled: isSono2,
+                    taxes: isSono2 ? buildTaxesArray('national_sono2', ['income', 'corporate']) : [],
+                    startDate: isSono2 ? document.getElementById('national_sono2_period_start').value : '',
+                    endDate: isSono2 ? document.getElementById('national_sono2_period_end').value : '',
+                    copies: isSono2 ? Number(document.getElementById('national_sono2_copies').value) : 0
+                },
+                sono33: {
+                    enabled: isSono33,
+                    copies: isSono33 ? Number(document.getElementById('national_sono33_copies').value) : 0
+                }
+            },
             purpose: document.getElementById('report_national_purpose') ? document.getElementById('report_national_purpose').value : '',
             applicantType: appType,
             staff: selectedStaff ? {

@@ -14,11 +14,22 @@ window.TaxCertificateNationalView = {
             TAX_PAYER_ADDRESS: currentCustomer.address || '',
             REPRESENTATIVE_NAME: currentCustomer.representative_name || '',
             PHONE_NUMBER: currentCustomer.phone || '',
-            
-            // フォーム入力項目
-            COPIES: String(formData.copies || 1),
-            PURPOSE: formData.purpose || '',
         };
+
+        // 使用目的チェックボックスおよび「その他」のテキスト
+        const purpose = formData.purpose || '';
+        if (purpose === '資金借入') {
+            data.PURPOSE_BANK = true;
+        } else if (purpose === '入札参加指名願' || purpose === '入札参加資格審査用') {
+            data.PURPOSE_BID = true;
+        } else if (purpose === '登録申請(更新)' || purpose === '登録申請' || purpose === '登録申請（更新）') {
+            data.PURPOSE_LICENSE = true;
+        } else if (purpose === '保証人') {
+            data.PURPOSE_GUARANTOR = true;
+        } else if (purpose) {
+            data.PURPOSE_OTHER = true;
+            data.PURPOSE_OTHER_TEXT = purpose;
+        }
 
         // 和暦パース関数 (例: 2026-04-01 -> 令和8, 4, 1)
         const parseDate = (dateStr) => {
@@ -29,7 +40,6 @@ window.TaxCertificateNationalView = {
             const m = parseInt(parts[1], 10);
             const d = parseInt(parts[2], 10);
             
-            // 簡単な令和変換 (2019年=令和1だが、表示は令和_)
             let wareki = String(y - 2018);
             if (y === 2019 && m <= 4) {
                 wareki = '平成31';
@@ -40,30 +50,26 @@ window.TaxCertificateNationalView = {
             }
             
             return {
-                year: isNaN(parseInt(wareki)) ? wareki : wareki, // 令和の元以外はそのまま数字文字列にするか等
+                year: isNaN(parseInt(wareki)) ? wareki : wareki,
                 month: String(m),
                 day: String(d)
             };
         };
 
-        const start = parseDate(formData.period_start);
-        const end = parseDate(formData.period_end);
-
-        data.PERIOD_START_YEAR = start.year;
-        data.PERIOD_START_MONTH = start.month;
-        data.PERIOD_START_DAY = start.day;
+        // 種類ごとの処理に振り分け
+        const types = formData.certificateTypes || {};
         
-        data.PERIOD_END_YEAR = end.year;
-        data.PERIOD_END_MONTH = end.month;
-        data.PERIOD_END_DAY = end.day;
-
-        // 税目に応じたチェックの動的バインド
-        if (formData.taxType === '法人税') {
-            data.TAX_TYPE_CORPORATE = true;
-        } else if (formData.taxType === '消費税及地方消費税') {
-            data.TAX_TYPE_CONSUMPTION = true;
-        } else if (formData.taxType === '源泉所得税') {
-            data.TAX_TYPE_WITHHOLDING = true;
+        if (types.sono1 && types.sono1.enabled) {
+            data.TYPE_SONO_1 = true;
+            this.buildSono1Data(types.sono1, data, parseDate);
+        }
+        if (types.sono2 && types.sono2.enabled) {
+            data.TYPE_SONO_2 = true;
+            this.buildSono2Data(types.sono2, data, parseDate);
+        }
+        if (types.sono33 && types.sono33.enabled) {
+            data.TYPE_SONO_3_3 = true;
+            this.buildSono33Data(types.sono33, data);
         }
 
         // 代理人の処理
@@ -79,5 +85,64 @@ window.TaxCertificateNationalView = {
         }
 
         return data;
+    },
+
+    /**
+     * その1のデータを構築
+     */
+    buildSono1Data(sono1, data, parseDate) {
+        // 税目
+        const taxes = sono1.taxes || [];
+        if (taxes.includes('所得税')) data.SONO_1_TAX_INCOME = true;
+        if (taxes.includes('法人税')) data.SONO_1_TAX_CORPORATE = true;
+        if (taxes.includes('消費税')) data.SONO_1_TAX_CONSUMPTION = true;
+
+        // 期間
+        const start = parseDate(sono1.startDate);
+        const end = parseDate(sono1.endDate);
+
+        data.SONO_1_PERIOD_START_YEAR = start.year;
+        data.SONO_1_PERIOD_START_MONTH = start.month;
+        data.SONO_1_PERIOD_START_DAY = start.day;
+        
+        data.SONO_1_PERIOD_END_YEAR = end.year;
+        data.SONO_1_PERIOD_END_MONTH = end.month;
+        data.SONO_1_PERIOD_END_DAY = end.day;
+
+        // 枚数
+        data.SONO_1_COPIES = String(sono1.copies || 1);
+    },
+
+    /**
+     * その2のデータを構築
+     */
+    buildSono2Data(sono2, data, parseDate) {
+        // 税目
+        const taxes = sono2.taxes || [];
+        if (taxes.includes('所得税')) data.SONO_2_TAX_INCOME = true;
+        if (taxes.includes('法人税')) data.SONO_2_TAX_CORPORATE = true;
+
+        // 期間
+        const start = parseDate(sono2.startDate);
+        const end = parseDate(sono2.endDate);
+
+        data.SONO_2_PERIOD_START_YEAR = start.year;
+        data.SONO_2_PERIOD_START_MONTH = start.month;
+        data.SONO_2_PERIOD_START_DAY = start.day;
+        
+        data.SONO_2_PERIOD_END_YEAR = end.year;
+        data.SONO_2_PERIOD_END_MONTH = end.month;
+        data.SONO_2_PERIOD_END_DAY = end.day;
+
+        // 枚数
+        data.SONO_2_COPIES = String(sono2.copies || 1);
+    },
+
+    /**
+     * その3の3のデータを構築
+     */
+    buildSono33Data(sono33, data) {
+        // 枚数のみ
+        data.SONO_3_3_COPIES = String(sono33.copies || 1);
     }
 };
