@@ -13,7 +13,6 @@ window.TaxCertificateNationalView = {
             TAX_PAYER_NAME: currentCustomer.customer_name || '',
             TAX_PAYER_ADDRESS: currentCustomer.address || '',
             REPRESENTATIVE_NAME: currentCustomer.representative_name || '',
-            PHONE_NUMBER: currentCustomer.phone || '',
             CORPORATE_NUMBER: currentCustomer.corporate_number || '',
         };
 
@@ -29,7 +28,6 @@ window.TaxCertificateNationalView = {
             data.PURPOSE_GUARANTOR = true;
         } else if (purpose) {
             data.PURPOSE_OTHER = true;
-            data.PURPOSE_OTHER_TEXT = purpose;
         }
 
         // 和暦パース関数 (例: 2026-04-01 -> 令和8, 4, 1)
@@ -77,12 +75,10 @@ window.TaxCertificateNationalView = {
         if (formData.applicantType === '代理人' && formData.staff) {
             data.APPLICANT_NAME = formData.staff.name;
             data.APPLICANT_ADDRESS = formData.staff.address;
-            data.APPLICANT_PHONE = formData.staff.tel;
         } else {
             // 本人
             data.APPLICANT_NAME = currentCustomer.representative_name || '';
             data.APPLICANT_ADDRESS = currentCustomer.address || '';
-            data.APPLICANT_PHONE = currentCustomer.phone || '';
         }
 
         return data;
