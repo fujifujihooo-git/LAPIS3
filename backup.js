@@ -28,15 +28,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const COLLECTIONS_TO_EXPORT = [
         'customers',
         'cases',
-        'licenses',
+        'customer_licenses', // 'licenses' から差し替え
         'invoices',
-        'payments',
         'staff',
         'government_offices',
         'license_types',
         'offices',
         'contacts',
-        'invoice_items'
+        'invoice_items',
+        'customer_histories', // 追加 (S級)
+        'receipts',           // 追加 (S級)
+        'receiptAllocations', // 追加 (S級)
+        'counters',           // 追加 (S級)
+        'case_status_history', // 追加 (A級)
+        'license_history'     // 追加 (A級)
     ];
 
     // 1. Check Authentication and Role

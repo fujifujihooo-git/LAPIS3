@@ -16,22 +16,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Tier Loading Order (Master -> Parent -> Child -> Grandchild -> ...)
     const TIER_ORDER = [
-        // Tier 1: System Masters
-        'staff', 'government_offices', 'license_types',
-        // Tier 2: Parent entities
+        // Tier 1: システムマスタ・採番マスタ
+        'staff', 'government_offices', 'license_types', 'counters',
+        // Tier 2: 顧客基本情報
         'customers',
-        // Tier 3: Depend on Customer
-        'offices', 'contacts', 'cases', 'licenses',
-        // Tier 4: Depend on Case
-        'invoices', 'payments',
-        // Tier 5: Depend on Case/Invoice
-        'invoice_items'
+        // Tier 3: 顧客依存マスタ (事業所、連絡先、許認可、対応履歴)
+        'offices', 'contacts', 'customer_licenses', 'customer_histories',
+        // Tier 4: 案件・請求・入金 (案件、請求、入金、履歴ログ)
+        'cases', 'invoices', 'receipts', 'license_history', 'case_status_history',
+        // Tier 5: 請求依存の明細・紐付け (請求明細、入金消込)
+        'invoice_items', 'receiptAllocations'
     ];
 
     // Collections that require customer_id
-    const REQUIRES_CUSTOMER = ['offices', 'contacts', 'cases', 'licenses'];
+    const REQUIRES_CUSTOMER = ['offices', 'contacts', 'cases', 'customer_licenses', 'customer_histories', 'receipts'];
     // Collections that require case_id
-    const REQUIRES_CASE = ['invoices', 'payments', 'invoice_items'];
+    const REQUIRES_CASE = ['invoices', 'invoice_items', 'case_status_history'];
 
     // 1. Authentication & Role Check
     const checkRoleAndInit = async () => {
@@ -47,7 +47,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (staffData && staffData.authority === 'admin') {
                     importCard.style.display = 'block';
                     btnSimulate.addEventListener('click', handleSimulate);
-                    btnExecute.addEventListener('click', handleExecute);
+
+                    // Safety Guard: Disable production web console imports
+                    const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+                    if (isLocal) {
+                        btnExecute.addEventListener('click', handleExecute);
+                    } else {
+                        btnExecute.disabled = true;
+                        btnExecute.innerText = "本番インポート無効化 (ローカル検証専用)";
+                        const warningMsg = document.createElement('p');
+                        warningMsg.style.color = 'red';
+                        warningMsg.style.fontSize = '12px';
+                        warningMsg.style.marginTop = '10px';
+                        warningMsg.innerText = "【警告】誤操作防止のため、本番ホスティング環境でのUI復元は無効化されています。DR復帰はローカルエミュレータで検証の上、特権コマンドで実行してください。";
+                        btnExecute.parentNode.appendChild(warningMsg);
+                    }
                 } else {
                     errorAccess.style.display = 'block';
                     setTimeout(() => { window.location.href = 'index.html'; }, 3000);
@@ -65,6 +79,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 2. Parsers
     const parseJSON = (text) => {
         const obj = JSON.parse(text);
+
+        // Version Compatibility check (UT-BK-018)
+        if (obj.metadata && obj.metadata.version) {
+            const SUPPORTED_MAJOR_VERSIONS = ["LAPIS3_DB_V1"];
+            if (!SUPPORTED_MAJOR_VERSIONS.includes(obj.metadata.version)) {
+                throw new Error(`互換性のないバックアップバージョンです: "${obj.metadata.version}"。システムが対応しているバージョンは [${SUPPORTED_MAJOR_VERSIONS.join(', ')}] です。`);
+            }
+        } else {
+            throw new Error("不正なバックアップファイルフォーマットです (metadata.versionが見つかりません)");
+        }
+
         if (!obj.data) throw new Error("不正なバックアップファイルフォーマットです (dataオブジェクトが見つかりません)");
 
         const result = {};
@@ -229,7 +254,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // In-Memory Virtual Stores for dependency validation
             const virtualIds = {
                 customers: new Set(dbRefStore['customers'] || []),
-                cases: new Set(dbRefStore['cases'] || [])
+                cases: new Set(dbRefStore['cases'] || []),
+                invoices: new Set(dbRefStore['invoices'] || []),
+                receipts: new Set(dbRefStore['receipts'] || []),
+                customer_licenses: new Set(dbRefStore['customer_licenses'] || [])
             };
 
             // Verify in Tier Order
@@ -277,12 +305,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (colName === 'customers' && doc.customer_id) docId = `cust_${doc.customer_id}`;
                 else if (colName === 'cases' && doc.case_id) docId = `case_${doc.case_id}`;
                 else if (colName === 'staff' && doc.staff_id) docId = `stf_${doc.staff_id}`;
+                else if (colName === 'customer_licenses' && doc.license_id) docId = `lic_${doc.license_id}`;
                 else if (colName === 'licenses' && doc.license_id) docId = `lic_${doc.license_id}`;
                 else if (colName === 'invoices' && doc.invoice_id) docId = `inv_${doc.invoice_id}`;
-                else if (colName === 'payments' && doc.payment_id) docId = `pay_${doc.payment_id}`;
+                else if (colName === 'receipts' && doc.receiptId) docId = doc.receiptId;
                 else if (colName === 'offices' && doc.office_id) docId = `off_${doc.office_id}`;
                 else if (colName === 'contacts' && doc.contact_id) docId = `cnt_${doc.contact_id}`;
                 else if (colName === 'government_offices' && doc.id) docId = `gov_${doc.id}`;
+                else if ((colName === 'case_status_history' || colName === 'license_history') && doc.history_id) docId = `hist_${doc.history_id}`;
                 else docId = db.collection(colName).doc().id; // auto id
             }
             doc._docId = docId;
@@ -306,6 +336,42 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
+            // license_history specific check
+            if (colName === 'license_history') {
+                if (doc.license_id) {
+                    const searchVal = String(doc.license_id);
+                    if (!virtualIds.customer_licenses.has(searchVal) && !virtualIds.customer_licenses.has(`lic_${searchVal}`)) {
+                        simulationResult.errorsList.push(`[license_history] 親の許認可が存在しません (license_id: ${doc.license_id})`);
+                        hasError = true;
+                    }
+                } else {
+                    simulationResult.errorsList.push(`[license_history] license_idがありません`);
+                    hasError = true;
+                }
+            }
+
+            // receiptAllocations specific check
+            if (colName === 'receiptAllocations') {
+                if (doc.invoiceId) {
+                    if (!virtualIds.invoices.has(doc.invoiceId)) {
+                        simulationResult.errorsList.push(`[receiptAllocations] 親の請求が存在しません (invoiceId: ${doc.invoiceId})`);
+                        hasError = true;
+                    }
+                } else {
+                    simulationResult.errorsList.push(`[receiptAllocations] invoiceIdがありません`);
+                    hasError = true;
+                }
+                if (doc.receiptId) {
+                    if (!virtualIds.receipts.has(doc.receiptId)) {
+                        simulationResult.errorsList.push(`[receiptAllocations] 親の入金が存在しません (receiptId: ${doc.receiptId})`);
+                        hasError = true;
+                    }
+                } else {
+                    simulationResult.errorsList.push(`[receiptAllocations] receiptIdがありません`);
+                    hasError = true;
+                }
+            }
+
             if (hasError) {
                 simulationResult.collections[colName].errors++;
                 simulationResult.totalErrors++;
@@ -322,6 +388,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Register to virtual IDs for children to find
                 if (colName === 'customers') virtualIds.customers.add(docId);
                 if (colName === 'cases') virtualIds.cases.add(docId);
+                if (colName === 'invoices') virtualIds.invoices.add(docId);
+                if (colName === 'receipts') virtualIds.receipts.add(docId);
+                if (colName === 'customer_licenses') virtualIds.customer_licenses.add(docId);
             }
         }
     };
