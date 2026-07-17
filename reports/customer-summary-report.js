@@ -19,23 +19,56 @@
          * @param {Array} histories - 対応履歴リスト
          * @param {Array} staffMembers - スタッフマスタ
          * @param {Array} licenseTypes - 許認可種別マスタ
+         * @param {Object} dispData - 表示用データ
+         * @param {Array} governmentOffices - 管轄官公庁マスタ
          */
-        async generate(customer, licenses, cases, histories, staffMembers = [], licenseTypes = []) {
+        async generate(customer, licenses, cases, histories, staffMembers = [], licenseTypes = [], dispData = null, governmentOffices = []) {
             // 1. PDFの初期化 (A4横, Landscape)
             await this.init();
             const doc = this.doc;
             const utils = window.ReportUtils;
             const theme = utils.THEME;
 
-            // 2. 1ページ目の描画
-            let y = this.drawHeader(this.marginT);
-            const yStart = y; // 右カラムの開始位置（ヘッダー直後）として保持
-
             const leftX = this.marginL;
             const leftW = 160;
             const rightX = 185;
             const rightW = 97;
             const bottomLimitY = 192; // 1ページ目のコンテンツ下端
+
+            // 2. 1ページ目の描画
+            let y = this.drawHeader(this.marginT);
+            
+            // 顧客IDを共通ヘッダー右上（出力者の真下、Y=y-2）に描画
+            const custIdStr = customer && customer.customer_id ? `CUST${String(customer.customer_id).padStart(6, '0')}` : '―';
+            doc.setFontSize(9);
+            doc.setTextColor(theme.TEXT_MAIN[0], theme.TEXT_MAIN[1], theme.TEXT_MAIN[2]);
+            doc.text(`顧客ID: ${custIdStr}`, rightX, y - 2, { align: 'right' });
+
+            const yStart = y; // 右カラムの開始位置（ヘッダー直後）として保持
+
+            // 引数が渡されなかった場合のフォールバック (テストコード・単体実行対策)
+            if (!dispData) {
+                dispData = {
+                    salesStaffName: '―',
+                    primaryContactName: '―',
+                    primaryOfficeName: '―',
+                    primaryEmail: '―',
+                    foundedDate: '―',
+                    capitalStr: '―',
+                    fiscalStr: '―'
+                };
+                if (customer && customer.primary_staff_id && staffMembers) {
+                    const staff = staffMembers.find(s => Number(s.staff_id) === Number(customer.primary_staff_id));
+                    if (staff) {
+                        dispData.salesStaffName = staff.staff_name || '―';
+                    }
+                }
+                if (customer) {
+                    if (customer.founded_date) dispData.foundedDate = customer.founded_date.replace(/-/g, '/');
+                    if (customer.capital && Number(customer.capital) > 0) dispData.capitalStr = Number(customer.capital).toLocaleString() + ' 千円';
+                    if (customer.fiscal_year_end_month) dispData.fiscalStr = `${customer.fiscal_year_end_month}月${customer.fiscal_year_end_day || ''}日`;
+                }
+            }
 
             // ==========================================
             // [左カラム] セクション1: 基本情報
@@ -59,7 +92,7 @@
             // 基本情報グリッドの描画 (X: 15, Y: y, 幅: 160, 各行高: 7.5mm)
             const gridRowH = 7.5;
             const gridYStart = y;
-            const gridRows = 7;
+            const gridRows = 11;
             const gridH = gridRows * gridRowH;
 
             // グリッド外枠・内線描画
@@ -147,51 +180,52 @@
                 doc.text(finalVal, leftX + labelW + 2, rowY + yOffset);
             };
 
-            // 担当部署および担当者名解決
-            // UT-015: 担当者未設定時の異常系考慮
-            let staffName = 'ー';
-            let deptName = 'ー';
-            if (customer && customer.primary_staff_id) {
-                const staff = staffMembers.find(s => Number(s.staff_id) === Number(customer.primary_staff_id));
-                if (staff) {
-                    staffName = staff.staff_name || 'ー';
-                    deptName = staff.department || 'ー';
-                }
-            }
-
-            // 顧客ID (UT-014: 顧客名空白・未設定考慮)
-            const custIdStr = customer && customer.customer_id ? `CUST${String(customer.customer_id).padStart(6, '0')}` : '―';
-            const custNameStr = customer ? (customer.customer_name || '―') : '―';
-
             // グリッド値書き込み
-            drawGridCell(0, true, '顧客ID', custIdStr);
-            drawGridCell(0, false, '代表者名', customer ? customer.representative_name : '');
+            // 1行目: 顧客名
+            const custNameStr = customer ? (customer.customer_name || '―') : '―';
+            drawGridFullWidthCell(0, '顧客名', custNameStr);
 
-            drawGridFullWidthCell(1, '顧客名', custNameStr);
-            drawGridFullWidthCell(2, 'フリガナ', customer ? customer.customer_kana : '');
+            // 2行目: フリガナ
+            drawGridFullWidthCell(1, 'フリガナ', customer ? customer.customer_kana : '');
 
-            // 住所は 郵便番号 + 住所 + ビル名
-            let fullAddr = '';
+            // 3行目: 郵便番号 | 法人番号
+            drawGridCell(2, true, '郵便番号', customer ? customer.postal_code : '');
+            drawGridCell(2, false, '法人番号', customer ? customer.corporate_number : '');
+
+            // 4行目: 住所 (郵便番号を含まない、住所 + ビル名)
+            let rawAddr = '';
             if (customer) {
-                const zip = customer.postal_code ? `〒${customer.postal_code} ` : '';
                 const addr = customer.address || '';
                 const bld = customer.building_name ? ` ${customer.building_name}` : '';
-                fullAddr = zip + addr + bld;
+                rawAddr = addr + bld;
             }
-            drawGridFullWidthCell(3, '住所', fullAddr);
+            drawGridFullWidthCell(3, '住所', rawAddr);
 
-            drawGridCell(4, true, '電話番号', customer ? customer.phone : '');
-            drawGridCell(4, false, 'FAX番号', customer ? customer.fax : '');
+            // 5行目: 代表者名 | 顧客区分
+            drawGridCell(4, true, '代表者名', customer ? customer.representative_name : '');
+            drawGridCell(4, false, '顧客区分', customer ? customer.customer_type : '');
 
-            drawGridCell(5, true, 'メール', customer ? customer.email : '');
-            drawGridCell(5, false, '担当者', staffName);
+            // 6行目: 資本金 | 設立日 (画面の共通解決データを適用)
+            drawGridCell(5, true, '資本金', dispData.capitalStr);
+            drawGridCell(5, false, '設立日', dispData.foundedDate);
 
-            drawGridCell(6, true, '担当部署', deptName);
-            // 7行目右側は空き（斜線または空白）
-            doc.setFillColor(theme.LIGHT_BG[0], theme.LIGHT_BG[1], theme.LIGHT_BG[2]);
-            doc.rect(leftX + (leftW / 2), gridYStart + (6 * gridRowH), leftW / 2, gridRowH, 'F');
-            doc.setDrawColor(theme.BORDER[0], theme.BORDER[1], theme.BORDER[2]);
-            doc.line(leftX + (leftW / 2), gridYStart + (6 * gridRowH), leftX + (leftW / 2), gridYStart + (7 * gridRowH));
+            // 7行目: 決算期 | 外務担当者 (画面の共通解決データを適用)
+            drawGridCell(6, true, '決算期', dispData.fiscalStr);
+            drawGridCell(6, false, '外務担当者', dispData.salesStaffName);
+
+            // 8行目: 電話番号 | FAX番号
+            drawGridCell(7, true, '電話番号', customer ? customer.phone : '');
+            drawGridCell(7, false, 'FAX番号', customer ? customer.fax : '');
+
+            // 9行目: メールアドレス
+            drawGridFullWidthCell(8, 'メールアドレス', customer ? customer.email : '');
+
+            // 10行目: 主担当者 | 所属拠点
+            drawGridCell(9, true, '主担当者', dispData.primaryContactName);
+            drawGridCell(9, false, '所属拠点', dispData.primaryOfficeName);
+
+            // 11行目: 担当メール
+            drawGridFullWidthCell(10, '担当メール', dispData.primaryEmail);
 
             y += gridH + 8; // 余白を挟んで次のセクションへ
 
@@ -222,16 +256,33 @@
             // UT-002, UT-011: 最大5件抽出制限確認
             const displayLics = custLics.slice(0, 5);
 
+            // 管轄官公庁解決ロジック (customer_detail.js と完全同一)
+            const getGovernmentOfficeName = (license) => {
+                if (!license) return '';
+                if (license.government_office_id) {
+                    const office = governmentOffices.find(
+                        o => Number(o.office_id) === Number(license.government_office_id)
+                    );
+                    if (office) {
+                        return office.office_name;
+                    }
+                }
+                return license.government_office || '';
+            };
+
             // テーブルヘッダーとボディの構築
-            const licHeaders = [['許認可種別', '許認可番号', '取得年月日', '有効期限', '状態']];
+            const licHeaders = [['許認可種別', '許認可番号', '開始日', '有効期限', '状態']];
             const licRows = displayLics.map(l => {
                 const type = licenseTypes.find(lt => lt.license_type_id === l.license_type_id);
                 const typeName = type ? type.license_type_name : (l.license_type || '―');
+                const officeName = getGovernmentOfficeName(l);
+                const dispTypeName = officeName ? `${typeName}：${officeName}` : typeName;
+                
                 const licNum = utils.formatLicenseNumber(l);
-                const acqStr = utils.formatDate(l.acquisition_date);
+                const startStr = utils.formatDate(l.start_date);
                 const expStr = utils.formatDate(l.expiry_date);
                 const status = utils.getLicenseStatus(l.expiry_date);
-                return [typeName, licNum, acqStr, expStr, status];
+                return [dispTypeName, licNum, startStr, expStr, status];
             });
 
             // UT-006: 許認可0件時のフォールバック
@@ -261,9 +312,9 @@
                     halign: 'center'
                 },
                 columnStyles: {
-                    0: { cellWidth: 50 }, // 許認可種別
-                    1: { cellWidth: 35 }, // 許認可番号
-                    2: { cellWidth: 25, halign: 'center' }, // 取得年月日
+                    0: { cellWidth: 55 }, // 許認可種別 (管轄官公庁を考慮し、50から55へ拡張)
+                    1: { cellWidth: 30 }, // 許認可番号 (35から30へ縮小)
+                    2: { cellWidth: 25, halign: 'center' }, // 開始日
                     3: { cellWidth: 25, halign: 'center' }, // 有効期限
                     4: { cellWidth: 25, halign: 'center' }  // 状態
                 },
@@ -292,7 +343,7 @@
             const rightEndY = bottomLimitY;
             const rightH = rightEndY - rightStartY;
 
-            const remarksH = 60; // システム備考枠の高さ
+            const remarksH = 90; // システム備考枠の高さ (基本情報の高さ変更に伴い、左右バランス調整のため60から90へ拡張)
             const memoH = rightH - remarksH - 6; // 手書きメモ枠の高さ (隙間6mm空ける)
 
             // 3-1. 上段: システム備考
@@ -326,7 +377,7 @@
             }
 
             // 3-2. 下段: 手書きメモ欄
-            const memoTitleY = rightStartY + remarksH + 1.5;
+            const memoTitleY = rightStartY + remarksH + 5.5; // 備考枠線との重なりを防ぐため余白を1.5から5.5へ調整
             drawSectionTitle('■ 手書きメモ欄', rightX, memoTitleY, rightW);
             
             const memoBoxY = memoTitleY + 5.5;
@@ -354,6 +405,10 @@
             // 2ページ目の描画
             // ==========================================
             y = this.addNewPage();
+            // 2ページ目のヘッダーにも顧客IDを右上（出力者の真下、Y=y-2）に描画
+            doc.setFontSize(9);
+            doc.setTextColor(theme.TEXT_MAIN[0], theme.TEXT_MAIN[1], theme.TEXT_MAIN[2]);
+            doc.text(`顧客ID: ${custIdStr}`, rightX, y - 2, { align: 'right' });
 
             // ==========================================
             // セクション4: 直近5件の案件履歴

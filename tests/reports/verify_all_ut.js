@@ -14,7 +14,7 @@ if (admin.apps.length === 0) {
 }
 
 const db = admin.firestore();
-const BASE_URL = 'http://127.0.0.1:8080';
+const BASE_URL = 'http://127.0.0.1:5005';
 const EVIDENCE_DIR = path.resolve(__dirname, 'evidence');
 const DOWNLOAD_DIR = path.resolve(__dirname, 'download_tmp');
 const FONT_PATH = path.resolve(__dirname, '../../report-system/report-templates/NotoSansJP-Regular.ttf');
@@ -60,7 +60,7 @@ async function resetFirestoreData() {
     await db.collection('customers').doc('cust_1001').delete();
     
     // 関連データ削除
-    const licSub = await db.collection('licenses').where('customer_id', '==', 1001).get();
+    const licSub = await db.collection('customer_licenses').where('customer_id', '==', 1001).get();
     for (const doc of licSub.docs) {
         await doc.ref.delete();
     }
@@ -99,37 +99,55 @@ async function seedDefaultData(customerOverrides = {}) {
 
     await db.collection('customers').doc('cust_1001').set(customerData);
 
+    // 官公庁マスタを投入
+    await db.collection('government_offices').doc('gov_1').set({
+        office_id: 1,
+        office_name: '東京都'
+    }, { merge: true });
+
     // 許認可 (デフォルト3件: 有効・期限接近・失効)
     const d1 = new Date(); d1.setDate(today.getDate() + 150); // 有効
     const d2 = new Date(); d2.setDate(today.getDate() + 30);  // 期限接近 (残り30日)
     const d3 = new Date(); d3.setDate(today.getDate() - 10);  // 失効 (10日前切れ)
 
-    await db.collection('licenses').doc('lic_default_1').set({
+    const formatDateStr = (d) => {
+        return d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
+    };
+
+    await db.collection('customer_licenses').doc('lic_default_1').set({
         customer_id: 1001,
+        license_id: 1,
         license_type_id: 'lt_001',
-        license_type: '建設業許可(建築工事業)',
+        license_type: '建設業許可',
         license_number_1: '東京都知事許可',
         license_number_2: '第12345号',
-        acquisition_date: admin.firestore.Timestamp.fromDate(new Date('2021-04-01')),
-        expiry_date: admin.firestore.Timestamp.fromDate(d1)
+        start_date: '2021/04/01',
+        expiry_date: formatDateStr(d1),
+        government_office_id: 1,
+        status: '有効'
     });
-    await db.collection('licenses').doc('lic_default_2').set({
+    await db.collection('customer_licenses').doc('lic_default_2').set({
         customer_id: 1001,
+        license_id: 2,
         license_type_id: 'lt_002',
         license_type: '宅地建物取引業免許',
         license_number_1: '東京都知事(1)',
         license_number_2: '第98765号',
-        acquisition_date: admin.firestore.Timestamp.fromDate(new Date('2022-05-15')),
-        expiry_date: admin.firestore.Timestamp.fromDate(d2)
+        start_date: '2022/05/15',
+        expiry_date: formatDateStr(d2),
+        status: '有効'
     });
-    await db.collection('licenses').doc('lic_default_3').set({
+    await db.collection('customer_licenses').doc('lic_default_3').set({
         customer_id: 1001,
+        license_id: 3,
         license_type_id: 'lt_003',
         license_type: '産業廃棄物収集運搬業許可',
         license_number_1: '東京都第123',
         license_number_2: '第456789号',
-        acquisition_date: admin.firestore.Timestamp.fromDate(new Date('2020-10-10')),
-        expiry_date: admin.firestore.Timestamp.fromDate(d3)
+        start_date: '2020/10/10',
+        expiry_date: formatDateStr(d3),
+        government_office: '神奈川県',
+        status: '有効'
     });
 
     // 案件 (デフォルト3件)
@@ -235,6 +253,39 @@ async function seedDefaultData(customerOverrides = {}) {
     console.log(`[Test Debug] Firestore staff count: ${staffSnap.size}`);
     staffSnap.docs.forEach(doc => console.log(`  Staff: ID=${doc.id}, email=${doc.data().email}, uid=${doc.data().uid}`));
 
+    // テストユーザーの登録/確認 (Auth エミュレータ)
+    console.log("👤 Ensuring test user in Auth Emulator...");
+    try {
+        await admin.auth().createUser({
+            uid: 'test_staff_id', // Firestoreの staff/test_staff_id と一致させる
+            email: 'lapis-test@lapis.local',
+            password: 'Lapis3_2026!',
+            displayName: 'テスト中村'
+        });
+        console.log("  Successfully created test user in Auth Emulator.");
+    } catch (e) {
+        if (e.code === 'auth/email-already-exists' || e.code === 'auth/uid-already-exists') {
+            console.log("  Test user already exists in Auth Emulator.");
+        } else {
+            console.error("  Failed to create test user in Auth Emulator:", e);
+        }
+    }
+    
+    // Firestore の staff/test_staff_id も更新して uid を紐付ける
+    console.log("📝 Binding uid in Firestore staff collection...");
+    try {
+        await db.collection('staff').doc('test_staff_id').set({
+            staff_id: 1,
+            staff_name: '中村',
+            email: 'lapis-test@lapis.local',
+            uid: 'test_staff_id',
+            department: '外務'
+        }, { merge: true });
+        console.log("  Successfully updated staff doc in Firestore.");
+    } catch (e) {
+        console.error("  Failed to update staff doc:", e);
+    }
+
     // ログイン処理 (1回だけ行う)
     console.log("🔐 Logging in...");
     await page.goto(`${BASE_URL}/login.html`, { waitUntil: 'load' });
@@ -278,18 +329,23 @@ async function seedDefaultData(customerOverrides = {}) {
                 await resetFirestoreData();
                 await seedDefaultData();
                 const today = new Date();
+                const formatDateStr = (d) => {
+                    return d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
+                };
                 // 3件追加して計6件にする
                 for (let i = 4; i <= 6; i++) {
                     const expiry = new Date();
                     expiry.setDate(today.getDate() + (i * 40));
-                    await db.collection('licenses').doc(`lic_extra_${i}`).set({
+                    await db.collection('customer_licenses').doc(`lic_extra_${i}`).set({
                         customer_id: 1001,
+                        license_id: i,
                         license_type_id: `lt_00${i}`,
                         license_type: `追加の許認可種別_${i}`,
                         license_number_1: '都特許',
                         license_number_2: `第000${i}号`,
-                        acquisition_date: admin.firestore.Timestamp.fromDate(new Date('2022-01-01')),
-                        expiry_date: admin.firestore.Timestamp.fromDate(expiry)
+                        start_date: '2022/01/01',
+                        expiry_date: formatDateStr(expiry),
+                        status: '有効'
                     });
                 }
             }
@@ -330,7 +386,7 @@ async function seedDefaultData(customerOverrides = {}) {
                 await resetFirestoreData();
                 await seedDefaultData();
                 // 許認可のみ削除
-                const licSub = await db.collection('licenses').where('customer_id', '==', 1001).get();
+                const licSub = await db.collection('customer_licenses').where('customer_id', '==', 1001).get();
                 for (const doc of licSub.docs) {
                     await doc.ref.delete();
                 }
@@ -433,18 +489,23 @@ async function seedDefaultData(customerOverrides = {}) {
                 await resetFirestoreData();
                 await seedDefaultData();
                 const today = new Date();
+                const formatDateStr = (d) => {
+                    return d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
+                };
                 // 17件追加して計20件にする
                 for (let i = 4; i <= 20; i++) {
                     const expiry = new Date();
                     expiry.setDate(today.getDate() + (i * 10));
-                    await db.collection('licenses').doc(`lic_extra_${i}`).set({
+                    await db.collection('customer_licenses').doc(`lic_extra_${i}`).set({
                         customer_id: 1001,
+                        license_id: i,
                         license_type_id: `lt_${i}`,
                         license_type: `多量登録テスト用許認可_${i}`,
                         license_number_1: '特許',
                         license_number_2: `第${i}号`,
-                        acquisition_date: admin.firestore.Timestamp.fromDate(new Date('2023-01-01')),
-                        expiry_date: admin.firestore.Timestamp.fromDate(expiry)
+                        start_date: '2023/01/01',
+                        expiry_date: formatDateStr(expiry),
+                        status: '有効'
                     });
                 }
             }
@@ -609,13 +670,26 @@ async function seedDefaultData(customerOverrides = {}) {
             
             // キャッシュプレビュー用セッションデータのクリーンアップ
             await page.evaluate(() => {
+                window.__CUSTOMER_LOADED__ = false;
                 sessionStorage.clear();
                 window.AppCache && window.AppCache.invalidate && window.AppCache.invalidate('customer_1001');
             });
             await page.goto(url, { waitUntil: 'load' });
             
-            // Firebaseからのデータロード完了を十分に待つ (2秒から5秒へ延長)
-            await delay(5000);
+            // Firebaseからのデータロード完了を十分に待つ (ポーリングによる堅牢な待機)
+            let loaded = false;
+            for (let i = 0; i < 30; i++) {
+                try {
+                    loaded = await page.evaluate(() => window.__CUSTOMER_LOADED__ === true);
+                    if (loaded) break;
+                } catch (e) {
+                    // ナビゲーション中のコンテキスト破棄エラー等は無視してリトライ
+                }
+                await delay(500);
+            }
+            if (!loaded) {
+                throw new Error("Timeout waiting for customer data to load");
+            }
 
             if (tc.id === 'UT-010') {
                 // UT-010: パフォーマンス検証 (マシンの負荷変動を考慮し上限を10秒に緩和)
