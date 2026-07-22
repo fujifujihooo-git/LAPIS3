@@ -1527,7 +1527,7 @@
                     </div>
                     <div class="action-bar-right">
                         <button type="button" class="btn btn-excel" id="btn-export-excel">
-                            <i data-lucide="file-spreadsheet"></i> Excel出力
+                            <i data-lucide="file-spreadsheet"></i> Excelエクスポート
                         </button>
                         <button type="button" class="btn btn-save"
                             onclick="document.getElementById('customer-form').dispatchEvent(new Event('submit', {cancelable: true, bubbles: true}));">
@@ -1993,7 +1993,7 @@
                                                 <th>管轄官公庁</th>
                                                 <th>許可番号</th>
                                                 <th>期限（満了日）</th>
-                                                <th>案内まで</th>
+                                                <th>期限まで</th>
                                                 <th>状態</th>
                                             </tr>
                                         </thead>
@@ -2040,6 +2040,9 @@
                                     </button>
                                     <button type="button" class="btn btn-primary" id="btn-open-national-tax-cert-modal" style="background:#16a34a; border:none;">
                                         <i data-lucide="file-text"></i> 税務署用（国税）納税証明書交付申請書 印刷
+                                    </button>
+                                    <button type="button" class="btn btn-primary" id="btn-open-address-label-modal" style="background:#4f46e5; border:none;">
+                                        <i data-lucide="file-text"></i> 宛名ラベル出力
                                     </button>
                                 </div>
                             </div>
@@ -2232,6 +2235,135 @@
             <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px;">
                 <button type="button" class="btn btn-secondary" id="btn-close-report-modal">キャンセル</button>
                 <button type="button" class="btn btn-primary" id="btn-print-report">印刷・保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 宛名ラベル用モーダル -->
+    <div id="address-label-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; width: 600px; max-width: 90%; border-radius:8px; padding:24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto;">
+            <h3 style="margin-top:0; border-bottom:1px solid var(--border-color); padding-bottom:12px; font-size: 14pt; font-weight: 600;">宛名ラベル出力設定</h3>
+            <div class="form-grid" style="grid-template-columns: 1fr; gap: 16px;">
+                <!-- 宛先種別 -->
+                <div class="form-group">
+                    <label style="font-weight: bold; margin-bottom: 8px;">宛先種別</label>
+                    <div style="display:flex; gap:16px; align-items:center; font-size: 11pt; flex-wrap: wrap;">
+                        <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0;">
+                            <input type="radio" name="addressTargetType" value="会社宛（御中）" checked style="width: auto; margin-right: 0;"> 会社宛（御中）
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0;">
+                            <input type="radio" name="addressTargetType" value="会社宛（代表者）" style="width: auto; margin-right: 0;"> 会社宛（代表者）
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0;">
+                            <input type="radio" name="addressTargetType" value="営業所宛" style="width: auto; margin-right: 0;"> 営業所宛
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0;">
+                            <input type="radio" name="addressTargetType" value="担当者宛" style="width: auto; margin-right: 0;"> 担当者宛
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 営業所選択 -->
+                <div class="form-group" id="group_label_office_select" style="display:none;">
+                    <label style="font-weight: bold;">営業所選択 <span class="required">*</span></label>
+                    <select id="label_office_select" class="form-select">
+                        <option value="">(未選択)</option>
+                    </select>
+                </div>
+
+                <!-- 担当者選択 -->
+                <div class="form-group" id="group_label_contact_select" style="display:none;">
+                    <label style="font-weight: bold;">担当者選択 <span class="required">*</span></label>
+                    <select id="label_contact_select" class="form-select">
+                        <option value="">(未選択)</option>
+                    </select>
+                </div>
+
+                <!-- 在中文言個別設定セクション -->
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold;">
+                        <input type="checkbox" id="label_enclosure_all_same" checked style="width: auto; margin-right: 0;"> 全ラベル同じ文言
+                    </label>
+                </div>
+
+                <!-- 一括設定 (全ラベル同じ文言 ON のとき表示) -->
+                <div id="group_label_enclosure_single" style="display: block;">
+                    <div class="form-group">
+                        <label style="font-weight: bold;">在中文言選択</label>
+                        <select id="label_enclosure_select_1" class="form-select">
+                            <!-- JSで動的に構築 -->
+                        </select>
+                    </div>
+                    <div class="form-group" id="group_label_enclosure_other_1" style="display:none; margin-top: 12px;">
+                        <label style="font-weight: bold;">自由入力 (最大20文字) <span class="required">*</span></label>
+                        <input type="text" id="label_enclosure_other_1" class="form-control" maxlength="20" placeholder="文言を入力してください">
+                    </div>
+                </div>
+
+                <!-- 個別設定 (全ラベル同じ文言 OFF のとき表示) -->
+                <div id="group_label_enclosure_multi" style="display: none; border: 1px solid var(--border-color); padding: 16px; border-radius: 6px; background-color: #f8fafc; margin-top: 8px;">
+                    <h4 style="margin-top: 0; margin-bottom: 12px; font-size: 11pt; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; color: #1e293b;">面別在中文言</h4>
+                    
+                    <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <!-- ラベル1 -->
+                        <div style="border-right: 1px dashed var(--border-color); padding-right: 16px;">
+                            <div class="form-group">
+                                <label style="font-weight: bold;">ラベル① (左上)</label>
+                                <select id="label_enclosure_select_1_multi" class="form-select">
+                                    <!-- JSで動的に構築 -->
+                                </select>
+                            </div>
+                            <div class="form-group" id="group_label_enclosure_other_1_multi" style="display:none; margin-top: 8px;">
+                                <input type="text" id="label_enclosure_other_1_multi" class="form-control" maxlength="20" placeholder="自由入力">
+                            </div>
+                        </div>
+
+                        <!-- ラベル2 -->
+                        <div>
+                            <div class="form-group">
+                                <label style="font-weight: bold;">ラベル② (右上)</label>
+                                <select id="label_enclosure_select_2" class="form-select">
+                                    <!-- JSで動的に構築 -->
+                                </select>
+                            </div>
+                            <div class="form-group" id="group_label_enclosure_other_2" style="display:none; margin-top: 8px;">
+                                <input type="text" id="label_enclosure_other_2" class="form-control" maxlength="20" placeholder="自由入力">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; border-top: 1px dashed var(--border-color); padding-top: 16px;">
+                        <!-- ラベル3 -->
+                        <div style="border-right: 1px dashed var(--border-color); padding-right: 16px;">
+                            <div class="form-group">
+                                <label style="font-weight: bold;">ラベル③ (左下)</label>
+                                <select id="label_enclosure_select_3" class="form-select">
+                                    <!-- JSで動的に構築 -->
+                                </select>
+                            </div>
+                            <div class="form-group" id="group_label_enclosure_other_3" style="display:none; margin-top: 8px;">
+                                <input type="text" id="label_enclosure_other_3" class="form-control" maxlength="20" placeholder="自由入力">
+                            </div>
+                        </div>
+
+                        <!-- ラベル4 -->
+                        <div>
+                            <div class="form-group">
+                                <label style="font-weight: bold;">ラベル④ (右下)</label>
+                                <select id="label_enclosure_select_4" class="form-select">
+                                    <!-- JSで動的に構築 -->
+                                </select>
+                            </div>
+                            <div class="form-group" id="group_label_enclosure_other_4" style="display:none; margin-top: 8px;">
+                                <input type="text" id="label_enclosure_other_4" class="form-control" maxlength="20" placeholder="自由入力">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px;">
+                <button type="button" class="btn btn-secondary" id="btn-close-address-label-modal">キャンセル</button>
+                <button type="button" class="btn btn-primary" id="btn-print-address-label" style="background:#4f46e5; border:none;">PDFプレビュー</button>
             </div>
         </div>
     </div>
@@ -2431,6 +2563,55 @@
         </div>
     </div>
 
+    <!-- エクスポートオプション選択モーダル -->
+    <div id="export-excel-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; width: 520px; max-width: 90%; border-radius:8px; padding:24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); position: relative;">
+            <button type="button" id="btn-close-export-modal" style="position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; line-height: 1;">&times;</button>
+            <h3 style="margin-top:0; border-bottom:1px solid var(--border-color); padding-bottom:12px; font-size: 14pt; font-weight: 600; color: #1e293b;">Excelデータエクスポート</h3>
+            
+            <div style="margin-top: 16px;">
+                <p style="font-size: 10.5pt; color: #475569; margin-bottom: 20px;">エクスポートするデータの利用目的を選択してください。</p>
+                
+                <!-- オプション1: 顧客カルテ出力 -->
+                <label style="display: block; border: 1px solid #e2e8f0; padding: 16px; border-radius: 6px; margin-bottom: 12px; cursor: pointer; background: #f8fafc; transition: border-color 0.2s;">
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <input type="radio" name="export-type" value="customer_card" checked style="margin-top: 3px; width: auto; height: auto;">
+                        <div>
+                            <strong style="font-size: 11pt; color: #1e293b;">① 顧客カルテ出力（実務・業務利用）</strong>
+                            <div style="font-size: 9.5pt; color: #64748b; margin-top: 4px;">
+                                基本情報、拠点、許認可（全件）、案件（直近20件）、担当者
+                            </div>
+                            <div style="font-size: 8.5pt; color: #059669; margin-top: 2px;">
+                                ※ 即時にダウンロードできます（面談や実務確認用）
+                            </div>
+                        </div>
+                    </div>
+                </label>
+                
+                <!-- オプション2: 顧客履歴出力 -->
+                <label style="display: block; border: 1px solid #e2e8f0; padding: 16px; border-radius: 6px; cursor: pointer; background: #fff; transition: border-color 0.2s;">
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <input type="radio" name="export-type" value="customer_archive" style="margin-top: 3px; width: auto; height: auto;">
+                        <div>
+                            <strong style="font-size: 11pt; color: #1e293b;">② 顧客履歴出力（分析・履歴・監査用）</strong>
+                            <div style="font-size: 9.5pt; color: #64748b; margin-top: 4px;">
+                                基本情報、拠点、全許認可、全案件、請求（全件）、入金（全件）、対応履歴（全件）
+                            </div>
+                            <div style="font-size: 8.5pt; color: #d97706; margin-top: 2px;">
+                                ※ 履歴数・データ量が多い場合、処理に数秒〜数十秒かかることがあります
+                            </div>
+                        </div>
+                    </div>
+                </label>
+            </div>
+            
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px;">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-export">キャンセル</button>
+                <button type="button" class="btn btn-primary" id="btn-confirm-export" style="background-color: #0f766e; border-color: #0f766e;">ダウンロード開始</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -2443,6 +2624,7 @@
     <script src="reports/report-utils.js?v=2026061802"></script>
     <script src="reports/base-report.js?v=2026061802"></script>
     <script src="reports/customer-summary-report.js?v=2026061802"></script>
+    <script src="reports/address-label-report.js?v=2026061802"></script>
     <script src="customer_detail.js?v=2026061802"></script>
 
     <script>

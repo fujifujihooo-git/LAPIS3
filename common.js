@@ -314,18 +314,20 @@ window.LapisFormat = {
     },
 
     formatToJST(dateInput) {
-        if (!dateInput) return '-';
+        if (!dateInput) return '―';
 
         let d;
-        if (typeof dateInput === 'string') {
-            d = new Date(dateInput);
+        if (dateInput instanceof Date) {
+            d = dateInput;
         } else if (typeof dateInput.toDate === 'function') {
             d = dateInput.toDate();
+        } else if (typeof dateInput === 'object' && typeof dateInput.seconds === 'number') {
+            d = new Date(dateInput.seconds * 1000 + Math.floor((dateInput.nanoseconds || 0) / 1000000));
         } else {
             d = new Date(dateInput);
         }
 
-        if (isNaN(d.getTime())) return '-';
+        if (!d || isNaN(d.getTime())) return '―';
 
         const options = {
             timeZone: 'Asia/Tokyo',
@@ -345,7 +347,7 @@ window.LapisFormat = {
             return `${map.year}/${map.month}/${map.day} ${map.hour}:${map.minute}`;
         } catch (e) {
             console.error('JST Date formatting error:', e);
-            return '-';
+            return '―';
         }
     },
 

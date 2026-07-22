@@ -214,12 +214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const lastUpdEl = document.getElementById('last-updated-meta');
         if (lastUpdEl) {
-            if (data.updated_at) {
-                const d = data.updated_at.toDate ? data.updated_at.toDate() : new Date(data.updated_at);
-                lastUpdEl.textContent = d.toLocaleString('ja-JP');
-            } else {
-                lastUpdEl.textContent = '―';
-            }
+            lastUpdEl.textContent = typeof formatToJST === 'function' ? formatToJST(data.updated_at) : '―';
         }
 
         // ページタイトル更新
@@ -2967,6 +2962,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnPrintNationalReport.addEventListener('click', () => handleNationalReportAction());
     }
 
+
     // =========================================================
     //  対応履歴（customer_histories）タブ用ロジック
     // =========================================================
@@ -3582,6 +3578,452 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // イベント登録
     document.getElementById('btn-export-summary-pdf')?.addEventListener('click', handleExportSummaryPdf);
+
+    // =========================================================
+    //  宛名ラベル PDF 出力ロジック
+    // =========================================================
+    const ENCLOSURE_TYPES = [
+        { code: '', label: 'なし' },
+        { code: 'invoice', label: '請求書' },
+        { code: 'estimate', label: '見積書' },
+        { code: 'document', label: '資料' },
+        { code: 'financial', label: '決算書' },
+        { code: 'receipt_slip', label: '受付票' },
+        { code: 'report_copy', label: '届出控え' },
+        { code: 'application_copy', label: '申請控え' },
+        { code: 'deposit_receipt', label: '預かり証' },
+        { code: 'receipt', label: '領収書' },
+        { code: 'original_docs', label: '社会保険等原本類' },
+        { code: 'result_notice', label: '審査結果通知書' },
+        { code: 'registry_copy', label: '登記申請控え' },
+        { code: 'procedure_guide', label: 'お手続き準備のご案内' },
+        { code: 'proxy', label: '委任状' },
+        { code: 'other', label: 'その他' }
+    ];
+
+    const btnOpenAddressLabelModal = document.getElementById('btn-open-address-label-modal');
+    const addressLabelModal = document.getElementById('address-label-modal');
+    const btnCloseAddressLabelModal = document.getElementById('btn-close-address-label-modal');
+    const btnPrintAddressLabel = document.getElementById('btn-print-address-label');
+    const selLabelOffice = document.getElementById('label_office_select');
+    const selLabelContact = document.getElementById('label_contact_select');
+    const groupLabelOfficeSelect = document.getElementById('group_label_office_select');
+    const groupLabelContactSelect = document.getElementById('group_label_contact_select');
+
+    // 在中文言個別設定用UI要素
+    const chkLabelEnclosureAllSame = document.getElementById('label_enclosure_all_same');
+    const groupLabelEnclosureSingle = document.getElementById('group_label_enclosure_single');
+    const groupLabelEnclosureMulti = document.getElementById('group_label_enclosure_multi');
+
+    // 5つのプルダウンとその他の入力欄の定義
+    const enclosureSelectIds = [
+        { selectId: 'label_enclosure_select_1', otherGroupId: 'group_label_enclosure_other_1', otherInputId: 'label_enclosure_other_1' },
+        { selectId: 'label_enclosure_select_1_multi', otherGroupId: 'group_label_enclosure_other_1_multi', otherInputId: 'label_enclosure_other_1_multi' },
+        { selectId: 'label_enclosure_select_2', otherGroupId: 'group_label_enclosure_other_2', otherInputId: 'label_enclosure_other_2' },
+        { selectId: 'label_enclosure_select_3', otherGroupId: 'group_label_enclosure_other_3', otherInputId: 'label_enclosure_other_3' },
+        { selectId: 'label_enclosure_select_4', otherGroupId: 'group_label_enclosure_other_4', otherInputId: 'label_enclosure_other_4' }
+    ];
+
+    // 在中文言の初期構築
+    enclosureSelectIds.forEach(item => {
+        const el = document.getElementById(item.selectId);
+        if (el) {
+            el.innerHTML = '';
+            ENCLOSURE_TYPES.forEach(enc => {
+                const opt = document.createElement('option');
+                opt.value = enc.code;
+                opt.textContent = enc.label;
+                el.appendChild(opt);
+            });
+        }
+    });
+
+    // 宛先種別による表示切り替え処理
+    function toggleAddressTargetFields() {
+        const checkedRadio = document.querySelector('input[name="addressTargetType"]:checked');
+        if (!checkedRadio) return;
+        const val = checkedRadio.value;
+
+        if (val === '会社宛（御中）' || val === '会社宛（代表者）') {
+            if (groupLabelOfficeSelect) groupLabelOfficeSelect.style.display = 'none';
+            if (groupLabelContactSelect) groupLabelContactSelect.style.display = 'none';
+        } else if (val === '営業所宛') {
+            if (groupLabelOfficeSelect) groupLabelOfficeSelect.style.display = 'block';
+            if (groupLabelContactSelect) groupLabelContactSelect.style.display = 'none';
+        } else if (val === '担当者宛') {
+            if (groupLabelOfficeSelect) groupLabelOfficeSelect.style.display = 'block';
+            if (groupLabelContactSelect) groupLabelContactSelect.style.display = 'block';
+        }
+    }
+
+    // 在中文言一括／個別トグル処理
+    function toggleEnclosureSetup() {
+        if (!chkLabelEnclosureAllSame) return;
+        if (chkLabelEnclosureAllSame.checked) {
+            if (groupLabelEnclosureSingle) groupLabelEnclosureSingle.style.display = 'block';
+            if (groupLabelEnclosureMulti) groupLabelEnclosureMulti.style.display = 'none';
+        } else {
+            if (groupLabelEnclosureSingle) groupLabelEnclosureSingle.style.display = 'none';
+            if (groupLabelEnclosureMulti) groupLabelEnclosureMulti.style.display = 'block';
+        }
+    }
+
+    // 営業所・担当者プルダウンの更新
+    function updateLabelOfficeDropdown() {
+        if (!selLabelOffice) return;
+        
+        // 最初の (未選択) オプションを残してクリア
+        while (selLabelOffice.options.length > 1) {
+            selLabelOffice.remove(1);
+        }
+
+        console.log('[DEBUG_AUDIT_OFFICE] Generate office dropdown. offices length:', offices.length);
+        console.log('[DEBUG_AUDIT_OFFICE] Loaded offices raw data: ' + JSON.stringify(offices.map(o => ({
+            office_id: o.office_id,
+            office_id_type: typeof o.office_id,
+            office_name: o.office_name,
+            status: o.status
+        }))));
+
+        // アクティブな営業所をソートして追加 ('active' も許容するように拡張)
+        const activeOffices = offices
+            .filter(o => o.status === '有効' || o.status === '稼働中' || o.status === 'active' || !o.status)
+            .sort((a, b) => (a.office_id || 0) - (b.office_id || 0));
+
+        console.log('[DEBUG_AUDIT_OFFICE] Filtered activeOffices raw data: ' + JSON.stringify(activeOffices.map(o => ({
+            office_id: o.office_id,
+            office_name: o.office_name
+        }))));
+
+        activeOffices.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.office_id;
+            opt.textContent = o.office_name;
+            selLabelOffice.appendChild(opt);
+        });
+
+        console.log('[DEBUG_AUDIT_OFFICE] Generated office option elements count:', selLabelOffice.options.length);
+    }
+
+    function updateLabelContactDropdown() {
+        if (!selLabelContact || !selLabelOffice) return;
+
+        // 最初の (未選択) オプションを残してクリア
+        while (selLabelContact.options.length > 1) {
+            selLabelContact.remove(1);
+        }
+
+        const selectedOfficeId = selLabelOffice.value;
+        console.log('[DEBUG_AUDIT_CONTACT] updateLabelContactDropdown trigger.');
+        console.log('[DEBUG_AUDIT_CONTACT] selectedOfficeId =', selectedOfficeId, 'type =', typeof selectedOfficeId);
+        
+        console.log('[DEBUG_AUDIT_CONTACT] All loaded contacts: ' + JSON.stringify(contacts.map(c => ({
+            name: c.contact_name,
+            office_id: c.office_id,
+            office_id_type: typeof c.office_id,
+            status: c.status
+        }))));
+
+        if (!selectedOfficeId) {
+            console.log('[DEBUG_AUDIT_CONTACT] selectedOfficeId is empty, early return.');
+            return;
+        }
+
+        // 選択された営業所に所属する在籍担当者を取得 ('退職' 以外のステータスを通すように安全側に倒す)
+        const officeContacts = contacts
+            .filter(c => String(c.office_id) === String(selectedOfficeId) && (c.status !== '退職' && c.status !== '非アクティブ'))
+            .sort((a, b) => (a.contact_id || 0) - (b.contact_id || 0));
+
+        console.log('[DEBUG_AUDIT_CONTACT] Filtered officeContacts: ' + JSON.stringify(officeContacts.map(c => ({
+            name: c.contact_name,
+            office_id: c.office_id,
+            status: c.status
+        }))));
+
+        officeContacts.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.contact_id;
+            // 表示名に部署・役職を添えて分かりやすくする
+            const deptPos = [c.department, c.position].filter(Boolean).join(' ');
+            opt.textContent = c.contact_name + (deptPos ? ` (${deptPos})` : '');
+            selLabelContact.appendChild(opt);
+        });
+
+        console.log('[DEBUG_AUDIT_CONTACT] Generated contact option elements count:', selLabelContact.options.length);
+    }
+
+    // イベント設定
+    if (btnOpenAddressLabelModal) {
+        btnOpenAddressLabelModal.addEventListener('click', () => {
+            if (!currentCustomer) {
+                alert('顧客データが保存されていません。先に保存してください。');
+                return;
+            }
+
+            // 初期状態リセット
+            const defaultRadio = document.querySelector('input[name="addressTargetType"][value="会社宛（御中）"]');
+            if (defaultRadio) defaultRadio.checked = true;
+            toggleAddressTargetFields();
+
+            updateLabelOfficeDropdown();
+            if (selLabelOffice) selLabelOffice.value = '';
+            updateLabelContactDropdown();
+
+            if (chkLabelEnclosureAllSame) chkLabelEnclosureAllSame.checked = true;
+            toggleEnclosureSetup();
+
+            enclosureSelectIds.forEach(item => {
+                const el = document.getElementById(item.selectId);
+                if (el) el.value = '';
+                const grp = document.getElementById(item.otherGroupId);
+                if (grp) grp.style.display = 'none';
+                const inp = document.getElementById(item.otherInputId);
+                if (inp) inp.value = '';
+            });
+
+            if (addressLabelModal) addressLabelModal.style.display = 'flex';
+        });
+    }
+
+    if (btnCloseAddressLabelModal) {
+        btnCloseAddressLabelModal.addEventListener('click', () => {
+            if (addressLabelModal) addressLabelModal.style.display = 'none';
+        });
+    }
+
+    document.querySelectorAll('input[name="addressTargetType"]').forEach(radio => {
+        radio.addEventListener('change', toggleAddressTargetFields);
+    });
+
+    if (chkLabelEnclosureAllSame) {
+        chkLabelEnclosureAllSame.addEventListener('change', toggleEnclosureSetup);
+    }
+
+    // 営業所選択プルダウンの change イベントをドキュメント全体に委譲 (DOM再構築時のイベント消失対策)
+    document.addEventListener('change', (e) => {
+        if (e.target && e.target.id === 'label_office_select') {
+            updateLabelContactDropdown();
+        }
+    });
+
+    // 各プルダウンのその他トグルのイベントリスナ登録
+    enclosureSelectIds.forEach(item => {
+        const el = document.getElementById(item.selectId);
+        if (el) {
+            el.addEventListener('change', (e) => {
+                const grp = document.getElementById(item.otherGroupId);
+                const inp = document.getElementById(item.otherInputId);
+                if (e.target.value === 'other') {
+                    if (grp) grp.style.display = 'block';
+                } else {
+                    if (grp) grp.style.display = 'none';
+                    if (inp) inp.value = '';
+                }
+            });
+        }
+    });
+
+    async function handlePrintAddressLabel() {
+        console.log('[AddressLabel] handlePrintAddressLabel start');
+        if (!currentCustomer) {
+            console.warn('[AddressLabel] currentCustomer is null');
+            return;
+        }
+
+        // 1. バリデーション
+        const checkedRadio = document.querySelector('input[name="addressTargetType"]:checked');
+        if (!checkedRadio) return;
+        const targetType = checkedRadio.value;
+
+        // 代表者名チェック
+        if (targetType === '会社宛（代表者）') {
+            if (!currentCustomer.representative_name || !currentCustomer.representative_name.trim()) {
+                alert('代表者名が登録されていません');
+                return;
+            }
+        }
+
+        // 営業所・担当者チェック
+        let selectedOffice = null;
+        let selectedContact = null;
+
+        if (targetType === '営業所宛' || targetType === '担当者宛') {
+            const officeId = selLabelOffice ? selLabelOffice.value : '';
+            if (!officeId) {
+                alert('営業所を選択してください');
+                return;
+            }
+            selectedOffice = offices.find(o => String(o.office_id) === String(officeId)) || null;
+            if (!selectedOffice) {
+                alert('選択された営業所データが見つかりません');
+                return;
+            }
+
+            if (targetType === '担当者宛') {
+                const contactId = selLabelContact ? selLabelContact.value : '';
+                if (!contactId) {
+                    alert('担当者を選択してください');
+                    return;
+                }
+                selectedContact = contacts.find(c => String(c.contact_id) === String(contactId)) || null;
+                if (!selectedContact) {
+                    alert('選択された担当者データが見つかりません');
+                    return;
+                }
+            }
+        }
+
+        // 在中文言の解決とバリデーション
+        const enclosures = [];
+        const isAllSame = chkLabelEnclosureAllSame ? chkLabelEnclosureAllSame.checked : true;
+
+        if (isAllSame) {
+            // 一括設定
+            const selEl = document.getElementById('label_enclosure_select_1');
+            const code = selEl ? selEl.value : '';
+            let text = '';
+            if (code === 'other') {
+                const inpEl = document.getElementById('label_enclosure_other_1');
+                const otherVal = inpEl ? inpEl.value.trim() : '';
+                if (!otherVal) {
+                    alert('在中文言を入力してください');
+                    return;
+                }
+                text = otherVal;
+            } else {
+                const item = ENCLOSURE_TYPES.find(x => x.code === code);
+                text = item ? item.label : 'なし';
+            }
+            // 4面すべて同じ値で複製
+            for (let i = 0; i < 4; i++) {
+                enclosures.push({ code, text });
+            }
+        } else {
+            // 個別設定 (4面別々)
+            const targets = [
+                { selectId: 'label_enclosure_select_1_multi', otherId: 'label_enclosure_other_1_multi', labelName: 'ラベル①' },
+                { selectId: 'label_enclosure_select_2', otherId: 'label_enclosure_other_2', labelName: 'ラベル②' },
+                { selectId: 'label_enclosure_select_3', otherId: 'label_enclosure_other_3', labelName: 'ラベル③' },
+                { selectId: 'label_enclosure_select_4', otherId: 'label_enclosure_other_4', labelName: 'ラベル④' }
+            ];
+            for (const tgt of targets) {
+                const selEl = document.getElementById(tgt.selectId);
+                const code = selEl ? selEl.value : '';
+                let text = '';
+                if (code === 'other') {
+                    const inpEl = document.getElementById(tgt.otherId);
+                    const otherVal = inpEl ? inpEl.value.trim() : '';
+                    if (!otherVal) {
+                        alert(`${tgt.labelName}の在中文言を入力してください`);
+                        return;
+                    }
+                    text = otherVal;
+                } else {
+                    const item = ENCLOSURE_TYPES.find(x => x.code === code);
+                    text = item ? item.label : 'なし';
+                }
+                enclosures.push({ code, text });
+            }
+        }
+
+        // 2. 宛名用データオブジェクト構築 (将来の面ごと個別宛先拡張を見据えたデータ構造)
+        const baseLabel = {
+            targetType: targetType,
+            customerName: currentCustomer.customer_name || '',
+            postalCode: '',
+            address: '',
+            phone: '',
+            officeName: '',
+            contactName: '',
+            department: '',
+            position: '',
+            representativeName: ''
+        };
+
+        if (targetType === '会社宛（御中）' || targetType === '会社宛（代表者）') {
+            baseLabel.postalCode = currentCustomer.postal_code || '';
+            const bld = currentCustomer.building_name ? ` ${currentCustomer.building_name}` : '';
+            baseLabel.address = (currentCustomer.address || '') + bld;
+            baseLabel.phone = currentCustomer.phone || '';
+            if (targetType === '会社宛（代表者）') {
+                baseLabel.representativeName = currentCustomer.representative_name || '';
+            }
+        } else if (targetType === '営業所宛') {
+            baseLabel.officeName = selectedOffice.office_name || '';
+            baseLabel.postalCode = selectedOffice.postal_code || currentCustomer.postal_code || '';
+            
+            const bld = selectedOffice.building_name ? ` ${selectedOffice.building_name}` : '';
+            const officeAddr = (selectedOffice.address || '') + bld;
+            const mainBld = currentCustomer.building_name ? ` ${currentCustomer.building_name}` : '';
+            const mainAddr = (currentCustomer.address || '') + mainBld;
+            baseLabel.address = officeAddr || mainAddr;
+
+            baseLabel.phone = selectedOffice.phone || currentCustomer.phone || '';
+        } else if (targetType === '担当者宛') {
+            baseLabel.officeName = selectedOffice.office_name || '';
+            baseLabel.postalCode = selectedOffice.postal_code || currentCustomer.postal_code || '';
+
+            const bld = selectedOffice.building_name ? ` ${selectedOffice.building_name}` : '';
+            const officeAddr = (selectedOffice.address || '') + bld;
+            const mainBld = currentCustomer.building_name ? ` ${currentCustomer.building_name}` : '';
+            const mainAddr = (currentCustomer.address || '') + mainBld;
+            baseLabel.address = officeAddr || mainAddr;
+
+            baseLabel.phone = selectedOffice.phone || currentCustomer.phone || '';
+            
+            baseLabel.contactName = selectedContact.contact_name || '';
+            baseLabel.department = selectedContact.department || '';
+            // 役職名は contacts コレクションでは title に格納されているため、title を優先的に position へ詰める
+            baseLabel.position = selectedContact.title || selectedContact.position || '';
+        }
+
+        const labels = [];
+        for (let i = 0; i < 4; i++) {
+            labels.push({
+                ...baseLabel,
+                enclosure: enclosures[i] || { code: '', text: 'なし' }
+            });
+        }
+
+        const pdfData = {
+            labels: labels
+        };
+
+        console.log('[AddressLabel] pdfData resolved:', JSON.stringify(pdfData));
+
+        // 3. プレビューウィンドウの事前起動 (ポップアップブロック対策)
+        const previewWindow = window.ReportEngine.openPreviewWindow();
+        if (!previewWindow) {
+            alert('プレビュー画面を開けませんでした。ブラウザのポップアップブロック設定を確認してください。');
+            return;
+        }
+
+        const originalBtnHTML = btnPrintAddressLabel.innerHTML;
+        try {
+            btnPrintAddressLabel.disabled = true;
+            btnPrintAddressLabel.innerHTML = '<i data-lucide="loader" class="spin"></i> 生成中...';
+            if (typeof lucide !== 'undefined') lucide.createIcons({ root: btnPrintAddressLabel });
+
+            // 4. PDF生成
+            const report = new window.AddressLabelReport();
+            await report.generate(pdfData);
+
+            // 5. プレビュー表示
+            report.preview(previewWindow);
+        } catch (err) {
+            console.error('[ExportAddressLabelPDF] Failed to generate address label PDF:', err);
+            alert('PDF出力に失敗しました: ' + err.message);
+            window.ReportEngine.closePreviewWindow(previewWindow);
+        } finally {
+            btnPrintAddressLabel.disabled = false;
+            btnPrintAddressLabel.innerHTML = originalBtnHTML;
+            if (typeof lucide !== 'undefined') lucide.createIcons({ root: btnPrintAddressLabel });
+        }
+    }
+
+    if (btnPrintAddressLabel) {
+        btnPrintAddressLabel.addEventListener('click', handlePrintAddressLabel);
+    }
 
     // ─────────────────────────────────────────────────────────
     // 請求・売上タブ 関連ロジック (フェーズ1-A)
