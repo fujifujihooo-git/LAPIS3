@@ -2,10 +2,13 @@
  * UnifiedDatePicker — LAPIS3 共通カレンダーコンポーネント
  * image_6.png デザイン準拠 | 13pt フォント | 和暦併記
  * Flatpickr を完全に置き換える軽量な自作カレンダー
- * v2.0 — 直接イベントバインディング方式（イベント委譲の不具合を完全解消）
+ * v3.0 — 年月ドロップダウン化 | 1900〜2100年標準範囲 | 日付制限・直前値復元機能
  */
 (function () {
     'use strict';
+
+    var DEFAULT_MIN_YEAR = 1900;
+    var DEFAULT_MAX_YEAR = 2100;
 
     // --- 和暦変換 ---
     function toWareki(year) {
@@ -49,7 +52,7 @@
 
     function parseDate(str) {
         if (!str) return null;
-        var clean = str.replace(/\//g, '-');
+        var clean = String(str).trim().replace(/\//g, '-');
         var parts = clean.split('-');
         if (parts.length !== 3) return null;
         var y = parseInt(parts[0], 10);
@@ -57,6 +60,26 @@
         var d = parseInt(parts[2], 10);
         if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
         return { year: y, month: m, day: d };
+    }
+
+    function isDateDisabled(year, month, day, minDate, maxDate, minYear, maxYear) {
+        if (minDate) {
+            if (year < minDate.year) return true;
+            if (year === minDate.year && month < minDate.month) return true;
+            if (year === minDate.year && month === minDate.month && day < minDate.day) return true;
+        } else if (year < minYear) {
+            return true;
+        }
+
+        if (maxDate) {
+            if (year > maxDate.year) return true;
+            if (year === maxDate.year && month > maxDate.month) return true;
+            if (year === maxDate.year && month === maxDate.month && day > maxDate.day) return true;
+        } else if (year > maxYear) {
+            return true;
+        }
+
+        return false;
     }
 
     // ============================================================
@@ -67,6 +90,36 @@
         this.options = options || {};
         this.selectedDate = null;
         this.isOpen = false;
+
+        // Parse options & data attributes
+        var dataMinDate = inputEl.getAttribute('data-min-date');
+        var dataMaxDate = inputEl.getAttribute('data-max-date');
+        var dataMinYear = inputEl.getAttribute('data-min-year');
+        var dataMaxYear = inputEl.getAttribute('data-max-year');
+
+        var rawMinDate = this.options.minDate || dataMinDate;
+        var rawMaxDate = this.options.maxDate || dataMaxDate;
+        this.minDate = parseDate(rawMinDate);
+        this.maxDate = parseDate(rawMaxDate);
+
+        var optMinYear = this.options.minYear || (dataMinYear ? parseInt(dataMinYear, 10) : null);
+        var optMaxYear = this.options.maxYear || (dataMaxYear ? parseInt(dataMaxYear, 10) : null);
+
+        if (this.minDate) {
+            this.minYear = this.minDate.year;
+        } else if (optMinYear !== null && !isNaN(optMinYear)) {
+            this.minYear = optMinYear;
+        } else {
+            this.minYear = DEFAULT_MIN_YEAR;
+        }
+
+        if (this.maxDate) {
+            this.maxYear = this.maxDate.year;
+        } else if (optMaxYear !== null && !isNaN(optMaxYear)) {
+            this.maxYear = optMaxYear;
+        } else {
+            this.maxYear = DEFAULT_MAX_YEAR;
+        }
 
         var today = new Date();
         this.viewYear = today.getFullYear();
@@ -90,8 +143,6 @@
 
     // --- DOM Construction ---
     UnifiedDatePicker.prototype._buildDOM = function () {
-        var self = this;
-
         // Wrapper
         this.wrapper = document.createElement('div');
         this.wrapper.className = 'udp-wrapper';
@@ -145,6 +196,11 @@
         var monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
         var dayNames = ['日', '月', '火', '水', '木', '金', '土'];
 
+        // 案C: 表示用選択肢範囲の算出式
+        var currentRefYear = (this.selectedDate ? this.selectedDate.year : this.viewYear);
+        var effectiveMinYear = Math.min(this.minYear, currentRefYear);
+        var effectiveMaxYear = Math.max(this.maxYear, currentRefYear);
+
         // Build HTML
         var html = '';
 
@@ -152,16 +208,42 @@
         html += '<div class="udp-header">';
         html += '  <div class="udp-year-select-wrap">';
         html += '    <select class="udp-year-select" aria-label="年の選択">';
-        for (var yr = todayY - 20; yr <= todayY + 20; yr++) {
+        for (var yr = effectiveMinYear; yr <= effectiveMaxYear; yr++) {
             var sel = (yr === y) ? ' selected' : '';
             html += '<option value="' + yr + '"' + sel + '>' + yr + '年(' + toWareki(yr) + ')</option>';
         }
         html += '    </select>';
         html += '  </div>';
+
+        // 前月/次月ボタンの無効判定
+        var isPrevDisabled = false;
+        var isNextDisabled = false;
+
+        if (y <= effectiveMinYear && m <= 0) {
+            isPrevDisabled = true;
+        } else if (this.minDate) {
+            if (y < this.minDate.year || (y === this.minDate.year && m <= this.minDate.month)) {
+                isPrevDisabled = true;
+            }
+        }
+
+        if (y >= effectiveMaxYear && m >= 11) {
+            isNextDisabled = true;
+        } else if (this.maxDate) {
+            if (y > this.maxDate.year || (y === this.maxDate.year && m >= this.maxDate.month)) {
+                isNextDisabled = true;
+            }
+        }
+
         html += '  <div class="udp-month-nav">';
-        html += '    <button type="button" class="udp-nav-btn udp-prev-month" aria-label="前月">&#8249;</button>';
-        html += '    <span class="udp-month-label">' + monthNames[m] + '</span>';
-        html += '    <button type="button" class="udp-nav-btn udp-next-month" aria-label="次月">&#8250;</button>';
+        html += '    <button type="button" class="udp-nav-btn udp-prev-month"' + (isPrevDisabled ? ' disabled' : '') + ' aria-label="前月">&#8249;</button>';
+        html += '    <select class="udp-month-select" aria-label="月の選択">';
+        for (var mi = 0; mi < 12; mi++) {
+            var mSel = (mi === m) ? ' selected' : '';
+            html += '<option value="' + mi + '"' + mSel + '>' + monthNames[mi] + '</option>';
+        }
+        html += '    </select>';
+        html += '    <button type="button" class="udp-nav-btn udp-next-month"' + (isNextDisabled ? ' disabled' : '') + ' aria-label="次月">&#8250;</button>';
         html += '  </div>';
         html += '</div>';
 
@@ -186,6 +268,11 @@
         for (var d = 1; d <= totalDays; d++) {
             var dayOfWeek = (firstDay + d - 1) % 7;
             var dcls = 'udp-day';
+            var disabled = isDateDisabled(y, m, d, this.minDate, this.maxDate, this.minYear, this.maxYear);
+
+            if (disabled) {
+                dcls += ' udp-disabled';
+            }
             if (dayOfWeek === 0) dcls += ' udp-sunday';
             if (dayOfWeek === 6) dcls += ' udp-saturday';
             if (y === todayY && m === todayM && d === todayD) dcls += ' udp-today';
@@ -205,19 +292,30 @@
         this.popup.innerHTML = html;
 
         // ══════════════════════════════════════════════════════════
-        // DIRECT EVENT BINDING — bind to actual elements after render
+        // DIRECT EVENT BINDING
         // ══════════════════════════════════════════════════════════
 
         // Year <select> — onChange
         var yearSelect = this.popup.querySelector('.udp-year-select');
         if (yearSelect) {
-            yearSelect.addEventListener('change', function (e) {
+            yearSelect.addEventListener('change', function () {
                 self.viewYear = parseInt(this.value, 10);
                 self._renderCalendar();
             });
-            // Also handle mousedown to prevent popup blur but allow native select
             yearSelect.addEventListener('mousedown', function (e) {
-                e.stopPropagation(); // Don't let popup mousedown handler interfere
+                e.stopPropagation();
+            });
+        }
+
+        // Month <select> — onChange
+        var monthSelect = this.popup.querySelector('.udp-month-select');
+        if (monthSelect) {
+            monthSelect.addEventListener('change', function () {
+                self.viewMonth = parseInt(this.value, 10);
+                self._renderCalendar();
+            });
+            monthSelect.addEventListener('mousedown', function (e) {
+                e.stopPropagation();
             });
         }
 
@@ -227,6 +325,7 @@
             prevBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
+                if (prevBtn.disabled) return;
                 self.viewMonth--;
                 if (self.viewMonth < 0) {
                     self.viewMonth = 11;
@@ -242,17 +341,18 @@
             nextBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
+                if (nextBtn.disabled) return;
                 self.viewMonth++;
                 if (self.viewMonth > 11) {
                     self.viewMonth = 0;
-                    self.viewYear++;
+                    self.viewYear = self.viewYear + 1;
                 }
                 self._renderCalendar();
             });
         }
 
         // Day cells — onClick
-        var dayCells = this.popup.querySelectorAll('.udp-day:not(.udp-empty)');
+        var dayCells = this.popup.querySelectorAll('.udp-day:not(.udp-empty):not(.udp-disabled)');
         for (var di = 0; di < dayCells.length; di++) {
             (function (cell) {
                 cell.addEventListener('click', function (e) {
@@ -283,13 +383,22 @@
                 e.preventDefault();
                 e.stopPropagation();
                 var t = new Date();
-                self.selectDate(t.getFullYear(), t.getMonth(), t.getDate());
+                var tY = t.getFullYear();
+                var tM = t.getMonth();
+                var tD = t.getDate();
+                if (!isDateDisabled(tY, tM, tD, self.minDate, self.maxDate, self.minYear, self.maxYear)) {
+                    self.selectDate(tY, tM, tD);
+                } else {
+                    self.viewYear = tY;
+                    self.viewMonth = tM;
+                    self._renderCalendar();
+                }
                 self.close();
             });
         }
     };
 
-    // --- Global Events (bound once, not affected by re-render) ---
+    // --- Global Events ---
     UnifiedDatePicker.prototype._bindGlobalEvents = function () {
         var self = this;
 
@@ -334,7 +443,7 @@
             }, 250);
         });
 
-        // Prevent blur when clicking inside popup (but NOT on <select>)
+        // Prevent blur when clicking inside popup
         this.popup.addEventListener('mousedown', function (e) {
             var tag = e.target.tagName;
             if (tag !== 'SELECT' && tag !== 'OPTION') {
@@ -352,6 +461,9 @@
 
     // --- Selection ---
     UnifiedDatePicker.prototype.selectDate = function (year, month, day) {
+        if (isDateDisabled(year, month, day, this.minDate, this.maxDate, this.minYear, this.maxYear)) {
+            return;
+        }
         this.selectedDate = { year: year, month: month, day: day };
         this.viewYear = year;
         this.viewMonth = month;
@@ -374,12 +486,12 @@
     UnifiedDatePicker.prototype.setDate = function (dateStr) {
         if (!dateStr) { this.clear(); return; }
         var parsed = parseDate(String(dateStr));
-        if (parsed) {
+        if (parsed && !isDateDisabled(parsed.year, parsed.month, parsed.day, this.minDate, this.maxDate, this.minYear, this.maxYear)) {
             this.selectDate(parsed.year, parsed.month, parsed.day);
         }
     };
 
-    // --- Manual Input ---
+    // --- Manual Input (直前有効値復元ポリシー) ---
     UnifiedDatePicker.prototype._handleManualInput = function () {
         var val = this.displayInput.value.trim();
         if (!val) {
@@ -391,11 +503,19 @@
             return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
         });
         var parsed = parseDate(normalized);
-        if (parsed && parsed.year >= 1900 && parsed.year <= 2100 &&
-            parsed.month >= 0 && parsed.month <= 11 &&
+        var isValid = false;
+
+        if (parsed && parsed.month >= 0 && parsed.month <= 11 &&
             parsed.day >= 1 && parsed.day <= daysInMonth(parsed.year, parsed.month)) {
+            if (!isDateDisabled(parsed.year, parsed.month, parsed.day, this.minDate, this.maxDate, this.minYear, this.maxYear)) {
+                isValid = true;
+            }
+        }
+
+        if (isValid) {
             this.selectDate(parsed.year, parsed.month, parsed.day);
         } else {
+            // 勝手な補正は行わず、直前の確定有効値へ復元
             this._updateDisplay();
         }
     };
@@ -426,6 +546,10 @@
         if (this.selectedDate) {
             this.viewYear = this.selectedDate.year;
             this.viewMonth = this.selectedDate.month;
+        } else {
+            var t = new Date();
+            this.viewYear = t.getFullYear();
+            this.viewMonth = t.getMonth();
         }
         this._renderCalendar();
         this.popup.style.display = 'block';
@@ -439,11 +563,9 @@
         var spaceBelow = viewportH - wrapperRect.bottom;
 
         if ((spaceBelow < popupH + margin) && (wrapperRect.top > popupH + margin)) {
-            // 下に不足（余裕込み） かつ 上に十分スペース → 上表示
             this.popup.style.top = 'auto';
             this.popup.style.bottom = 'calc(100% + 4px)';
         } else {
-            // 通常 → 下表示
             this.popup.style.top = 'calc(100% - 18px)';
             this.popup.style.bottom = 'auto';
         }
@@ -481,3 +603,4 @@
     window.UnifiedDatePicker = UnifiedDatePicker;
     window.initUnifiedDatePicker = initUnifiedDatePicker;
 })();
+
