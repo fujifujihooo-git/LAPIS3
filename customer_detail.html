@@ -23,11 +23,13 @@
     <script src="report-system/report-engine/report_engine.js"></script>
     <script src="report-system/report-views/tax_certificate_view.js"></script>
     <script src="report-system/report-views/tax_certificate_national_view.js"></script>
-    <!-- 帳票共通基盤 ＆ 顧客カルテ概要票 -->
+    <!-- 帳票共通基盤 ＆ 顧客カルテ概要票 ＆ 書類返却通知書 -->
     <script src="reports/report-engine.js"></script>
     <script src="reports/report-utils.js"></script>
     <script src="reports/base-report.js"></script>
     <script src="reports/customer-summary-report.js"></script>
+    <script src="reports/document-return-report.js"></script>
+    <script src="js/document_return_modal.js"></script>
     <script src="unified_datepicker.js"></script>
     <style>
         /* Local overrides for detail form */
@@ -484,6 +486,7 @@
             color: #fff;
             line-height: 1.3;
         }
+        .ov-badge-document { background-color: #1e40af; }
         .ov-badge-phone { background-color: #22c55e; }
         .ov-badge-mail { background-color: #a855f7; }
         .ov-badge-visit { background-color: #f97316; }
@@ -499,6 +502,15 @@
             color: var(--text-main);
             word-break: break-all;
             line-height: 1.4;
+        }
+        .ov-history-content {
+            font-size: 9pt;
+            color: #64748b;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
         }
 
         /* --- 基本情報タブ 高密度グリッド --- */
@@ -1188,6 +1200,7 @@
         }
 
         /* 種別カラー定義 */
+        .type-color-document { background-color: #1e40af; border: 2px solid #1e40af; } /* 濃ネイビーブルー */
         .type-color-phone { background-color: #22c55e; border: 2px solid #22c55e; } /* 緑 */
         .type-color-mail { background-color: #a855f7; border: 2px solid #a855f7; } /* 紫 */
         .type-color-visit { background-color: #f97316; border: 2px solid #f97316; } /* オレンジ */
@@ -1680,7 +1693,7 @@
                                             </div>
                                             <table class="mini-table" id="ov-case-table">
                                                 <thead>
-                                                    <tr><th>案件名</th><th>ステータス</th><th>見積合計</th><th>完了予定日</th></tr>
+                                                    <tr><th>案件名</th><th>ステータス</th><th>見積合計</th><th>完了日</th></tr>
                                                 </thead>
                                                 <tbody id="ov-case-body">
                                                     <tr><td colspan="4" class="no-data-cell">読み込み中...</td></tr>
@@ -1914,7 +1927,13 @@
                                             <span class="section-icon">🏢</span> 拠点一覧
                                             <span class="section-count" id="offices-count"></span>
                                         </h3>
-                                        <button type="button" class="btn-outline-add" id="btn-add-office">＋ 拠点追加</button>
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <label class="filter-checkbox-label">
+                                                <input type="checkbox" id="chk-show-closed-offices">
+                                                閉鎖拠点を含めて表示
+                                            </label>
+                                            <button type="button" class="btn-outline-add" id="btn-add-office">＋ 拠点追加</button>
+                                        </div>
                                     </div>
                                     <div class="table-responsive">
                                         <table class="org-table" id="offices-table">
@@ -1945,6 +1964,10 @@
                                             <span class="section-count" id="contacts-count"></span>
                                         </h3>
                                         <div style="display: flex; align-items: center; gap: 12px;">
+                                            <label class="filter-checkbox-label">
+                                                <input type="checkbox" id="chk-show-retired-contacts">
+                                                退職者を含めて表示
+                                            </label>
                                             <div class="filter-tag-bar" id="contact-filter-bar">
                                                 <!-- フィルタタグがJSで挿入される -->
                                             </div>
@@ -2034,16 +2057,27 @@
                             <!-- Tab Content: Reports -->
                             <div id="tab-reports" class="tab-content">
                                 <h3 class="form-section-title">帳票出力</h3>
-                                <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
-                                    <button type="button" class="btn btn-primary" id="btn-open-tax-cert-modal" style="background:#0284c7; border:none;">
-                                        <i data-lucide="file-text"></i> 東京都納税証明書交付申請書 印刷
-                                    </button>
-                                    <button type="button" class="btn btn-primary" id="btn-open-national-tax-cert-modal" style="background:#16a34a; border:none;">
-                                        <i data-lucide="file-text"></i> 税務署用（国税）納税証明書交付申請書 印刷
-                                    </button>
-                                    <button type="button" class="btn btn-primary" id="btn-open-address-label-modal" style="background:#4f46e5; border:none;">
-                                        <i data-lucide="file-text"></i> 宛名ラベル出力
-                                    </button>
+                                <div class="report-category" style="margin-bottom: 24px;">
+                                    <h4 style="font-size: 11pt; color: var(--text-muted); margin-bottom: 12px; font-weight: 600; border-left: 3px solid var(--border-color); padding-left: 8px;">■ 発送関連</h4>
+                                    <div style="display: flex; flex-direction: column; gap: 12px; align-items: flex-start;">
+                                        <button type="button" class="btn btn-primary" id="btn-document-return" style="background:#1e40af; border:none;">
+                                            <i data-lucide="file-text"></i> 書類返却通知書
+                                        </button>
+                                        <button type="button" class="btn btn-primary" id="btn-open-address-label-modal" style="background:#4f46e5; border:none;">
+                                            <i data-lucide="file-text"></i> 宛名ラベル出力
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="report-category" style="margin-bottom: 24px;">
+                                    <h4 style="font-size: 11pt; color: var(--text-muted); margin-bottom: 12px; font-weight: 600; border-left: 3px solid var(--border-color); padding-left: 8px;">■ 証明書関連</h4>
+                                    <div style="display: flex; flex-direction: column; gap: 12px; align-items: flex-start;">
+                                        <button type="button" class="btn btn-primary" id="btn-open-tax-cert-modal" style="background:#0284c7; border:none;">
+                                            <i data-lucide="file-text"></i> 東京都納税証明書交付申請書 印刷
+                                        </button>
+                                        <button type="button" class="btn btn-primary" id="btn-open-national-tax-cert-modal" style="background:#16a34a; border:none;">
+                                            <i data-lucide="file-text"></i> 税務署用（国税）納税証明書交付申請書 印刷
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
