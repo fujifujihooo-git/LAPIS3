@@ -66,6 +66,7 @@
                 // ① 宛先ラベル (122mm × 65mm) - 約2mm下方シフトのため paddingTop を設定
                 recipient: {
                     x: 25, y: 14, width: 122, height: 65, padX: 6, padY: 6, paddingTop: 8,
+                    nameOffsetY: 2, // 部署名と氏名行の間隔を約2mm確保し、PDFおよび実機印刷での詰まり感や窮屈見えを根本から解消
                     fonts: {
                         postal: { size: 14, stepY: 7 },
                         address: { size: 15, stepY: 6.5 },
@@ -92,6 +93,7 @@
                 // ③ 品名ラベル (153mm × 24mm) -> レターパック下部横長エリア（約2mm下方シフト）
                 package: {
                     x: 20, y: 143, width: 153, height: 24, padX: 5, padY: 4, paddingTop: 6,
+                    titleOffsetY: -5, // 「品名」見出しのみを約5mm上方へ引き上げ、下段の大文字「書類」(26pt) との間にしっかりとした空白余白を作る。枠上辺3mm未満時は自動補正
                     rules: { maxLines: 3, fontSizes: [14, 13, 12, 11, 10], allowSummary: true },
                     fonts: {
                         topCustomer: { size: 12, offsetY: 6 },
@@ -105,6 +107,7 @@
                 // ④ 返信用 差出人ラベル（お客様情報 122mm × 48mm、約2mm下方シフト）
                 returnSender: {
                     x: 25, y: 175, width: 122, height: 48, padX: 6, padY: 5, paddingTop: 7,
+                    nameOffsetY: 2, // 部署名と氏名の行間を約2mm確保
                     fonts: {
                         postal: { size: 13, stepY: 5.5 },
                         address: { size: 13.5, stepY: 5 },
@@ -316,8 +319,9 @@
                     currY += cfg.fonts.dept.stepY;
                 }
 
+                const personY = currY + (cfg.nameOffsetY || 0);
                 doc.setFontSize(cfg.fonts.person.size);
-                drawTextBold(doc, `${contactName} 様`, leftX, currY, 0.35);
+                drawTextBold(doc, `${contactName} 様`, leftX, personY, 0.35);
             }
 
             // 4. 電話番号（下部に固定配置）
@@ -477,8 +481,14 @@
             doc.text(topText, Math.max(cfg.x + 35, centerX), cfg.y + cfg.fonts.topCustomer.offsetY);
 
             // 2. 左側固定 「品名」 (8pt) と 「書類」 (大きめBold)
+            // 「品名」見出しのみを titleOffsetY により上方補正（上枠からの余白最小3mmを保証）し、
+            // その下段に配される大きなボールド文字「書類」(26pt) との間に開放的な空白（約5mm余白）を確実に入れる設計
+            const titleOffsetY = cfg.titleOffsetY || 0;
+            const minAllowedY = cfg.y + 3;
+            const itemTitleY = Math.max(minAllowedY, cfg.y + cfg.fonts.itemTitle.offsetY + titleOffsetY);
+
             doc.setFontSize(cfg.fonts.itemTitle.size);
-            doc.text('品名', cfg.x + cfg.fonts.itemTitle.offsetX, cfg.y + cfg.fonts.itemTitle.offsetY);
+            doc.text('品名', cfg.x + cfg.fonts.itemTitle.offsetX, itemTitleY);
 
             doc.setFontSize(cfg.fonts.docHeader.size);
             drawTextBold(doc, '書類', cfg.x + cfg.fonts.docHeader.offsetX, cfg.y + cfg.fonts.docHeader.offsetY, 0.4);

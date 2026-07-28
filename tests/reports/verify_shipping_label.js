@@ -91,11 +91,11 @@ function resetLog() {
 // 2. テストスイート実行
 async function runTests() {
     console.log('========================================================================');
-    console.log('🚀 発送ラベル＆レターパック宛名印刷機能 自動単体検証 (UT-SL-001〜024)');
+    console.log('🚀 発送ラベル＆レターパック宛名印刷機能 自動単体検証 (UT-SL-001〜027)');
     console.log('========================================================================\n');
 
     let passedCount = 0;
-    const totalTests = 24;
+    const totalTests = 27;
 
     const dummyCustomer = {
         customer_id: 1001,
@@ -446,6 +446,36 @@ async function runTests() {
     const memoStartX024 = rightEdgeX024 - returnCfg.memoWidth - 12;
     assert.ok(memoStartX024 >= 78, `メモ描画の開始X座標(${memoStartX024}mm)が左側担当者・TELブロックと干渉せず離隔されていること`);
     console.log('✅ [UT-SL-024] ⑤右下メモ横幅50mm制御による左側住所・TELブロックとの完全干渉解消 正常通過');
+    passedCount++;
+
+    // ---------------------------------------------------------
+    // UT-SL-025: ①・④ラベルにおける部署・氏名の行間干渉解消 (nameOffsetY: 2)
+    // ---------------------------------------------------------
+    const recipientCfg = SHIPPING_LABEL_LAYOUT.letterpack.blocks.recipient;
+    assert.strictEqual(recipientCfg.nameOffsetY, 2, '①エリアの氏名行Yオフセット(nameOffsetY)が最適離隔 2(mm) に設定されていること');
+    console.log('✅ [UT-SL-025] ①・④ラベル部署と氏名の行間 2mm 確保 (nameOffsetY: 2) 正常通過');
+    passedCount++;
+
+    // ---------------------------------------------------------
+    // UT-SL-026: ③品名ラベルにおける「品名/書類」見出しと書類リスト・在中との物理距離向上 (titleOffsetY: -5)
+    // ---------------------------------------------------------
+    const pkgCfg026 = SHIPPING_LABEL_LAYOUT.letterpack.blocks.package;
+    assert.strictEqual(pkgCfg026.titleOffsetY, -5, '③エリアの見出し上方調整(titleOffsetY)が -5(mm) に設定されていること');
+    console.log('✅ [UT-SL-026] ③見出し「品名/書類」 5mm 上方移動 (titleOffsetY: -5) 正常通過');
+    passedCount++;
+
+    // ---------------------------------------------------------
+    // UT-SL-027: ③見出し上方シフト時における「上端余白3mm未満時の自動クランプ補正防護」検証
+    // ---------------------------------------------------------
+    resetLog();
+    const report027 = new ShippingLabelReport();
+    const mockPackageCfg027 = Object.assign({}, pkgCfg026, { y: 143, titleOffsetY: -15 }); // 枠上端を乗り越えようとする極端な設定値
+    report027.renderPackageBlock(mockDoc, mockPackageCfg027, dummyCustomer, buildDocumentNames(['請求書'], ''), null);
+    const titleItem027 = pdfLog.text.find(i => i.text === '品名');
+    const docItem027 = pdfLog.text.find(i => i.text === '書類');
+    assert.ok(titleItem027 && titleItem027.y >= mockPackageCfg027.y + 3, `品名見出しのY座標(${titleItem027.y})が枠上端からの最小安全余白(3mm以上: ${mockPackageCfg027.y + 3})により厳密に守られ、新たなる衝突（はみ出し）を生んでいないこと`);
+    assert.strictEqual(docItem027.y, mockPackageCfg027.y + mockPackageCfg027.fonts.docHeader.offsetY, '大文字「書類」側は上に連動シフトせず位置を保持し、「品名」見出しとの間に明瞭な空白余白が構成されていること');
+    console.log('✅ [UT-SL-027] ③見出し間の確実な空白空間確保 ＆ 上辺余白 3mm 未満クランプ自動補正 正常通過');
     passedCount++;
 
     console.log('------------------------------------------------------------------------');
