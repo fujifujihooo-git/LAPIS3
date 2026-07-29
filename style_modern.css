@@ -881,6 +881,23 @@ body {
     border-radius: 4px;
 }
 
+/* --- License Row Highlights (許認可タブ: 状態別行ハイライト) ---
+ * 色は license_detail.html の action-danger / action-caution と同一体系。
+ * #licenses-table でスコープ限定し、他テーブルへの波及を防止。
+ */
+#licenses-table tr.license-row-expired, #ov-license-table tr.license-row-expired {
+    background: #fff0f0 !important;
+}
+#licenses-table tr.license-row-expired:hover, #ov-license-table tr.license-row-expired:hover {
+    background: #fee2e2 !important;
+}
+#licenses-table tr.license-row-notice, #ov-license-table tr.license-row-notice {
+    background: #fff9db !important;
+}
+#licenses-table tr.license-row-notice:hover, #ov-license-table tr.license-row-notice:hover {
+    background: #fef3c7 !important;
+}
+
 /* --- Mobile / Responsive --- */
 @media (max-width: 991.98px) {
     #sidebar {
@@ -1588,4 +1605,30 @@ textarea.invalid {
 .refresh-icon-wrapper i {
     width: 14px;
     height: 14px;
+}
+
+/* --- Filter Checkbox Label --- */
+.filter-checkbox-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+}
+
+.filter-checkbox-label input[type="checkbox"] {
+    cursor: pointer;
+}.ov-case-office {
+    display: inline-block;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8rem;
+    font-weight: normal;
+    color: var(--text-muted);
+    margin-left: 4px;
+    vertical-align: bottom;
 }

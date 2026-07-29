@@ -161,12 +161,51 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 
+        // 書類返却通知書モーダル起動ボタンのイベントリスナー
+        const btnDocReturn = document.getElementById('btn-document-return');
+        if (btnDocReturn) {
+            btnDocReturn.addEventListener('click', () => {
+                if (!currentCustomer) {
+                    alert('顧客情報を読み込んでから実行してください。');
+                    return;
+                }
+                const docModal = new window.DocumentReturnModal();
+                docModal.open(currentCustomer, contacts || [], async (record) => {
+                    console.log('書類返却完了レコード:', record);
+                    if (currentCustomer && (currentCustomer.customer_id || currentCustomer.id)) {
+                        const cId = currentCustomer.customer_id || currentCustomer.id;
+                        await loadCustomerHistories(cId);
+                    }
+                });
+            });
+        }
+
+        // レターパック宛名印刷モーダル起動ボタンのイベントリスナー
+        const btnShipLabel = document.getElementById('btn-open-shipping-label-modal');
+        if (btnShipLabel) {
+            btnShipLabel.addEventListener('click', () => {
+                if (!currentCustomer) {
+                    alert('顧客情報を読み込んでから実行してください。');
+                    return;
+                }
+                const shipModal = new window.ShippingLabelModal();
+                shipModal.open(currentCustomer, contacts || [], typeof staffMembers !== 'undefined' ? (staffMembers || []) : [], async (record) => {
+                    console.log('レターパック発送履歴レコード:', record);
+                    if (currentCustomer && (currentCustomer.customer_id || currentCustomer.id)) {
+                        const cId = currentCustomer.customer_id || currentCustomer.id;
+                        await loadCustomerHistories(cId);
+                    }
+                }, offices || []);
+            });
+        }
+
         // 2. Asynchronous Data Fetching Phase
         if (customerIdParam !== 'new') {
             updateScreenMode('existing');
             const cId = !isNaN(customerIdParam) ? Number(customerIdParam) : customerIdParam;
             // Fetch everything, wait for completion to avoid race conditions
             await refreshCustomerUI(cId);
+            await loadCustomerHistories(cId);
         }
         
         // Setup Sort Headers for cases (Sorting logic works on currently loaded cases array)
@@ -337,16 +376,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     /**
-     * サマリー情報描画
-     * TODO: 将来的にカード描画を伴わないため、renderCustomerSummary または updateCustomerSummary への改名を検討
+     * 顧客アラート情報の更新・表示
      */
-    function renderSummaryCards(cId) {
-        // 許認可サマリー
+    function updateCustomerAlerts(cId) {
+        const alertsContainer = document.getElementById('customer-alerts-container');
+        if (!alertsContainer) return;
+        
+        alertsContainer.innerHTML = '';
+        
+        // 許認可アラート（期限切れ、90日以内）
         const custLicenses = licenses.filter(l => l.customer_id === cId);
-        const activeLics = custLicenses.filter(l => l.status === '有効');
+        const activeLics = custLicenses.filter(l => l.status === '有効' || l.status === '期限切れ');
         const now = new Date();
         const warn90 = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
         let warnCount = 0, expiredCount = 0;
+        
         activeLics.forEach(l => {
             if (l.expiry_date) {
                 const exp = l.expiry_date.toDate ? l.expiry_date.toDate() : new Date(l.expiry_date);
@@ -354,20 +398,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                 else if (exp < warn90) warnCount++;
             }
         });
-        const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
-        el('header-lic-count', custLicenses.length);
 
-        // 案件サマリー
-        const custCases = cases.filter(c => c.customer_id === cId);
-        const activeCases = custCases.filter(c => c.status && c.status !== '完了' && c.status !== '取下げ');
-        el('header-case-count', activeCases.length);
+        // 優先度順にアラートHTMLを生成 (1.期限切れ, 2.更新期限接近)
+        if (expiredCount > 0) {
+            const badge = document.createElement('span');
+            badge.className = 'customer-alert-badge customer-alert-danger';
+            badge.textContent = `🔴 期限切れ ${expiredCount}件`;
+            alertsContainer.appendChild(badge);
+        }
+        
+        if (warnCount > 0) {
+            const badge = document.createElement('span');
+            badge.className = 'customer-alert-badge customer-alert-warning';
+            badge.textContent = `🟡 更新期限90日以内 ${warnCount}件`;
+            alertsContainer.appendChild(badge);
+        }
 
-        // 未請求サマリー（プレースホルダー：既存の '-' からチケット仕様に合わせ '0' に設定）
-        el('header-inv-count', '0');
-
-        // 要対応アラート
-        const alertCount = warnCount + expiredCount + activeCases.filter(c => c.status === '受任' || c.status === '申請中').length;
-        el('header-alert-count', alertCount);
+        if (expiredCount === 0 && warnCount === 0) {
+            alertsContainer.style.display = 'none';
+        } else {
+            alertsContainer.style.display = 'flex';
+        }
     }
 
     /** 概要タブ 許認可・案件ミニテーブル描画 */
@@ -386,6 +437,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const db2 = b.expiry_date ? (b.expiry_date.toDate ? b.expiry_date.toDate() : new Date(b.expiry_date)) : MAX_DATE;
                     return da - db2;
                 });
+                // 状態判定用の今日の日付
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
                 licBody.innerHTML = sortedLics.slice(0, 5).map(l => {
                     const type = licenseTypes.find(lt => lt.license_type_id === l.license_type_id);
                     const expDate = l.expiry_date ? (l.expiry_date.toDate ? l.expiry_date.toDate() : new Date(l.expiry_date)) : null;
@@ -393,7 +448,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const statusClass = l.status === '有効' ? 'badge-success-sm' : (l.status === '期限切れ' ? 'badge-danger-sm' : 'badge-warning-sm');
                     const licenseNum = typeof formatLicenseNumber === 'function' ? formatLicenseNumber(l) : (l.license_number || '―');
                     const officeName = typeof getGovernmentOfficeName === 'function' ? getGovernmentOfficeName(l) || '―' : '―';
-                    return `<tr>
+                    
+                    // --- 状態別行ハイライト ---
+                    let rowClass = '';
+                    const notDate = l.notice_date ? (l.notice_date.toDate ? l.notice_date.toDate() : new Date(l.notice_date)) : null;
+                    
+                    if (expDate && expDate < today) {
+                        rowClass = 'license-row-expired';
+                    } else if (notDate && notDate <= today) {
+                        rowClass = 'license-row-notice';
+                    }
+
+                    return `<tr class="${rowClass}">
                         <td>${type ? type.license_type_name : '―'}</td>
                         <td>
                             <div class="overview-primary-text">${licenseNum}</div>
@@ -453,9 +519,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const statusKey = statusKeyMap[c.status] || 'sodan';
                     const statusBadgeHtml = `<span class="badge status-${statusKey}">${c.status || '―'}</span>`;
 
+                    const officeName = getGovernmentOfficeName(c);
+                    const officeHtml = officeName ? `<span class="ov-case-office" title="${escapeHtml(officeName)}">(${escapeHtml(officeName)})</span>` : '';
+
                     return `<tr>
                         <td>
-                            <div style="font-weight: 600;">${c.license_type || '―'}</div>
+                            <div style="font-weight: 600;">${c.license_type || '―'}${officeHtml}</div>
                             <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">${contStr === '―' ? '―' : contStr + ' 受任'}</div>
                         </td>
                         <td>${statusBadgeHtml}</td>
@@ -483,7 +552,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         container.innerHTML = recentHistories.map(h => {
             let badgeClass = 'ov-badge-other';
-            if (h.history_type === '電話') {
+            if (h.history_category === 'document_return' || h.history_type === '書類返却') {
+                badgeClass = 'ov-badge-document';
+            } else if (h.history_type === '電話') {
                 badgeClass = 'ov-badge-phone';
             } else if (h.history_type === 'メール') {
                 badgeClass = 'ov-badge-mail';
@@ -503,6 +574,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dateStr = `${year}/${month}/${day} ${hour}:${minute}`;
             }
 
+            // 概要タブはダッシュボード。50文字で打ち切り。
+            const truncatedContent = truncateText(h.content, 50);
+            const contentHtml = truncatedContent
+                ? `<div class="ov-history-content">${escapeHtml(truncatedContent)}</div>`
+                : '';
+
             return `
                 <div class="ov-history-item" data-id="${h.id}">
                     <div class="ov-history-meta">
@@ -513,6 +590,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="ov-history-author">担当：${escapeHtml(h.created_by_name || '―')}</span>
                     </div>
                     <div class="ov-history-subject">${escapeHtml(h.subject || '')}</div>
+                    ${contentHtml}
                 </div>
             `;
         }).join('');
@@ -633,7 +711,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        renderSummaryCards(cId);
+        updateCustomerAlerts(cId);
         renderOverviewLists(cId);
         renderOverviewHistories(cId);
 
@@ -843,7 +921,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(btn) { btn.innerHTML = '読み込み中...'; btn.disabled = true; }
         try {
             const snap = await db.collection('customer_licenses').where('customer_id', '==', cId)
-                .orderBy('updated_at', 'desc').startAfter(lastVisibleDoc.licenses).limit(20).get();
+                .orderBy('last_updated', 'desc').startAfter(lastVisibleDoc.licenses).limit(20).get();
             if(snap.docs.length > 0) {
                 const newDocs = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), _docId: d.id }));
                 licenses.push(...newDocs);
@@ -984,10 +1062,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const daysClass = getRemainingDaysClass(days, c?.status);
                 const fieldStaff = staffMembers.find(s => s.staff_id === Number(c?.field_staff_id))?.staff_name || '-';
                 const docStaff = staffMembers.find(s => s.staff_id === Number(c?.document_staff_id))?.staff_name || '-';
+                const officeName = getGovernmentOfficeName(c) || '-';
 
                 tr.innerHTML = `
                     <td><span class="badge status-${getStatusKey(c?.status)}">${c?.status || '-'}</span></td>
                     <td>${formatDate(c?.contract_date)}</td>
+                    <td>${officeName}</td>
                     <td>
                         <div style="font-weight: 600;">${c?.license_type || '-'}</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted);">${c?.procedure_name || '-'}</div>
@@ -1024,6 +1104,59 @@ document.addEventListener('DOMContentLoaded', async () => {
        組織・連絡タブ — フィルタ状態
     =============================== */
     let contactFilterOfficeId = null; // 拠点フィルタ用
+
+    // ステータス判定用定数とヘルパー関数
+    const CLOSED_OFFICE_STATUSES = ['閉鎖', 'inactive', '無効'];
+    const RETIRED_CONTACT_STATUSES = ['退職', 'inactive', '無効'];
+
+    function isOfficeClosed(office) {
+        if (!office || !office.status) return false;
+        return CLOSED_OFFICE_STATUSES.includes(office.status);
+    }
+
+    function isContactRetired(contact) {
+        if (!contact || !contact.status) return false;
+        return RETIRED_CONTACT_STATUSES.includes(contact.status);
+    }
+
+    // フィルタチェックボックスの初期化・イベントリスナー登録
+    function initOrgFilterEvents(customerId) {
+        const chkOffice = document.getElementById('chk-show-closed-offices');
+        if (chkOffice) {
+            if (!chkOffice.dataset.initialized) {
+                const savedOfficeState = sessionStorage.getItem('lapis_show_closed_offices');
+                if (savedOfficeState !== null) {
+                    chkOffice.checked = (savedOfficeState === 'true');
+                }
+                chkOffice.dataset.initialized = 'true';
+            }
+            if (!chkOffice.dataset.bound) {
+                chkOffice.dataset.bound = 'true';
+                chkOffice.addEventListener('change', () => {
+                    sessionStorage.setItem('lapis_show_closed_offices', chkOffice.checked ? 'true' : 'false');
+                    renderOffices(customerId);
+                });
+            }
+        }
+
+        const chkContact = document.getElementById('chk-show-retired-contacts');
+        if (chkContact) {
+            if (!chkContact.dataset.initialized) {
+                const savedContactState = sessionStorage.getItem('lapis_show_retired_contacts');
+                if (savedContactState !== null) {
+                    chkContact.checked = (savedContactState === 'true');
+                }
+                chkContact.dataset.initialized = 'true';
+            }
+            if (!chkContact.dataset.bound) {
+                chkContact.dataset.bound = 'true';
+                chkContact.addEventListener('change', () => {
+                    sessionStorage.setItem('lapis_show_retired_contacts', chkContact.checked ? 'true' : 'false');
+                    renderContacts(customerId);
+                });
+            }
+        }
+    }
 
     /* --- 拠点状態Badge ヘルパー --- */
     function getOfficeStatusBadge(status) {
@@ -1205,22 +1338,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     =============================== */
     function renderOffices(customerId) {
         if (!officesListBody) return;
-        const related = offices.filter(o => Number(o.customer_id) === customerId);
+        initOrgFilterEvents(customerId);
+
+        const allRelated = offices.filter(o => Number(o.customer_id) === customerId);
         officesListBody.innerHTML = '';
 
-        // 件数表示
-        const countEl = document.getElementById('offices-count');
-        if (countEl) countEl.textContent = `（${related.length}件）`;
+        const chkOffice = document.getElementById('chk-show-closed-offices');
+        const showClosed = chkOffice ? chkOffice.checked : false;
+        const displayList = showClosed ? allRelated : allRelated.filter(o => !isOfficeClosed(o));
 
-        if (related.length === 0) {
+        // 件数表示（表示数/全拠点数件）
+        const countEl = document.getElementById('offices-count');
+        if (countEl) countEl.textContent = `（${displayList.length}/${allRelated.length}件）`;
+
+        if (allRelated.length === 0) {
             officesListBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; font-style:italic; padding:20px;">拠点データがありません</td></tr>';
+            return;
+        }
+
+        if (displayList.length === 0) {
+            officesListBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; font-style:italic; padding:20px;">稼働中の拠点データがありません（『閉鎖拠点を含めて表示』をチェックすると表示されます）</td></tr>';
             return;
         }
 
         // 登記上所在地の office_id を取得
         const registeredOfficeId = currentCustomer ? currentCustomer.registered_office_id : null;
 
-        related.forEach(o => {
+        // 規定表示順の自動ソート (1. 登記上所在地 -> 2. 稼働状態 -> 3. 拠点名昇順)
+        displayList.sort((a, b) => {
+            const regA = (registeredOfficeId && registeredOfficeId === a.office_id) ? 1 : 0;
+            const regB = (registeredOfficeId && registeredOfficeId === b.office_id) ? 1 : 0;
+            if (regA !== regB) return regB - regA;
+
+            const closedA = isOfficeClosed(a) ? 1 : 0;
+            const closedB = isOfficeClosed(b) ? 1 : 0;
+            if (closedA !== closedB) return closedA - closedB;
+
+            const nameA = a.office_name ?? '';
+            const nameB = b.office_name ?? '';
+            return nameA.localeCompare(nameB, 'ja');
+        });
+
+        displayList.forEach(o => {
             const tr = document.createElement('tr');
             const primaryContact = contacts.find(c => c.office_id === o.office_id && Number(c.customer_id) === customerId && c.is_primary);
             const primaryName = primaryContact ? (primaryContact.contact_name || '名称未設定') : '<span style="color:#aaa;">-</span>';
@@ -1283,7 +1442,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
-        if (lastVisibleDoc.offices && related.length >= 20) {
+        if (lastVisibleDoc.offices && displayList.length >= 20) {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td colspan="6" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreOffices(${customerId})">もっと見る</button></td>`;
             officesListBody.appendChild(tr);
@@ -1295,9 +1454,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     =============================== */
     function renderContacts(customerId) {
         if (!contactsListBody) return;
-        let related = contacts.filter(c => Number(c.customer_id) === customerId);
+        initOrgFilterEvents(customerId);
 
-        // フィルタタグ描画
+        const allCustomerContacts = contacts.filter(c => Number(c.customer_id) === customerId);
+
+        // 拠点絞り込みの判定
+        let scopeContacts = allCustomerContacts;
         const filterBar = document.getElementById('contact-filter-bar');
         if (filterBar) {
             if (contactFilterOfficeId !== null) {
@@ -1313,33 +1475,57 @@ document.addEventListener('DOMContentLoaded', async () => {
                         renderContacts(customerId);
                     });
                 }
-                // フィルタ適用
-                related = related.filter(c => c.office_id === contactFilterOfficeId);
+                // 拠点フィルタ適用
+                scopeContacts = allCustomerContacts.filter(c => c.office_id === contactFilterOfficeId);
             } else {
                 filterBar.innerHTML = '';
             }
         }
 
-        // 件数表示
+        // 退職者表示チェックボックスの判定
+        const chkContact = document.getElementById('chk-show-retired-contacts');
+        const showRetired = chkContact ? chkContact.checked : false;
+        const displayList = showRetired ? scopeContacts : scopeContacts.filter(c => !isContactRetired(c));
+
+        // 規定表示順の自動ソート (1. 主担当者 -> 2. 在籍状態 -> 3. 氏名昇順)
+        displayList.sort((a, b) => {
+            const primA = a.is_primary ? 1 : 0;
+            const primB = b.is_primary ? 1 : 0;
+            if (primA !== primB) return primB - primA;
+
+            const retA = isContactRetired(a) ? 1 : 0;
+            const retB = isContactRetired(b) ? 1 : 0;
+            if (retA !== retB) return retA - retB;
+
+            const nameA = a.contact_name ?? '';
+            const nameB = b.contact_name ?? '';
+            return nameA.localeCompare(nameB, 'ja');
+        });
+
+        // 件数表示（拠点選択中なら「表示数/選択拠点内全件数」、未選択なら「表示数/顧客内全件数」）
         const countEl = document.getElementById('contacts-count');
-        const totalCount = contacts.filter(c => Number(c.customer_id) === customerId).length;
         if (countEl) {
-            if (contactFilterOfficeId !== null) {
-                countEl.textContent = `（${related.length}/${totalCount}件）`;
-            } else {
-                countEl.textContent = `（${totalCount}件）`;
-            }
+            countEl.textContent = `（${displayList.length}/${scopeContacts.length}件）`;
         }
 
         contactsListBody.innerHTML = '';
 
-        if (related.length === 0) {
-            const msg = contactFilterOfficeId !== null ? 'この拠点に所属する担当者はいません' : '担当者データがありません';
-            contactsListBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#999; font-style:italic; padding:20px;">${msg}</td></tr>`;
+        if (allCustomerContacts.length === 0) {
+            contactsListBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; font-style:italic; padding:20px;">担当者データがありません</td></tr>';
             return;
         }
 
-        related.forEach(c => {
+        if (contactFilterOfficeId !== null && scopeContacts.length === 0) {
+            contactsListBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; font-style:italic; padding:20px;">この拠点に所属する担当者はいません</td></tr>';
+            return;
+        }
+
+        if (displayList.length === 0) {
+            contactsListBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; font-style:italic; padding:20px;">在職中の担当者データがありません（『退職者を含めて表示』をチェックすると表示されます）</td></tr>';
+            return;
+        }
+
+        displayList.forEach(c => {
             const officeName = offices.find(o => o.office_id === c.office_id && Number(o.customer_id) === customerId)?.office_name || '-';
             const tr = document.createElement('tr');
 
@@ -1394,7 +1580,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
-        if (lastVisibleDoc.contacts && related.length >= 20) {
+        if (lastVisibleDoc.contacts && displayList.length >= 20) {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td colspan="6" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreContacts(${customerId})">もっと見る</button></td>`;
             contactsListBody.appendChild(tr);
@@ -1402,17 +1588,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function getGovernmentOfficeName(license) {
-        if (!license) return '';
-        if (license.government_office_id) {
+    function getGovernmentOfficeName(entity) {
+        if (!entity) return '';
+        if (entity.government_office_id) {
             const office = governmentOffices.find(
-                o => Number(o.office_id) === Number(license.government_office_id)
+                o => Number(o.office_id) === Number(entity.government_office_id)
             );
             if (office) {
                 return office.office_name;
             }
         }
-        return license.government_office || '';
+        return entity.government_office || '';
     }
 
     function renderLicenses(customerId) {
@@ -1425,7 +1611,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        related.forEach(l => {
+        // --- ソート: 概要タブと統一（expiry_date ASC, 期限なし最後尾） ---
+        // NOTE: 現在はクライアントサイドソート。全件取得後に並べ替えるため、
+        // 「もっと見る」ページング（20件単位）で追加取得した場合も全体をソートする。
+        // 将来的に1顧客あたりの許認可件数が大幅に増加した場合は、
+        // Firestore側の orderBy('expiry_date', 'asc') + 複合インデックスへの移行を検討すること。
+        const MAX_DATE = new Date('9999-12-31');
+        const sorted = [...related].sort((a, b) => {
+            const da = a.expiry_date ? (a.expiry_date.toDate ? a.expiry_date.toDate() : new Date(a.expiry_date)) : MAX_DATE;
+            const db2 = b.expiry_date ? (b.expiry_date.toDate ? b.expiry_date.toDate() : new Date(b.expiry_date)) : MAX_DATE;
+            return da - db2;
+        });
+
+        // --- 状態判定用の今日の日付 ---
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        sorted.forEach(l => {
             const type = licenseTypes.find(lt => lt.license_type_id === l.license_type_id);
             const typeName = type ? type.license_type_name : (l.license_type || '-');
             const licenseNum = typeof formatLicenseNumber === 'function' ? formatLicenseNumber(l) : (l.license_number || '-');
@@ -1444,6 +1646,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td><span class="days-badge ${daysClass}">${formatRemainingDays(days)}</span></td>
                 <td><span class="badge ${l.status === '有効' ? 'status-junin' : 'status-torisage'}">${l.status || '-'}</span></td>
             `;
+
+            // --- 状態別行ハイライト ---
+            // 優先順位: 期限切れ(赤) > 案内日到来(黄) > 通常(白)
+            // 色は license_detail.html の action-danger / action-caution と同一体系
+            const expDate = l.expiry_date ? (l.expiry_date.toDate ? l.expiry_date.toDate() : new Date(l.expiry_date)) : null;
+            const notDate = l.notice_date ? (l.notice_date.toDate ? l.notice_date.toDate() : new Date(l.notice_date)) : null;
+
+            if (expDate && expDate < today) {
+                tr.classList.add('license-row-expired');
+            } else if (notDate && notDate <= today) {
+                tr.classList.add('license-row-notice');
+            }
+
             tr.style.cursor = 'pointer';
             tr.addEventListener('click', () => {
                 window.location.href = `license_detail.html?docId=${l._docId}&customer_id=${customerId}&id=${l.license_id}`;
@@ -3009,6 +3224,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             
             applyHistoryFilters();
+            renderOverviewHistories(customerId);
         } catch (err) {
             console.error('Failed to load customer histories:', err);
         }
@@ -3022,9 +3238,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dateEndVal = document.getElementById('history-search-end')?.value;
 
         filteredHistories = histories.filter(h => {
-            // 1. 種別フィルタ
+            // 1. 種別フィルタ (history_type 判定に加え history_category === 'document_return' も判定)
             if (!filterTypeAll && checkedTypes.length > 0) {
-                if (!checkedTypes.includes(h.history_type)) return false;
+                const isDocReturnChecked = checkedTypes.includes('書類返却');
+                const matchesType = checkedTypes.includes(h.history_type);
+                const matchesCategory = isDocReturnChecked && (h.history_category === 'document_return' || h.history_type === '書類返却');
+                if (!matchesType && !matchesCategory) return false;
             }
             
             // 2. キーワード検索（件名、内容。部分一致）
@@ -3083,7 +3302,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             let typeClass = 'type-color-other';
             let iconName = 'file-text';
             
-            if (h.history_type === '電話') {
+            if (h.history_category === 'document_return' || h.history_type === '書類返却') {
+                typeClass = 'type-color-document';
+                iconName = 'package';
+            } else if (h.history_type === '電話') {
                 typeClass = 'type-color-phone';
                 iconName = 'phone';
             } else if (h.history_type === 'メール') {
@@ -3098,7 +3320,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const dateStr = rDate ? formatHistoryDateTime(rDate) : '―';
             
             const activeClass = selectedHistory && selectedHistory.id === h.id ? 'active' : '';
-            const excerpt = h.content && h.content.length > 60 ? h.content.substring(0, 60) + '...' : (h.content || '');
+            const excerpt = truncateText(h.content, 60);
             
             return `
                 <div class="history-item ${activeClass}" data-id="${h.id}">
@@ -3216,6 +3438,10 @@ document.addEventListener('DOMContentLoaded', async () => {
            <div class="detail-row" style="flex-direction: column; gap: 8px;">
                <div class="detail-label">内容</div>
                <div class="detail-value-content">${escapeHtml(h.content || '')}</div>
+           </div>
+           <div class="detail-row" style="flex-direction: column; gap: 8px;">
+               <div class="detail-label">備考</div>
+               <div class="detail-value-content">${h.remarks ? escapeHtml(h.remarks).replace(/\n/g, '<br>') : '―'}</div>
            </div>
            <div class="detail-row">
                <div class="detail-label">次回対応予定日</div>

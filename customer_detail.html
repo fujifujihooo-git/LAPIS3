@@ -30,6 +30,8 @@
     <script src="reports/customer-summary-report.js"></script>
     <script src="reports/document-return-report.js"></script>
     <script src="js/document_return_modal.js"></script>
+    <script src="reports/shipping-label-report.js"></script>
+    <script src="js/modals/shipping_label_modal.js"></script>
     <script src="unified_datepicker.js"></script>
     <style>
         /* Local overrides for detail form */
@@ -168,8 +170,8 @@
         #customer-header-card {
             background: #fff;
             border-radius: 8px;
-            padding: 16px 24px 12px;
-            margin-bottom: 12px;
+            padding: 16px 24px 8px;
+            margin-bottom: 8px;
             border: 1px solid var(--border-color);
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
@@ -1338,31 +1340,26 @@
             margin-top: 2px;
         }
 
-        /* --- 顧客ヘッダー サマリー情報 --- */
-        .header-summary-bar {
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px dashed var(--border-color);
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-        .header-summary-bar .summary-item {
-            font-size: 11pt;
-            color: var(--text-main);
-            font-weight: 500;
+        /* --- 顧客ヘッダー アラート情報 --- */
+        .customer-alert-badge {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 11.5pt;
+            font-weight: 600;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
-        .header-summary-bar .summary-item i {
-            width: 16px;
-            height: 16px;
-            stroke-width: 2px;
+        .customer-alert-danger {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
         }
-        .header-summary-bar .summary-separator {
-            color: var(--text-muted);
+        .customer-alert-warning {
+            background: #fef08a;
+            color: #a16207;
+            border: 1px solid #facc15;
         }
     </style>
 </head>
@@ -1516,15 +1513,8 @@
                         <span class="meta-item">決算期：<strong id="fiscal-display">―</strong></span>
                         <span class="meta-item">法人番号：<strong id="corp-num-display">―</strong></span>
                     </div>
-                    <div id="header-summary-bar" class="header-summary-bar">
-                        <span class="summary-item"><i data-lucide="file-text"></i> 許認可 <strong id="header-lic-count">0</strong>件</span>
-                        <span class="summary-separator">|</span>
-                        <span class="summary-item"><i data-lucide="briefcase"></i> 案件 <strong id="header-case-count">0</strong>件</span>
-                        <span class="summary-separator">|</span>
-                        <span class="summary-item"><i data-lucide="credit-card"></i> 未請求 <strong id="header-inv-count">0</strong>件</span>
-                        <span class="summary-separator">|</span>
-                        <span class="summary-item"><i data-lucide="alert-triangle"></i> アラート <strong id="header-alert-count">0</strong>件</span>
-                    </div>
+                    <div id="customer-alerts-container" style="display:none; margin-top: 12px; gap:8px; align-items: center; flex-wrap: wrap;"></div>
+
                 </div>
 
                 <!-- ページ上部統合警告バナー -->
@@ -2042,6 +2032,7 @@
                                                         class="sort-icon"></span></th>
                                                 <th class="sortable" data-sort="contract_date">受任日 <span
                                                         class="sort-icon"></span></th>
+                                                <th>管轄官公庁</th>
                                                 <th>業務内容</th>
                                                 <th>受付日</th>
                                                 <th class="sortable" data-sort="remaining_days">残り日数 <span
@@ -2065,6 +2056,9 @@
                                         </button>
                                         <button type="button" class="btn btn-primary" id="btn-open-address-label-modal" style="background:#4f46e5; border:none;">
                                             <i data-lucide="file-text"></i> 宛名ラベル出力
+                                        </button>
+                                        <button type="button" class="btn btn-primary" id="btn-open-shipping-label-modal" style="background:#4338ca; border:none;">
+                                            <i data-lucide="mail"></i> レターパック宛名印刷
                                         </button>
                                     </div>
                                 </div>
