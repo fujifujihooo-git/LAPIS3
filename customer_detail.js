@@ -220,6 +220,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 履歴タブ: イベント設定
         initHistoryEvents();
+
+        // 3. 復元処理（activeTabの復元）
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTab = urlParams.get('activeTab');
+        if (activeTab) {
+            switchToTab(activeTab);
+        }
     }
 
     /* ===============================
@@ -2610,6 +2617,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn-goto-licenses')?.addEventListener('click', () => switchToTab('licenses'));
     document.getElementById('btn-goto-cases')?.addEventListener('click', () => switchToTab('projects'));
     document.getElementById('btn-goto-history')?.addEventListener('click', () => switchToTab('history'));
+
+    // --- 請求書作成（顧客カルテから） ---
+    document.getElementById('btn-create-invoice-from-customer')?.addEventListener('click', () => {
+        const customerId = document.getElementById('customer_id')?.value;
+        if (!customerId || customerId === 'new') {
+            alert('顧客情報を保存してから請求書を作成してください。');
+            return;
+        }
+        // Phase 1: URLパラメータによる遷移と復元
+        const url = `invoice_detail.html?id=new&customerId=${customerId}&source=customer&returnCustomerId=${customerId}&returnTab=billing`;
+        window.location.href = url;
+    });
 
 
     // --- Postal code address lookup ---

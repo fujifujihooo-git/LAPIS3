@@ -147,6 +147,31 @@ document.addEventListener('DOMContentLoaded', () => {
         // Setup Autocomplete (Fetch all customers? Or use search?)
         // For scalability, simple search against 'customers' collection.
         setupCustomerAutocomplete();
+
+        // Phase 1: URLパラメータからの顧客自動設定とUIロック
+        const urlParams = new URLSearchParams(window.location.search);
+        const source = urlParams.get('source');
+        const cId = urlParams.get('customerId');
+        if (source === 'customer' && cId) {
+            // Load customer data
+            db.collection('customers').where('customer_id', '==', parseInt(cId)).limit(1).get()
+                .then(custSnap => {
+                    if (!custSnap.empty) {
+                        const data = custSnap.docs[0].data();
+                        currentCustomerSnapshot = data;
+                        customerIdInput.value = data.customer_id;
+                        customerSelectGroup.style.display = 'none';
+                        customerDisplayGroup.style.display = 'block';
+                        renderCustomerPreview(data);
+                        
+                        // 変更ボタンを隠してロック
+                        if (btnChangeCustomer) btnChangeCustomer.style.display = 'none';
+                        pageTitle.textContent = `新規請求作成: ${data.customer_name}`;
+                    }
+                }).catch(err => {
+                    console.error("顧客データの取得に失敗しました:", err);
+                });
+        }
     }
 
     async function loadInvoice(docId) {
@@ -699,7 +724,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const remarksEl = document.getElementById('remarks');
         if (remarksEl) formState.remarks = remarksEl.value;
 
-        const custId = parseInt(customerIdInput.value);
+        let custId = parseInt(customerIdInput.value);
+        // Phase 1: URLパラメータからの強制上書き (バックエンドロック)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('source') === 'customer' && urlParams.get('customerId')) {
+            custId = parseInt(urlParams.get('customerId'));
+            customerIdInput.value = custId; // バリデーション回避用
+        }
+
         if (!customerIdInput.value || isNaN(custId) || custId <= 0) {
             alert('顧客が確定していません。検索候補リストから顧客を選択して確定させてください。');
             if (customerInput) customerInput.focus();
@@ -855,6 +887,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentInvoiceId) {
                 currentInvoiceId = invRef.id;
                 history.replaceState(null, '', `?id=${currentInvoiceId}`);
+            }
+
+            // Phase 1: 保存成功後の自動復帰
+            const returnCustomerId = urlParams.get('returnCustomerId');
+            const returnTab = urlParams.get('returnTab');
+            if (urlParams.get('source') === 'customer' && returnCustomerId && returnTab) {
+                setTimeout(() => {
+                    window.location.href = `customer_detail.html?id=${returnCustomerId}&activeTab=${returnTab}`;
+                }, 1000);
             }
 
             // setTimeout(() => {

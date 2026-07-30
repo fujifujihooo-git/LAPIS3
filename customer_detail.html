@@ -2077,6 +2077,13 @@
 
                             <!-- Tab Content: 請求・売上 -->
                             <div id="tab-billing" class="tab-content">
+                                <div class="billing-action-area" style="margin-bottom: 24px; padding: 16px; background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px;">
+                                    <button type="button" class="btn btn-new" id="btn-create-invoice-from-customer" style="margin-bottom: 8px;">
+                                        <i data-lucide="plus"></i> 請求書作成
+                                    </button>
+                                    <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">この顧客向けの請求書を新規作成します</p>
+                                </div>
+
                                 <div class="billing-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                                     <h3 class="form-section-title" style="margin-bottom: 0;">請求書一覧</h3>
                                     <button type="button" class="btn btn-secondary btn-icon-only" id="btn-refresh-billing" title="最新の情報に更新" style="padding: 6px 10px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; background: #f1f5f9; border: 1px solid #cbd5e1; cursor: pointer; color: #475569;">
