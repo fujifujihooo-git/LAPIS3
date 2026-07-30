@@ -53,3 +53,12 @@
 ## 6. フロントエンド設計規約 (Front-End Design Rules)
 
 - **画面遷移元の明示**: 画面間の遷移（特に再利用される編集画面など）において遷移元を識別する必要がある場合は、必ずURLパラメータ `source` を用いて表現すること（例: `source=customer`, `source=case` 等）。将来的な拡張性・保守性を確保するため、これを標準ルールとする。
+
+## 7. Git�^�p���[�� (Git Branching Rules)
+
+- **main�ւ̒���commit�֎~**
+- **main�ւ̒���push�֎~**
+- **��Ƃ�feature/*�u�����`**
+- **UT�������push**
+- **PR���r���[���main�փ}�[�W**
+

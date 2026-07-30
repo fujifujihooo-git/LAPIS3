@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         const source = urlParams.get('source');
         const cId = urlParams.get('customerId');
-        if (source === 'customer' && cId) {
+        if ((source === 'customer' || source === 'case') && cId) {
             // Load customer data
             db.collection('customers').where('customer_id', '==', parseInt(cId)).limit(1).get()
                 .then(custSnap => {
@@ -167,10 +167,57 @@ document.addEventListener('DOMContentLoaded', () => {
                         // 変更ボタンを隠してロック
                         if (btnChangeCustomer) btnChangeCustomer.style.display = 'none';
                         pageTitle.textContent = `新規請求作成: ${data.customer_name}`;
+
+                        if (source === 'case') {
+                            const caseIdStr = urlParams.get('caseId');
+                            if (caseIdStr) {
+                                loadCaseItemsForNewInvoice(parseInt(caseIdStr));
+                            }
+                        }
                     }
                 }).catch(err => {
                     console.error("顧客データの取得に失敗しました:", err);
                 });
+        }
+    }
+
+    async function loadCaseItemsForNewInvoice(caseIdNum) {
+        try {
+            const caseSnap = await db.collection('cases').where('case_id', '==', caseIdNum).limit(1).get();
+            if (caseSnap.empty) {
+                alert('対象の案件データが見つかりません。');
+                return;
+            }
+            const caseData = caseSnap.docs[0].data();
+            
+            // Record source details
+            formState.source_type = 'case';
+            formState.source_id = caseIdNum;
+            formState.case_id = caseIdNum;
+            formState.case_number = caseData.case_number || '';
+
+            const estItems = caseData.estimateItems || [];
+            if (estItems.length > 0) {
+                currentItems = estItems.map((est, idx) => ({
+                    item_type: est.type || '見積', 
+                    case_id: caseIdNum,
+                    estimate_item_id: null,
+                    description: est.description || '',
+                    unit_price: Number(est.unit_price) || 0,
+                    quantity: Number(est.quantity) || 1,
+                    amount: Number(est.amount) || 0,
+                    is_taxable: !!est.is_taxable,
+                    display_order: idx + 1
+                }));
+                renderItems();
+                calculateTotals();
+                autoUpdateStatus();
+                if (typeof showToast === 'function') {
+                    showToast('案件の見積明細を請求明細にコピーしました', 'info');
+                }
+            }
+        } catch (error) {
+            console.error("案件データの取得・コピーに失敗しました:", error);
         }
     }
 
@@ -808,6 +855,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 last_updated: serverTimestamp
             };
 
+            if (formState.source_type) {
+                invoiceData.source_type = formState.source_type;
+                invoiceData.source_id = formState.source_id;
+                invoiceData.case_id = formState.case_id;
+                invoiceData.case_number = formState.case_number;
+            }
+
             if (!currentInvoiceId) {
                 invoiceData.created_date = serverTimestamp;
             }
@@ -892,9 +946,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Phase 1: 保存成功後の自動復帰
             const returnCustomerId = urlParams.get('returnCustomerId');
             const returnTab = urlParams.get('returnTab');
+            const returnCaseId = urlParams.get('returnCaseId');
             if (urlParams.get('source') === 'customer' && returnCustomerId && returnTab) {
                 setTimeout(() => {
                     window.location.href = `customer_detail.html?id=${returnCustomerId}&activeTab=${returnTab}`;
+                }, 1000);
+            } else if (urlParams.get('source') === 'case' && returnCaseId) {
+                setTimeout(() => {
+                    window.location.href = `detail.html?id=${returnCaseId}`;
                 }, 1000);
             }
 

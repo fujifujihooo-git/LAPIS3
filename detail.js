@@ -326,6 +326,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
+
+    const btnCreateInvoiceFromCase = document.getElementById('btn-create-invoice-from-case');
+    if (btnCreateInvoiceFromCase) {
+        btnCreateInvoiceFromCase.addEventListener('click', () => {
+            if (!estimateItems || estimateItems.length === 0) {
+                alert('見積明細がありません。明細を追加してから請求書を作成してください。');
+                return;
+            }
+            if (!currentCaseId || currentCaseId === 'new') {
+                alert('案件情報が保存されていません。案件を保存してから請求書を作成してください。');
+                return;
+            }
+            // 顧客IDの取得
+            const customerId = document.getElementById('customer_id')?.value;
+            if (!customerId) {
+                alert('顧客情報が設定されていません。');
+                return;
+            }
+            const url = `invoice_detail.html?id=new&source=case&caseId=${currentCaseId}&customerId=${customerId}&returnCaseId=${currentCaseId}`;
+            window.location.href = url;
+        });
+    }
     if (btnCloseHistoryModal) btnCloseHistoryModal.addEventListener('click', closeHistoryModal);
     if (btnCancelHistoryModal) btnCancelHistoryModal.addEventListener('click', closeHistoryModal);
     if (btnSaveHistory) btnSaveHistory.addEventListener('click', saveHistoryChanges);
