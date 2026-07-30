@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Selectors (Estimate Modal) ---
     const estimateItemTableBody = document.getElementById('estimate-item-list-body');
     const btnAddItem = document.getElementById('btn-add-item');
+    const btnExportEstimatePdf = document.getElementById('btn-export-estimate-pdf');
     const itemModal = document.getElementById('estimate-item-modal');
     const btnCloseModal = document.getElementById('btn-close-modal');
     const btnCancelModal = document.getElementById('btn-cancel-modal');
@@ -279,6 +280,52 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnModalSaveItem) btnModalSaveItem.addEventListener('click', saveEstimateItem);
     if (btnModalDeleteItem) btnModalDeleteItem.addEventListener('click', deleteEstimateItemFromModal);
 
+    if (btnExportEstimatePdf) {
+        btnExportEstimatePdf.addEventListener('click', async () => {
+            if (!estimateItems || estimateItems.length === 0) {
+                alert('明細がありません。明細を追加してからPDF出力してください。');
+                return;
+            }
+
+            const customerName = document.getElementById('customer_name')?.value || '';
+            const customerTitle = document.getElementById('customer_title')?.value || '様';
+            const caseNumber = document.getElementById('case_number')?.value || '';
+            
+            let assignees = [];
+            const fieldStaffSelect = document.getElementById('field_staff_id');
+            const documentStaffSelect = document.getElementById('document_staff_id');
+            
+            if (fieldStaffSelect && fieldStaffSelect.selectedIndex > 0) {
+                assignees.push(fieldStaffSelect.options[fieldStaffSelect.selectedIndex].text);
+            }
+            if (documentStaffSelect && documentStaffSelect.selectedIndex > 0 && documentStaffSelect.value !== fieldStaffSelect?.value) {
+                assignees.push(documentStaffSelect.options[documentStaffSelect.selectedIndex].text);
+            }
+            const assigneeText = assignees.length > 0 ? assignees.join(' / ') : '';
+
+            const pdfData = {
+                customerName: customerName,
+                customerTitle: customerTitle,
+                caseNumber: caseNumber,
+                assignee: assigneeText,
+                estimateItems: estimateItems
+            };
+
+            try {
+                if (typeof generateEstimatePdf !== 'function') {
+                    throw new Error('見積書PDF生成モジュールが見つかりません。');
+                }
+                await generateEstimatePdf(pdfData, btnExportEstimatePdf);
+            } catch (err) {
+                console.error('PDF生成エラー:', err);
+                alert('PDFの生成中にエラーが発生しました。\\n' + err.message);
+                if (btnExportEstimatePdf) {
+                    btnExportEstimatePdf.innerHTML = '<i data-lucide="file-text" class="icon-sm"></i> 見積書PDF';
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }
+            }
+        });
+    }
     if (btnCloseHistoryModal) btnCloseHistoryModal.addEventListener('click', closeHistoryModal);
     if (btnCancelHistoryModal) btnCancelHistoryModal.addEventListener('click', closeHistoryModal);
     if (btnSaveHistory) btnSaveHistory.addEventListener('click', saveHistoryChanges);

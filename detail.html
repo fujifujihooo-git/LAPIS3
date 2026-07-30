@@ -300,7 +300,12 @@
                         <div
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                             <h2 style="margin-bottom: 0; border: none;">見積金額</h2>
-                            <button type="button" class="btn btn-sm btn-secondary" id="btn-add-item">+ 明細追加</button>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-primary" id="btn-export-estimate-pdf" style="margin-right: 8px;">
+                                    <i data-lucide="file-text" class="icon-sm"></i> 見積書PDF
+                                </button>
+                                <button type="button" class="btn btn-sm btn-secondary" id="btn-add-item">+ 明細追加</button>
+                            </div>
                         </div>
                         <div class="table-responsive">
                             <table class="table-modern" id="estimate-item-table">
@@ -562,6 +567,8 @@
     <script src="js/billing_summary.js"></script>
     <script src="detail_common.js"></script>
     <script src="search_utils.js"></script>
+    <script src="reports/report-engine.js"></script>
+    <script src="estimate_pdf.js"></script>
     <script src="detail.js?v=8"></script>
 
     <script>
