@@ -62,3 +62,4 @@
 - **UT完了後にpush**
 - **PRレビュー後にmainへマージ**
 
+- **Push螳御ｺ�蝣ｱ蜻頑凾縺ｯ `git status`, `git log -1`, `git rev-parse HEAD` 繧呈署遉ｺ縺吶ｋ縺薙→**

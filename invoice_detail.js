@@ -215,6 +215,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof showToast === 'function') {
                     showToast('案件の見積明細を請求明細にコピーしました', 'info');
                 }
+            } else {
+                alert('対象の案件に見積明細が登録されていません。\n案件画面に戻ります。');
+                const returnCaseId = urlParams.get('returnCaseId');
+                if (returnCaseId) {
+                    window.location.href = `detail.html?id=${returnCaseId}`;
+                }
             }
         } catch (error) {
             console.error("案件データの取得・コピーに失敗しました:", error);

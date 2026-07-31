@@ -329,7 +329,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const btnCreateInvoiceFromCase = document.getElementById('btn-create-invoice-from-case');
     if (btnCreateInvoiceFromCase) {
-        btnCreateInvoiceFromCase.addEventListener('click', () => {
+        btnCreateInvoiceFromCase.addEventListener('click', async () => {
             if (!estimateItems || estimateItems.length === 0) {
                 alert('見積明細がありません。明細を追加してから請求書を作成してください。');
                 return;
@@ -344,8 +344,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert('顧客情報が設定されていません。');
                 return;
             }
-            const url = `invoice_detail.html?id=new&source=case&caseId=${currentCaseId}&customerId=${customerId}&returnCaseId=${currentCaseId}`;
-            window.location.href = url;
+
+            btnCreateInvoiceFromCase.disabled = true;
+            try {
+                // 既存の有効な請求書をチェック
+                const existingInvoices = await db.collection('invoices')
+                    .where('case_id', '==', Number(currentCaseId))
+                    .get();
+                
+                let activeCount = 0;
+                existingInvoices.forEach(doc => {
+                    const status = doc.data().status || '';
+                    if (status !== 'cancelled' && status !== '無効' && status !== '取消') {
+                        activeCount++;
+                    }
+                });
+
+                if (activeCount > 0) {
+                    const proceed = confirm(`この案件には既に請求書が${activeCount}件作成されています。\n\n追加の請求書を作成しますか？`);
+                    if (!proceed) {
+                        btnCreateInvoiceFromCase.disabled = false;
+                        return;
+                    }
+                }
+
+                const url = `invoice_detail.html?id=new&source=case&caseId=${currentCaseId}&customerId=${customerId}&returnCaseId=${currentCaseId}`;
+                window.location.href = url;
+            } catch (err) {
+                console.error("請求書存在チェックエラー:", err);
+                alert('エラーが発生しました。通信状況をご確認ください。');
+                btnCreateInvoiceFromCase.disabled = false;
+            }
         });
     }
     if (btnCloseHistoryModal) btnCloseHistoryModal.addEventListener('click', closeHistoryModal);
