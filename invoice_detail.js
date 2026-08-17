@@ -191,12 +191,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const caseData = caseSnap.docs[0].data();
             
             // Record source details
+            // source_id: 元データとの参照関係
+            // case_id: 業務上の案件識別子
             formState.source_type = 'case';
             formState.source_id = caseIdNum;
             formState.case_id = caseIdNum;
             formState.case_number = caseData.case_number || '';
 
-            const estItems = caseData.estimateItems || [];
+            const estItems = caseData.estimate_items || [];
             if (estItems.length > 0) {
                 currentItems = estItems.map((est, idx) => ({
                     item_type: est.type || '見積', 

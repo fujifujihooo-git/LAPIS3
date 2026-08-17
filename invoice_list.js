@@ -161,8 +161,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 mappedData = mappedData.filter(inv => inv.balance > 0);
             }
 
-            // もしステータス指定がない＆未収のみチェックもない場合、デフォルトで「入金済」を除外するかについて:
-            // 今回の要件で「残高あり・なしで切り替える」となったため、未収チェックが「OFF」の場合は全て表示する仕様に統一。
+            // cancelled filter
+            if (sVal !== 'cancelled') {
+                mappedData = mappedData.filter(inv => inv.status !== 'cancelled');
+            }
 
             fetchedData = mappedData;
 
@@ -210,21 +212,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = `invoice_detail.html?id=${inv.doc_id}`;
             });
 
+            // 「取消」行のグレーアウトクラス適用
+            if (inv.status === 'cancelled') {
+                row.classList.add('billing-row-cancelled');
+            }
+
             const hasBalance = inv.balance > 0;
-            // 未収行のUI強調
-            if (hasBalance) {
+            // 未収行のUI強調 (cancelled の場合は強調しない)
+            if (hasBalance && inv.status !== 'cancelled') {
                 row.style.backgroundColor = 'rgba(239, 68, 68, 0.05)'; // 非常に薄い赤背景 (bg-red-50相当)
             }
 
             const balanceColor = hasBalance ? '#dc2626' : '#64748b';
             const balanceWeight = hasBalance ? 'bold' : 'normal';
 
+            const displayStatus = inv.status === 'cancelled' ? '取消' : (inv.status || '-');
+
             row.innerHTML = `
                 <td><strong>${inv.invoice_number || '-'}</strong></td>
                 <td>${formatDisplayValue(inv.customer_name)}</td>
                 <td>${formatDate(inv.invoice_date)}</td>
                 <td style="font-weight: 600;">${formatCurrency(inv.total_amount)}</td>
-                <td><span class="badge ${getInvoiceStatusClass(inv.status)}">${inv.status || '-'}</span></td>
+                <td><span class="badge ${getInvoiceStatusClass(inv.status)}">${displayStatus}</span></td>
                 <td style="color: #059669;">${formatCurrency(inv.allocatedAmount)}</td>
                 <td style="color: ${balanceColor}; font-weight: ${balanceWeight};">${formatCurrency(inv.balance)}</td>
             `;

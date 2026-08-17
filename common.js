@@ -664,6 +664,8 @@ function getInvoiceStatusClass(status) {
         case '一部入金': return 'status-partial';
         case '入金済': return 'status-paid';
         case '延滞': return 'status-overdue';
+        case 'cancelled':
+        case '取消': return 'status-cancelled';
         default: return 'status-draft';
     }
 }
@@ -1339,4 +1341,17 @@ async function cancelReceiptAllocation(allocationId) {
             lastUpdatedAt: serverTimestamp
         });
     });
+}
+
+/**
+ * テキストを指定文字数で打ち切り、省略記号を付与する共通ユーティリティ関数
+ * @param {string} text - 対象テキスト
+ * @param {number} maxLength - 最大文字数（デフォルト: 50）
+ * @returns {string} maxLength を超える場合は末尾に '...' を付与した文字列
+ */
+function truncateText(text, maxLength = 50) {
+    if (!text) return '';
+    return text.length > maxLength
+        ? text.substring(0, maxLength) + '...'
+        : text;
 }

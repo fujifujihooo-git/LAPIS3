@@ -1035,6 +1035,20 @@ footer {
     font-weight: 700;
 }
 
+/* --- License Row Highlights (許認可タブ: 状態別行ハイライト) --- */
+#licenses-table tr.license-row-expired, #ov-license-table tr.license-row-expired {
+    background: #fff0f0 !important;
+}
+#licenses-table tr.license-row-expired:hover, #ov-license-table tr.license-row-expired:hover {
+    background: #fee2e2 !important;
+}
+#licenses-table tr.license-row-notice, #ov-license-table tr.license-row-notice {
+    background: #fff9db !important;
+}
+#licenses-table tr.license-row-notice:hover, #ov-license-table tr.license-row-notice:hover {
+    background: #fef3c7 !important;
+}
+
 /* --- Modal Styles --- */
 .modal {
     display: none;

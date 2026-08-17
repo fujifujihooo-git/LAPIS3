@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert('見積明細がありません。明細を追加してから請求書を作成してください。');
                 return;
             }
-            if (!currentCaseId || currentCaseId === 'new') {
+            if (!caseId || caseId === 'new') {
                 alert('案件情報が保存されていません。案件を保存してから請求書を作成してください。');
                 return;
             }
@@ -349,7 +349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 // 既存の有効な請求書をチェック
                 const existingInvoices = await db.collection('invoices')
-                    .where('case_id', '==', Number(currentCaseId))
+                    .where('case_id', '==', Number(caseId))
                     .get();
                 
                 let activeCount = 0;
@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
 
-                const url = `invoice_detail.html?id=new&source=case&caseId=${currentCaseId}&customerId=${customerId}&returnCaseId=${currentCaseId}`;
+                const url = `invoice_detail.html?id=new&source=case&caseId=${caseId}&customerId=${customerId}&returnCaseId=${caseId}`;
                 window.location.href = url;
             } catch (err) {
                 console.error("請求書存在チェックエラー:", err);
@@ -526,13 +526,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     db.collection('invoice_items').where('case_id', '==', caseId).get()
                 ]).then(([historySnap, invSnap, invItemSnap]) => {
                     statusHistory = historySnap.docs.map(d => d.data());
-                    invoices = invSnap.docs.map(d => d.data());
+                    invoices = invSnap.docs.map(d => ({
+                        doc_id: d.id,
+                        ...d.data()
+                    }));
                     invoiceItems = invItemSnap.docs.map(d => d.data());
 
-                    // 有効な（'取消'以外の）請求書IDを取得
+                    // 有効な（'取消'または'cancelled'以外の）請求書IDを取得
                     const activeInvoiceIds = new Set(
                         invoices
-                            .filter(inv => inv.status !== '取消')
+                            .filter(inv => inv.status !== '取消' && inv.status !== 'cancelled')
                             .map(inv => inv.invoice_id)
                     );
 
@@ -542,6 +545,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             .filter(item => item.estimate_item_id && activeInvoiceIds.has(item.invoice_id))
                             .map(item => item.estimate_item_id)
                     );
+
+                    // 関連データの非同期ロード完了後に再レンダリング
+                    renderBillingSection(caseId);
+                    renderHistory(caseId);
                 });
 
                 const customerPromise = currentCase.customer_id
@@ -923,17 +930,71 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // Billing Section (Simplified copy for now)
     function renderBillingSection(cId) {
+        const billingSection = document.getElementById('billing-section');
         const billingListBody = document.getElementById('billing-list-body');
-        if (!billingListBody) return;
-        
-        const relatedItems = invoiceItems.filter(item => item.case_id === cId);
-        if (relatedItems.length === 0) {
-            billingListBody.innerHTML = '<tr><td colspan="6" style="text-align:center">データなし</td></tr>';
+        if (!billingSection || !billingListBody) return;
+
+        // 1. 案件に紐づく請求書を抽出 (文字列比較で型安全にし、請求日降順でソート)
+        const relatedInvoices = invoices
+            .filter(inv => String(inv.case_id) === String(cId))
+            .sort((a, b) => {
+                const da = a.invoice_date || '1900-01-01';
+                const db = b.invoice_date || '1900-01-01';
+                return db.localeCompare(da);
+            });
+
+        // 請求書が0件ならセクションを非表示にして終了
+        if (relatedInvoices.length === 0) {
+            billingSection.style.display = 'none';
             return;
         }
-        billingListBody.innerHTML = '<tr><td colspan="6" style="text-align:center">請求連携機能は Firestore 版へ順次移行中です。</td></tr>';
+
+        // セクションを表示
+        billingSection.style.display = 'block';
+        billingListBody.innerHTML = '';
+
+        // 2. 金額集計 (status !== 'cancelled' のものだけ集計)
+        let totalBilling = 0;
+        let totalPaid = 0;
+        let totalBalance = 0;
+
+        relatedInvoices.forEach(inv => {
+            const allocatedAmount = inv.allocatedAmount || 0;
+            const balance = inv.balance !== undefined ? inv.balance : (inv.total_amount || 0) - allocatedAmount;
+            
+            if (inv.status !== 'cancelled') {
+                totalBilling += inv.total_amount || 0;
+                totalPaid += allocatedAmount;
+                totalBalance += balance;
+            }
+
+            // 3. テーブル行描画
+            const tr = document.createElement('tr');
+            if (inv.status === 'cancelled') {
+                tr.classList.add('billing-row-cancelled');
+            }
+            const formattedDate = inv.invoice_date ? inv.invoice_date.replace(/-/g, '/') : '-';
+            
+            // ステータスクラスの取得 (cancelledの場合は status-cancelled を割り当てる)
+            const statusClass = inv.status === 'cancelled' ? 'status-cancelled' : getInvoiceStatusClass(inv.status);
+            const statusText = inv.status === 'cancelled' ? '取消' : (inv.status || '-');
+
+            tr.innerHTML = `
+                <td><a href="invoice_detail.html?id=${inv.doc_id}" class="action-link">${inv.invoice_number || `INV-${inv.invoice_id}`}</a></td>
+                <td>${formattedDate}</td>
+                <td style="text-align: right; font-weight: 600;">${formatCurrency(inv.total_amount || 0)}</td>
+                <td><span class="badge ${statusClass}">${statusText}</span></td>
+                <td style="text-align: right; color: #059669;">${formatCurrency(allocatedAmount)}</td>
+                <td style="text-align: right; font-weight: 600;">${formatCurrency(balance)}</td>
+            `;
+            billingListBody.appendChild(tr);
+        });
+
+        // 4. サマリ表示の更新
+        document.getElementById('disp_billing_total').textContent = formatCurrency(totalBilling);
+        document.getElementById('disp_billing_paid').textContent = formatCurrency(totalPaid);
+        document.getElementById('disp_billing_balance').textContent = formatCurrency(totalBalance);
     }
 
     // --- Save & Delete ---
