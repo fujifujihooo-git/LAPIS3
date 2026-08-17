@@ -67,3 +67,9 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+
+# Test evidence & temporary screenshots
+tests/reports/evidence/
+tests/reports/download_tmp/
+login_form_before_click.png
+

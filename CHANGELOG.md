@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+### 2026-08-03
+
+Fixed:
+- fix(case→invoice): 案件画面から請求書作成できない不具合を修正
+  - `detail.js` の `btn-create-invoice-from-case` ハンドラで未定義変数 `currentCaseId` を参照していたため、
+    ボタンクリック時に常に「案件情報が保存されていません」と表示され、請求書作成画面に遷移できなかった
+  - 正しい変数 `caseId` に修正（L337, L352, L371）
+  - 原因コミット: `eed2d00` (2026-07-31)
+
+Added:
+- E2E受入テスト Step 1 を構築 (`test_acceptance_step1.js`)
+  - Scenario A: 案件 → 請求書作成 → 保存 → 戻り
+  - Scenario B: 案件 → 請求書作成 → 閉じる → 請求書未増加確認
+  - Scenario C: 案件 → 請求書作成 → 金額変更 → 保存 → 見積明細不変確認
+
+Tests:
+- E2E Step 1 全3シナリオ PASS
+- テストレポート: `docs/testing/E2E_ACCEPTANCE_STEP1_REPORT_20260803.md`
+
 ### 2026-07-30
 
 Added:
