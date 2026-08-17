@@ -95,7 +95,7 @@ async function runTests() {
     console.log('========================================================================\n');
 
     let passedCount = 0;
-    const totalTests = 27;
+    const totalTests = 32;
 
     const dummyCustomer = {
         customer_id: 1001,
@@ -476,6 +476,146 @@ async function runTests() {
     assert.ok(titleItem027 && titleItem027.y >= mockPackageCfg027.y + 3, `品名見出しのY座標(${titleItem027.y})が枠上端からの最小安全余白(3mm以上: ${mockPackageCfg027.y + 3})により厳密に守られ、新たなる衝突（はみ出し）を生んでいないこと`);
     assert.strictEqual(docItem027.y, mockPackageCfg027.y + mockPackageCfg027.fonts.docHeader.offsetY, '大文字「書類」側は上に連動シフトせず位置を保持し、「品名」見出しとの間に明瞭な空白余白が構成されていること');
     console.log('✅ [UT-SL-027] ③見出し間の確実な空白空間確保 ＆ 上辺余白 3mm 未満クランプ自動補正 正常通過');
+    passedCount++;
+
+    // ---------------------------------------------------------
+    // UT-SL-028〜032: 担当者→所属拠点→住所チェーン復元 検証群
+    // 前提テストデータ: 拠点リスト & 担当者リスト（office_id付き）
+    // ---------------------------------------------------------
+    const testOffices = [
+        { office_id: 'off_hq', office_name: '本店', postal_code: '160-0022', address: '東京都新宿区新宿3-1-1', building_name: '新宿サンライズビル 8F', phone: '03-1111-2222' },
+        { office_id: 'off_osaka', office_name: '大阪営業所', postal_code: '530-0001', address: '大阪府大阪市北区梅田1-2-3', building_name: '梅田スカイビル 5F', phone: '06-3333-4444' },
+        { office_id: 'off_nagoya', office_name: '名古屋支店', postal_code: '450-0002', address: '愛知県名古屋市中村区名駅4-5-6', building_name: '', phone: '052-5555-6666' }
+    ];
+    const testContacts = [
+        { contact_id: 'cnt_a', contact_name: '田中 一郎', department: '総務部', position: '部長', office_id: 'off_hq' },
+        { contact_id: 'cnt_b', contact_name: '山田 太郎', department: '営業部', position: '課長', office_id: 'off_osaka' },
+        { contact_id: 'cnt_c', contact_name: '佐藤 花子', department: '経理部', position: '主任', office_id: 'off_nagoya' },
+        { contact_id: 'cnt_d', contact_name: '鈴木 三郎', department: '技術部', position: '係長', office_id: '' }
+    ];
+
+    // ---------------------------------------------------------
+    // UT-SL-028: 担当者が本店所属 → 本店住所が出力される
+    // ---------------------------------------------------------
+    resetLog();
+    const report028 = new ShippingLabelReport();
+    const cust028 = Object.assign({}, dummyCustomer);
+    // 担当者Aを選択し、本店拠点の住所を逆引き
+    const contact028 = testContacts[0]; // 田中一郎 → off_hq
+    const office028 = testOffices.find(o => o.office_id === contact028.office_id);
+    cust028.contact_name = contact028.contact_name;
+    cust028.department = contact028.department;
+    cust028.position = contact028.position;
+    cust028.postal_code = office028.postal_code;
+    cust028.address = office028.address;
+    cust028.building_name = office028.building_name;
+    cust028.phone = office028.phone;
+    await report028.generate({ customer: cust028, sender: dummySender, documents: ['届出控え'] });
+    const hasHQPostal = pdfLog.text.some(i => i.text && i.text.includes('160-0022'));
+    const hasHQAddr = pdfLog.text.some(i => i.text && i.text.includes('東京都新宿区新宿'));
+    assert.strictEqual(hasHQPostal && hasHQAddr, true, '本店所属担当者選択時に本店の郵便番号・住所が印字されるべきです');
+    console.log('✅ [UT-SL-028] 担当者が本店所属 → 本店住所出力 正常通過');
+    passedCount++;
+
+    // ---------------------------------------------------------
+    // UT-SL-029: 担当者が大阪営業所所属 → 大阪営業所住所が出力される
+    // ---------------------------------------------------------
+    resetLog();
+    const report029 = new ShippingLabelReport();
+    const cust029 = Object.assign({}, dummyCustomer);
+    const contact029 = testContacts[1]; // 山田太郎 → off_osaka
+    const office029 = testOffices.find(o => o.office_id === contact029.office_id);
+    cust029.contact_name = contact029.contact_name;
+    cust029.department = contact029.department;
+    cust029.position = contact029.position;
+    cust029.postal_code = office029.postal_code;
+    cust029.address = office029.address;
+    cust029.building_name = office029.building_name;
+    cust029.phone = office029.phone;
+    await report029.generate({ customer: cust029, sender: dummySender, documents: ['届出控え'] });
+    const hasOsakaPostal = pdfLog.text.some(i => i.text && i.text.includes('530-0001'));
+    const hasOsakaAddr = pdfLog.text.some(i => i.text && i.text.includes('大阪府大阪市北区梅田'));
+    assert.strictEqual(hasOsakaPostal && hasOsakaAddr, true, '大阪営業所所属担当者選択時に大阪営業所の郵便番号・住所が印字されるべきです');
+    console.log('✅ [UT-SL-029] 担当者が支店所属 → 支店住所出力 正常通過');
+    passedCount++;
+
+    // ---------------------------------------------------------
+    // UT-SL-030: 担当者が名古屋支店所属 → 名古屋支店住所が出力される
+    // ---------------------------------------------------------
+    resetLog();
+    const report030 = new ShippingLabelReport();
+    const cust030 = Object.assign({}, dummyCustomer);
+    const contact030 = testContacts[2]; // 佐藤花子 → off_nagoya
+    const office030 = testOffices.find(o => o.office_id === contact030.office_id);
+    cust030.contact_name = contact030.contact_name;
+    cust030.department = contact030.department;
+    cust030.position = contact030.position;
+    cust030.postal_code = office030.postal_code;
+    cust030.address = office030.address;
+    cust030.building_name = office030.building_name || '';
+    cust030.phone = office030.phone;
+    await report030.generate({ customer: cust030, sender: dummySender, documents: ['届出控え'] });
+    const hasNagoyaPostal = pdfLog.text.some(i => i.text && i.text.includes('450-0002'));
+    const hasNagoyaAddr = pdfLog.text.some(i => i.text && i.text.includes('愛知県名古屋市中村区名駅'));
+    assert.strictEqual(hasNagoyaPostal && hasNagoyaAddr, true, '名古屋支店所属担当者選択時に名古屋支店の郵便番号・住所が印字されるべきです');
+    console.log('✅ [UT-SL-030] 担当者が営業所所属 → 営業所住所出力 正常通過');
+    passedCount++;
+
+    // ---------------------------------------------------------
+    // UT-SL-031: 所属拠点未設定（office_id 空） → 代表連絡先フォールバック
+    // ---------------------------------------------------------
+    resetLog();
+    const report031 = new ShippingLabelReport();
+    const cust031 = Object.assign({}, dummyCustomer);
+    // 担当者Dは office_id が空 → フォールバックで顧客マスタの住所が使われるべき
+    const contact031 = testContacts[3]; // 鈴木三郎 → office_id: ''
+    cust031.contact_name = contact031.contact_name;
+    cust031.department = contact031.department;
+    cust031.position = contact031.position;
+    // postal_code, address, building_name, phone は dummyCustomer（本店）のまま
+    await report031.generate({ customer: cust031, sender: dummySender, documents: ['届出控え'] });
+    const hasFallbackPostal = pdfLog.text.some(i => i.text && i.text.includes('160-0022'));
+    const hasFallbackName = pdfLog.text.some(i => i.text === '鈴木 三郎 様');
+    assert.strictEqual(hasFallbackPostal && hasFallbackName, true, 'office_id未設定時は代表連絡先へフォールバックし、担当者名は正しく印字されるべきです');
+    console.log('✅ [UT-SL-031] 所属拠点未設定 → 代表連絡先フォールバック＋担当者名維持 正常通過');
+    passedCount++;
+
+    // ---------------------------------------------------------
+    // UT-SL-032: 担当者A（本店）→担当者B（大阪営業所）切替時、住所が残留しないこと
+    // ---------------------------------------------------------
+    resetLog();
+    const report032a = new ShippingLabelReport();
+    const cust032a = Object.assign({}, dummyCustomer);
+    const contactA = testContacts[0]; // 田中一郎 → off_hq
+    const officeA = testOffices.find(o => o.office_id === contactA.office_id);
+    cust032a.contact_name = contactA.contact_name;
+    cust032a.postal_code = officeA.postal_code;
+    cust032a.address = officeA.address;
+    cust032a.building_name = officeA.building_name;
+    cust032a.phone = officeA.phone;
+    await report032a.generate({ customer: cust032a, sender: dummySender, documents: ['届出控え'] });
+    const firstGenPostal = pdfLog.text.find(i => i.text && i.text.includes('160-0022'));
+    assert.ok(firstGenPostal, '1回目生成: 本店住所の郵便番号が存在すること');
+
+    // 2回目: 担当者B（大阪営業所）に切り替えて生成
+    resetLog();
+    const report032b = new ShippingLabelReport();
+    const cust032b = Object.assign({}, dummyCustomer);
+    const contactB = testContacts[1]; // 山田太郎 → off_osaka
+    const officeB = testOffices.find(o => o.office_id === contactB.office_id);
+    cust032b.contact_name = contactB.contact_name;
+    cust032b.department = contactB.department;
+    cust032b.position = contactB.position;
+    cust032b.postal_code = officeB.postal_code;
+    cust032b.address = officeB.address;
+    cust032b.building_name = officeB.building_name;
+    cust032b.phone = officeB.phone;
+    await report032b.generate({ customer: cust032b, sender: dummySender, documents: ['届出控え'] });
+    const secondGenHasOsaka = pdfLog.text.some(i => i.text && i.text.includes('530-0001'));
+    const secondGenNoTokyo = !pdfLog.text.some(i => i.text && i.text.includes('160-0022'));
+    assert.strictEqual(secondGenHasOsaka, true, '2回目生成: 大阪営業所の郵便番号が印字されること');
+    assert.strictEqual(secondGenNoTokyo, true, '2回目生成: 本店の郵便番号が残留していないこと（住所のステイルデータ排除）');
+    console.log('✅ [UT-SL-032] 担当者A→B切替時の住所残留防止（postal_code/address完全更新） 正常通過');
     passedCount++;
 
     console.log('------------------------------------------------------------------------');

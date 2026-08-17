@@ -26,7 +26,7 @@ if (USE_PRODUCTION) {
     process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8085';
     process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
     admin.initializeApp({
-        projectId: 'lapis3-4113e'
+        projectId: 'lapis3-2026'
     });
     console.log("✅ [エミュレータ環境 (EMULATOR)] Firestore初期化に成功しました。");
 }
@@ -65,21 +65,44 @@ function getRandomStatus() {
 async function generateData() {
     console.log("🚀 テストデータの生成を開始します...");
 
-    // テストユーザーの作成 (Security Rules対策)
+    // --------------------------------------------------
+    // 【E2E専用データ生成処理】
+    // 役割定義:
+    // 1. lapis-test@lapis.local : E2Eテスト専用の正式ユーザー（全自動テストはこれに統一）
+    // 2. test@example.com       : 開発者個人のローカルテスト用（削除候補として別途検討可能）
+    // 3. fujita                 : 初期データ(accounts.json)に含まれる業務確認用アカウント
+    // --------------------------------------------------
     try {
         await admin.auth().createUser({
             uid: 'test-user',
             email: 'test@example.com',
             password: 'password123'
         });
-        console.log("✅ テストユーザー作成完了");
-    } catch (e) {
-        if (e.code === 'auth/email-already-exists') {
-            console.log("ℹ️ テストユーザーは既に存在します");
-        } else {
-            console.warn("⚠️ テストユーザー作成失敗:", e.message);
-        }
+    } catch(e) {}
+    
+    try {
+        await admin.auth().createUser({
+            uid: 'lapis-test',
+            email: 'lapis-test@lapis.local',
+            password: 'Lapis3_2026!'
+        });
+    } catch(e) {}
+    console.log("✅ テストユーザー作成チェック完了");
+
+    // E2Eテスト用のstaffデータを冪等に生成・更新 (何回実行しても同じ状態になることを保証)
+    try {
+        await db.collection('staff').doc('lapis-test').set({
+            staff_name: 'E2Eテストユーザー',
+            email: 'lapis-test@lapis.local',
+            role: 'admin',
+            status: '在籍',
+            updated_at: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        console.log("✅ E2Eテスト用staffデータ (lapis-test) の冪等生成完了");
+    } catch(e) {
+        console.warn("⚠️ E2Eテスト用staffデータ生成失敗:", e.message);
     }
+    // --------------------------------------------------
     
     // 現在の最大シーケンスを取得（簡易的にランダムな大きいIDから始めるか、既存シーケンスを使わないように900000番台を使用）
     const START_CUSTOMER_ID = 900000;

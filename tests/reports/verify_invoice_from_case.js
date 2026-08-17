@@ -38,7 +38,7 @@ async function runTests() {
         case_id: testCaseId,
         case_number: `CASE-${testCaseId}`,
         customer_id: testCustomerId,
-        estimateItems: [
+        estimate_items: [
             {
                 type: "見積",
                 description: "UT-INV-CASE-001 Test Item 1",
@@ -58,15 +58,15 @@ async function runTests() {
         ]
     });
     
-    console.log(`[Prep] Created test customer ${testCustomerId} and case ${testCaseId} with estimateItems.`);
+    console.log(`[Prep] Created test customer ${testCustomerId} and case ${testCaseId} with estimate_items.`);
     
     try {
-        // --- UT-INV-CASE-001: estimateItems -> invoice_items コピー確認 ---
+        // --- UT-INV-CASE-001: estimate_items -> invoice_items コピー確認 ---
         // シミュレーション: initNewInvoice で case データを読み込む処理
         const caseDoc = await db.collection('cases').doc(`case_${testCaseId}`).get();
         const caseData = caseDoc.data();
         
-        let currentItems = caseData.estimateItems.map((est, idx) => ({
+        let currentItems = caseData.estimate_items.map((est, idx) => ({
             item_type: est.type || '見積',
             case_id: testCaseId,
             description: est.description || '',
@@ -77,7 +77,7 @@ async function runTests() {
             display_order: idx + 1
         }));
         
-        console.log("UT-INV-CASE-001: estimateItems -> invoice_items コピー確認");
+        console.log("UT-INV-CASE-001: estimate_items -> invoice_items コピー確認");
         if (currentItems.length === 2 && currentItems[0].amount === 50000) {
             console.log("  => [OK] Copied correctly into memory structure.");
         } else {
@@ -134,8 +134,8 @@ async function runTests() {
         
         // 案件側を再チェック
         const caseDocAfterEdit = await db.collection('cases').doc(`case_${testCaseId}`).get();
-        if (caseDocAfterEdit.data().estimateItems[0].amount === 50000) {
-            console.log("  => [OK] Editing invoice items did NOT affect case estimateItems.");
+        if (caseDocAfterEdit.data().estimate_items[0].amount === 50000) {
+            console.log("  => [OK] Editing invoice items did NOT affect case estimate_items.");
         } else {
             console.error("  => [NG] Case data was mutated by invoice edit!");
         }
@@ -143,15 +143,15 @@ async function runTests() {
         // --- UT-INV-CASE-003: 案件側編集 -> 既存請求不変 ---
         console.log("UT-INV-CASE-003: 案件側編集 -> 既存請求不変");
         // 案件側の見積金額を100,000円に変更
-        let newEstimateItems = [...caseData.estimateItems];
+        let newEstimateItems = [...caseData.estimate_items];
         newEstimateItems[0].amount = 100000;
-        await db.collection('cases').doc(`case_${testCaseId}`).update({ estimateItems: newEstimateItems });
+        await db.collection('cases').doc(`case_${testCaseId}`).update({ estimate_items: newEstimateItems });
         
         // 既存の請求書を確認
         const invItemsAfterCaseEdit = await db.collection('invoice_items').where('invoice_id', '==', iId).get();
         const amounts = invItemsAfterCaseEdit.docs.map(d => d.data().amount);
         if (amounts.includes(80000) && !amounts.includes(100000)) {
-            console.log("  => [OK] Editing case estimateItems did NOT affect existing invoice items.");
+            console.log("  => [OK] Editing case estimate_items did NOT affect existing invoice items.");
         } else {
             console.error("  => [NG] Invoice data was mutated by case edit!");
         }
@@ -212,17 +212,17 @@ async function runTests() {
             case_id: emptyTestCaseId,
             case_number: `CASE-${emptyTestCaseId}`,
             customer_id: testCustomerId,
-            estimateItems: [] // 空の明細
+            estimate_items: [] // 空の明細
         });
         const emptyCaseDoc = await db.collection('cases').doc(`case_${emptyTestCaseId}`).get();
-        const emptyEstItems = emptyCaseDoc.data().estimateItems || [];
+        const emptyEstItems = emptyCaseDoc.data().estimate_items || [];
         if (emptyEstItems.length > 0) {
              console.error("  => [NG] Expected no items.");
         } else {
              // シミュレーション: alertとリダイレクト
              const redirected = true;
              if (redirected) {
-                 console.log("  => [OK] Empty estimateItems detected. Alert shown and redirected back to case details.");
+                 console.log("  => [OK] Empty estimate_items detected. Alert shown and redirected back to case details.");
              }
         }
         await db.collection('cases').doc(`case_${emptyTestCaseId}`).delete();

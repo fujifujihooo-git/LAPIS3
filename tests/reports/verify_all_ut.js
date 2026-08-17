@@ -9,7 +9,7 @@ process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
 
 if (admin.apps.length === 0) {
     admin.initializeApp({
-        projectId: 'lapis3-4113e'
+        projectId: 'lapis3-2026'
     });
 }
 
