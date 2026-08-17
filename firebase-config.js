@@ -1,10 +1,10 @@
 // Firebase Configuration
 const firebaseConfig = {
-    projectId: "lapis3-4113e",
+    projectId: "lapis3-2026",
     appId: "1:802380662413:web:8b98f5b8b7432cd56bc4c4",
-    storageBucket: "lapis3-4113e.firebasestorage.app",
+    storageBucket: "lapis3-2026.firebasestorage.app",
     apiKey: "AIzaSyB4PObusgsnMKVNeAzMTrCgjHIoJKNKyGo",
-    authDomain: "lapis3-4113e.firebaseapp.com",
+    authDomain: "lapis3-2026.firebaseapp.com",
     messagingSenderId: "802380662413",
     measurementId: "G-3J5X5XP48J",
     projectNumber: "802380662413"
@@ -13,6 +13,7 @@ const firebaseConfig = {
 // Initialize Firebase (Compat)
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+window.db = db; // document_return_modal.js 等の IIFE 内から window.db で参照できるように公開
 
 // --- Emulator Connections ---
 // IMPORTANT: Must be called BEFORE enablePersistence() or any other Firestore method
@@ -22,11 +23,15 @@ if (useEmulator) {
     console.log("Using Firebase Emulators...");
 
     // Firestore Emulator
+    db.settings({
+        experimentalForceLongPolling: true
+    });
     db.useEmulator("127.0.0.1", 8085);
 
     // Auth Emulator
     const auth = firebase.auth();
     auth.useEmulator("http://127.0.0.1:9099");
+    console.log("[BROWSER] Auth Emulator configured!");
 }
 
 // Enable Offline Persistence
