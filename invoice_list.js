@@ -88,8 +88,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 query = query.where('status', '==', sVal);
             }
 
-            // 2. Hybrid Server-side Filtering: 期間指定がない場合はFirestore側で残高フィルタを適用し、読み取り回数を節約
-            if (isUnpaidOnly && !hasDateFilter) {
+            // 2. Hybrid Server-side Filtering:
+            // ステータス指定なし＆期間指定なしの場合のみサーバー側で残高フィルタを適用（Index 2: balance + invoice_date）
+            // ステータス指定がある場合は status + invoice_date（Index 1）で取得し、残高判定はクライアント側で行う（3重インデックス回避）
+            const bypassUnpaidFilter = sVal === 'cancelled';
+            const applyServerBalanceFilter = isUnpaidOnly && !hasDateFilter && !sVal;
+
+            if (applyServerBalanceFilter) {
                 query = query.where('balance', '>', 0).orderBy('balance').orderBy('invoice_date', 'desc');
             } else {
                 // 通常の期間フィルタとソート
@@ -156,8 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // 4. Client-side Balance Filtering
-            // 期間指定がある場合は、Firestore側で残高フィルタがかけられないためクライアント側でフィルタする
-            if (isUnpaidOnly && hasDateFilter) {
+            // サーバー側で残高フィルタを適用していない場合（期間指定あり、またはステータス指定時）はクライアント側でフィルタする
+            if (isUnpaidOnly && !applyServerBalanceFilter && !bypassUnpaidFilter) {
                 mappedData = mappedData.filter(inv => inv.balance > 0);
             }
 

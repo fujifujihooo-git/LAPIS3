@@ -949,6 +949,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentInvoiceId) {
                 currentInvoiceId = invRef.id;
                 history.replaceState(null, '', `?id=${currentInvoiceId}`);
+                const btnPdf = document.getElementById('btn-pdf-export');
+                if (btnPdf) btnPdf.style.display = 'inline-flex';
             }
 
             // Phase 1: 保存成功後の自動復帰
