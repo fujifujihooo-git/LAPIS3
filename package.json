@@ -4,6 +4,7 @@
   },
   "devDependencies": {
     "http-server": "^14.1.1",
+    "pdf-parse": "^2.4.5",
     "puppeteer": "^24.42.0"
   },
   "scripts": {
