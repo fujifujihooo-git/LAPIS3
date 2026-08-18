@@ -1,10 +1,10 @@
 // Firebase Configuration
 const firebaseConfig = {
-    projectId: "lapis3-2026",
+    projectId: "lapis3-4113e",
     appId: "1:802380662413:web:8b98f5b8b7432cd56bc4c4",
-    storageBucket: "lapis3-2026.firebasestorage.app",
+    storageBucket: "lapis3-4113e.firebasestorage.app",
     apiKey: "AIzaSyB4PObusgsnMKVNeAzMTrCgjHIoJKNKyGo",
-    authDomain: "lapis3-2026.firebaseapp.com",
+    authDomain: "lapis3-4113e.firebaseapp.com",
     messagingSenderId: "802380662413",
     measurementId: "G-3J5X5XP48J",
     projectNumber: "802380662413"
