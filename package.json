@@ -8,6 +8,8 @@
     "puppeteer": "^24.42.0"
   },
   "scripts": {
-    "audit-date-input": "node scripts/audit_date_inputs.js"
+    "audit-date-input": "node scripts/audit_date_inputs.js",
+    "audit:resources": "node scripts/audit_html_resources.js",
+    "pre-release": "node scripts/check_pre_release.js"
   }
 }
