@@ -123,6 +123,36 @@
             if (!text) return [];
             doc.setFontSize(fontSize);
             return doc.splitTextToSize(text, maxWidth);
+        },
+
+        /**
+         * jsPDF.text の安全なラッパー
+         * undefined / null を安全にフォールバック（デフォルト: '―'）し、型を保証して描画する
+         * @param {jsPDF} doc - jsPDF インスタンス
+         * @param {string|number|Array} text - 描画対象
+         * @param {number} x - X座標
+         * @param {number} y - Y座標
+         * @param {Object} [options] - jsPDF オプション (align, renderingMode 等)
+         * @param {string} [fallback='―'] - text が undefined / null / 空文字の場合の代替文字 (空文字指定で非表示も可)
+         */
+        safeText(doc, text, x, y, options = undefined, fallback = '―') {
+            if (!doc) return;
+            let safeVal = text;
+            if (safeVal === undefined || safeVal === null || safeVal === '') {
+                safeVal = fallback;
+            }
+            if (typeof safeVal === 'number') {
+                safeVal = String(safeVal);
+            }
+            if (Array.isArray(safeVal)) {
+                safeVal = safeVal.map(item => (item === undefined || item === null ? fallback : String(item)));
+            }
+            if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
+                console.warn('safeText: 無効な座標です', { x, y, text: safeVal });
+                return;
+            }
+            if (safeVal === '') return; // 空文字の場合は描画スキップ
+            doc.text(safeVal, x, y, options);
         }
     };
 })();

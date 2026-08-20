@@ -19,7 +19,19 @@ class MockJsPDF {
     setLineWidth() {}
     line() {}
     text(text, x, y, options) {
+        if (text === undefined || text === null) {
+            throw new Error("Invalid arguments passed to jsPDF.text: text is undefined or null");
+        }
+        if (typeof text !== 'string' && typeof text !== 'number' && !Array.isArray(text)) {
+            throw new Error(`Invalid arguments passed to jsPDF.text: expected string, number or array, got ${typeof text}`);
+        }
+        if (x === undefined || y === undefined || isNaN(x) || isNaN(y)) {
+            throw new Error(`Invalid coordinates passed to jsPDF.text: x=${x}, y=${y}`);
+        }
         this.texts.push({ text, x, y, options });
+    }
+    getImageProperties(img) {
+        return { width: 300, height: 100 };
     }
     addImage() {}
     autoTable(options) {
@@ -29,6 +41,9 @@ class MockJsPDF {
     addPage() {}
     save(filename) {
         savedFilename = filename;
+    }
+    output(type) {
+        return { size: 1024, type: 'application/pdf' };
     }
 }
 
@@ -40,8 +55,14 @@ const sandbox = {
                 docMock = new MockJsPDF();
                 return docMock;
             }
-        }
+        },
+        open: (url, target) => ({ focus: () => {} })
     },
+    URL: {
+        createObjectURL: (blob) => 'blob:http://localhost/dummy-pdf-url',
+        revokeObjectURL: (url) => {}
+    },
+    setTimeout: (fn) => {},
     console: console,
     Math: Math,
     Date: Date,
@@ -169,8 +190,10 @@ async function runAll() {
         return '100件確認';
     });
 
-    // UT-EST-007: ファイル名確認
-    await runTest('UT-EST-007', 'ファイル名確認（案件番号未設定、サニタイズ）', {
+    // UT-EST-007: ファイル名確認（ポップアップブロック時のフォールバック保存ファイル名）
+    const origOpen = sandbox.window.open;
+    sandbox.window.open = () => null; // ポップアップブロックを模倣
+    await runTest('UT-EST-007', 'ファイル名確認（案件番号未設定、サニタイズ、フォールバック保存）', {
         caseNumber: null, // 未設定
         customerName: '顧客/株式会社?テスト*',
         estimateItems: [
@@ -180,8 +203,9 @@ async function runAll() {
         if (filename !== '見積書_顧客_株式会社_テスト__EST-NEW.pdf') {
             throw new Error(`ファイル名サニタイズエラー: ${filename}`);
         }
-        return `ファイル名確認 (${filename})`;
+        return `フォールバック保存ファイル名確認 (${filename})`;
     });
+    sandbox.window.open = origOpen; // 戻す
 
     // Extra Case: Check estimate number formatting directly
     await runTest('UT-EST-008', '見積番号フォーマット確認', {
@@ -195,6 +219,38 @@ async function runAll() {
         if (!estNumRow || !estNumRow.text.includes('EST-2026-00123')) throw new Error(`見積番号エラー: ${estNumRow.text}`);
         return `見積番号確認 (${estNumRow.text})`;
     });
+
+    // UT-EST-009: 顧客名欠損時のFail-Fast確認 (例外がスローされて生成停止すること)
+    let ut009Passed = false;
+    try {
+        await generateEstimatePdf({
+            caseNumber: 'CASE-001',
+            customerName: '', // 顧客名未指定
+            estimateItems: [
+                { type: '報酬', description: 'テスト', quantity: 1, unit_price: 1000, amount: 1000, is_taxable: true }
+            ]
+        }, null);
+    } catch (e) {
+        if (e.message.includes('宛名（顧客名）が設定されていません')) {
+            ut009Passed = true;
+        }
+    }
+    console.log(`UT-EST-009: ${ut009Passed ? 'PASS' : 'FAIL'} - 顧客名欠損時Fail-Fast確認 (例外スローと生成停止)`);
+
+    // UT-EST-010: 明細0件時のFail-Fast確認 (例外がスローされて生成停止すること)
+    let ut010Passed = false;
+    try {
+        await generateEstimatePdf({
+            caseNumber: 'CASE-001',
+            customerName: 'テスト顧客',
+            estimateItems: [] // 明細0件
+        }, null);
+    } catch (e) {
+        if (e.message.includes('見積明細が登録されていません')) {
+            ut010Passed = true;
+        }
+    }
+    console.log(`UT-EST-010: ${ut010Passed ? 'PASS' : 'FAIL'} - 明細0件時Fail-Fast確認 (例外スローと生成停止)`);
 }
 
 runAll().catch(console.error);

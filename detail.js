@@ -287,9 +287,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            const customerName = document.getElementById('customer_name')?.value || '';
-            const customerTitle = document.getElementById('customer_title')?.value || '様';
-            const caseNumber = document.getElementById('case_number')?.value || '';
+            // 顧客情報の取得 (State上の selectedCustomer または customers 配列から取得)
+            const cId = currentCase?.customer_id || parseInt(document.getElementById('customer_id')?.value);
+            const cust = selectedCustomer || customers.find(c => c.customer_id === cId);
+            const customerName = cust?.customer_name?.trim() || '';
+            const customerTitle = cust?.honorific?.trim() || '様';
+            const caseNumber = currentCase?.case_id ? `CASE-${currentCase.case_id}` : (caseId && caseId !== 'new' ? `CASE-${caseId}` : '');
+            
+            if (!customerName) {
+                alert('宛名（顧客名）が設定されていません。顧客を選択または登録してから出力してください。');
+                return;
+            }
             
             let assignees = [];
             const fieldStaffSelect = document.getElementById('field_staff_id');
