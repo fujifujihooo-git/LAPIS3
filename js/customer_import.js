@@ -189,6 +189,37 @@
                     self.handleExecuteImport();
                 });
             }
+
+            // 10. 雛形CSVダウンロードリンク
+            const linkDownload = document.getElementById('link-download-template');
+            if (linkDownload) {
+                linkDownload.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    self.downloadTemplateCsv();
+                });
+            }
+        },
+
+        /**
+         * 雛形CSVファイル（UTF-8 BOM付き）のダウンロード
+         */
+        downloadTemplateCsv: function () {
+            const header = '顧客名,フリガナ,区分,代表者名,法人番号,郵便番号,住所,建物名,電話番号,FAX番号,メールアドレス,備考';
+            const sampleRow = '株式会社アイウ建設,カブシキガイシャアイウケンセツ,法人,愛羽 太郎,9876543210123,100-0001,東京都千代田区千代田1-1,サンプルビル5F,03-1111-2222,03-1111-2223,info@aiu-kensetsu.co.jp,移行データ例';
+            const csvContent = `${header}\r\n${sampleRow}\r\n`;
+
+            // Excelで文字化けしないよう UTF-8 BOM を付与
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+            const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'customer_import_template.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         },
 
         /**
