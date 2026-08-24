@@ -1164,6 +1164,28 @@ async function getNextSequence(counterName) {
     });
 }
 
+/**
+ * 指定件数分の連番を一括で安全に発番する（CSVインポート・一括登録用）
+ * 既存の getNextSequence と同じ counters コレクションを使用し、互換性を完全維持。
+ * 
+ * @param {string} counterName - カウンター名 (例: 'customers')
+ * @param {number} count - 発番する件数（正の整数）
+ * @returns {Promise<number>} 発番された最初のID（startId 〜 startId + count - 1 が使用可能）
+ */
+async function getNextSequenceBatch(counterName, count) {
+    if (!Number.isInteger(count) || count < 1) {
+        throw new Error('getNextSequenceBatch: count must be a positive integer (>= 1)');
+    }
+    const docRef = db.collection('counters').doc(counterName);
+    return db.runTransaction(async (transaction) => {
+        const doc = await transaction.get(docRef);
+        const currentCount = doc.exists ? (doc.data().count || 0) : 0;
+        const newCount = currentCount + count;
+        transaction.set(docRef, { count: newCount }, { merge: true });
+        return currentCount + 1; // 最初の連番IDを返す
+    });
+}
+
 // --- Payment Allocation Helpers (Phase B) ---
 /**
  * 入金消込を実行するトランザクション処理

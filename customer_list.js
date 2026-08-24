@@ -20,8 +20,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function init() {
         console.log('Customer List Initialized');
-        // No initial fetch to save quota
-        // customers = await getAllFromFirestore('customers');
+
+        // CSV Import Module Hook
+        if (window.CustomerImporter) {
+            window.CustomerImporter.init({
+                onComplete: (result) => {
+                    if (result && result.successCount > 0) {
+                        // インポートされた最新データを表示するために検索を実行
+                        executeSearch();
+                    }
+                }
+            });
+        }
 
         // Sorting header listeners
         document.querySelectorAll('#customer-table th.sortable').forEach(th => {
