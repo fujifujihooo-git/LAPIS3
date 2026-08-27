@@ -329,10 +329,10 @@
             font-size: 9pt; font-weight: 700;
         }
 
-        /* --- 概要タブ 2列レイアウト --- */
+        /* --- 概要タブ 1列レイアウト --- */
         .overview-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
             gap: 16px;
         }
         .overview-panel {
@@ -1565,139 +1565,142 @@
                                     </button>
                                 </div>
                                 <div class="overview-grid">
-                                    <!-- 左カラム -->
-                                    <div>
-                                        <div class="overview-panel">
-                                            <div class="overview-panel-header">
-                                                <h4 class="overview-panel-title">基本情報</h4>
-                                                <button type="button" class="btn-panel-action" id="btn-goto-basic">✎ 編集</button>
-                                            </div>
-                                            <table class="info-readonly-table" id="overview-basic-table">
-                                                <colgroup>
-                                                    <col style="width: 22%;">
-                                                    <col style="width: 28%;">
-                                                    <col style="width: 22%;">
-                                                    <col style="width: 28%;">
-                                                </colgroup>
-                                                <tbody>
-                                                    <!-- ① 顧客名・フリガナ -->
-                                                    <tr>
-                                                        <th>顧客名</th>
-                                                        <td colspan="3" id="ov-name" style="font-size: 13pt; font-weight: 700;">―</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>フリガナ</th>
-                                                        <td colspan="3" id="ov-kana">―</td>
-                                                    </tr>
-
-                                                    <!-- ② 所在地情報 -->
-                                                    <tr class="group-spacer"><td colspan="4"></td></tr>
-                                                    <tr>
-                                                        <th>郵便番号</th>
-                                                        <td id="ov-zip">―</td>
-                                                        <th>法人番号</th>
-                                                        <td id="ov-corp">―</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>住所</th>
-                                                        <td colspan="3" id="ov-addr">―</td>
-                                                    </tr>
-
-                                                    <!-- ③ 基本属性 -->
-                                                    <tr class="group-spacer"><td colspan="4"></td></tr>
-                                                    <tr>
-                                                        <th>代表者名</th>
-                                                        <td id="ov-rep">―</td>
-                                                        <th>顧客区分</th>
-                                                        <td id="ov-type">―</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>資本金</th>
-                                                        <td id="ov-capital">―</td>
-                                                        <th>設立日</th>
-                                                        <td id="ov-founded">―</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>決算期</th>
-                                                        <td id="ov-fiscal">―</td>
-                                                        <th>外務担当者</th>
-                                                        <td id="ov-staff">―</td>
-                                                    </tr>
-
-                                                    <!-- ④ 連絡先 -->
-                                                    <tr class="group-spacer"><td colspan="4"></td></tr>
-                                                    <tr>
-                                                        <th>電話番号</th>
-                                                        <td id="ov-phone">―</td>
-                                                        <th>FAX番号</th>
-                                                        <td id="ov-fax">―</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>メールアドレス</th>
-                                                        <td colspan="3" id="ov-email">―</td>
-                                                    </tr>
-
-                                                    <!-- ⑤ 担当営業 -->
-                                                    <tr class="group-spacer group-spacer--divider"><td colspan="4"></td></tr>
-                                                    <tr>
-                                                        <th>主担当者</th>
-                                                        <td id="ov-primary-contact">―</td>
-                                                        <th>所属拠点</th>
-                                                        <td id="ov-primary-office">―</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>担当メール</th>
-                                                        <td colspan="3" id="ov-primary-email">―</td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
+                                    <!-- ① 基本情報 -->
+                                    <div class="overview-panel">
+                                        <div class="overview-panel-header">
+                                            <h4 class="overview-panel-title">基本情報</h4>
+                                            <button type="button" class="btn-panel-action" id="btn-goto-basic">✎ 編集</button>
                                         </div>
-                                        <div class="overview-panel" style="margin-top: 12px;">
-                                            <div class="overview-panel-header">
-                                                <h4 class="overview-panel-title">メモ・特記事項</h4>
-                                                <button type="button" class="btn-panel-action" id="btn-goto-basic-memo">✎ 編集</button>
-                                            </div>
-                                            <div class="memo-content" id="ov-remarks">―</div>
-                                        </div>
+                                        <table class="info-readonly-table" id="overview-basic-table">
+                                            <colgroup>
+                                                <col style="width: 22%;">
+                                                <col style="width: 28%;">
+                                                <col style="width: 22%;">
+                                                <col style="width: 28%;">
+                                            </colgroup>
+                                            <tbody>
+                                                <!-- ① 顧客名・フリガナ -->
+                                                <tr>
+                                                    <th>顧客名</th>
+                                                    <td colspan="3" id="ov-name" style="font-size: 13pt; font-weight: 700;">―</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>フリガナ</th>
+                                                    <td colspan="3" id="ov-kana">―</td>
+                                                </tr>
+
+                                                <!-- ② 所在地情報 -->
+                                                <tr class="group-spacer"><td colspan="4"></td></tr>
+                                                <tr>
+                                                    <th>郵便番号</th>
+                                                    <td id="ov-zip">―</td>
+                                                    <th>法人番号</th>
+                                                    <td id="ov-corp">―</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>住所</th>
+                                                    <td colspan="3" id="ov-addr">―</td>
+                                                </tr>
+
+                                                <!-- ③ 基本属性 -->
+                                                <tr class="group-spacer"><td colspan="4"></td></tr>
+                                                <tr>
+                                                    <th>代表者名</th>
+                                                    <td id="ov-rep">―</td>
+                                                    <th>顧客区分</th>
+                                                    <td id="ov-type">―</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>資本金</th>
+                                                    <td id="ov-capital">―</td>
+                                                    <th>設立日</th>
+                                                    <td id="ov-founded">―</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>決算期</th>
+                                                    <td id="ov-fiscal">―</td>
+                                                    <th>外務担当者</th>
+                                                    <td id="ov-staff">―</td>
+                                                </tr>
+
+                                                <!-- ④ 連絡先 -->
+                                                <tr class="group-spacer"><td colspan="4"></td></tr>
+                                                <tr>
+                                                    <th>電話番号</th>
+                                                    <td id="ov-phone">―</td>
+                                                    <th>FAX番号</th>
+                                                    <td id="ov-fax">―</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>メールアドレス</th>
+                                                    <td colspan="3" id="ov-email">―</td>
+                                                </tr>
+
+                                                <!-- ⑤ 担当営業 -->
+                                                <tr class="group-spacer group-spacer--divider"><td colspan="4"></td></tr>
+                                                <tr>
+                                                    <th>主担当者</th>
+                                                    <td id="ov-primary-contact">―</td>
+                                                    <th>所属拠点</th>
+                                                    <td id="ov-primary-office">―</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>担当メール</th>
+                                                    <td colspan="3" id="ov-primary-email">―</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    <!-- 右カラム -->
-                                    <div>
-                                        <div class="overview-panel">
-                                            <div class="overview-panel-header">
-                                                <h4 class="overview-panel-title">許認可（主要なもの）</h4>
-                                                <button type="button" class="btn-panel-action" id="btn-goto-licenses">一覧へ</button>
-                                            </div>
-                                            <table class="mini-table" id="ov-license-table">
-                                                <thead>
-                                                    <tr><th>許認可名</th><th>許可番号</th><th>有効期限</th><th>ステータス</th></tr>
-                                                </thead>
-                                                <tbody id="ov-license-body">
-                                                    <tr><td colspan="4" class="no-data-cell">読み込み中...</td></tr>
-                                                </tbody>
-                                            </table>
+
+                                    <!-- ② メモ・特記事項 -->
+                                    <div class="overview-panel">
+                                        <div class="overview-panel-header">
+                                            <h4 class="overview-panel-title">メモ・特記事項</h4>
+                                            <button type="button" class="btn-panel-action" id="btn-goto-basic-memo">✎ 編集</button>
                                         </div>
-                                        <div class="overview-panel" style="margin-top: 12px;">
-                                            <div class="overview-panel-header">
-                                                <h4 class="overview-panel-title">直近の案件</h4>
-                                                <button type="button" class="btn-panel-action" id="btn-goto-cases">一覧へ</button>
-                                            </div>
-                                            <table class="mini-table" id="ov-case-table">
-                                                <thead>
-                                                    <tr><th>案件名</th><th>ステータス</th><th>見積合計</th><th>完了日</th></tr>
-                                                </thead>
-                                                <tbody id="ov-case-body">
-                                                    <tr><td colspan="4" class="no-data-cell">読み込み中...</td></tr>
-                                                </tbody>
-                                            </table>
+                                        <div class="memo-content" id="ov-remarks">―</div>
+                                    </div>
+
+                                    <!-- ③ 許認可（主要なもの） -->
+                                    <div class="overview-panel">
+                                        <div class="overview-panel-header">
+                                            <h4 class="overview-panel-title">許認可（主要なもの）</h4>
+                                            <button type="button" class="btn-panel-action" id="btn-goto-licenses">一覧へ</button>
                                         </div>
-                                        <div class="overview-panel" style="margin-top: 12px;">
-                                            <div class="overview-panel-header">
-                                                <h4 class="overview-panel-title">直近の対応履歴</h4>
-                                                <button type="button" class="btn-panel-action" id="btn-goto-history">一覧へ</button>
-                                            </div>
-                                            <div id="ov-history-list" class="ov-history-list">
-                                                <div style="padding: 12px; text-align: center; color: #999; font-style: italic;">読み込み中...</div>
-                                            </div>
+                                        <table class="mini-table" id="ov-license-table">
+                                            <thead>
+                                                <tr><th>許認可名</th><th>許可番号</th><th>有効期限</th><th>ステータス</th></tr>
+                                            </thead>
+                                            <tbody id="ov-license-body">
+                                                <tr><td colspan="4" class="no-data-cell">読み込み中...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- ④ 直近の案件 -->
+                                    <div class="overview-panel">
+                                        <div class="overview-panel-header">
+                                            <h4 class="overview-panel-title">直近の案件</h4>
+                                            <button type="button" class="btn-panel-action" id="btn-goto-cases">一覧へ</button>
+                                        </div>
+                                        <table class="mini-table" id="ov-case-table">
+                                            <thead>
+                                                <tr><th>案件名</th><th>ステータス</th><th>見積合計</th><th>完了日</th></tr>
+                                            </thead>
+                                            <tbody id="ov-case-body">
+                                                <tr><td colspan="4" class="no-data-cell">読み込み中...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- ⑤ 直近の対応履歴 -->
+                                    <div class="overview-panel">
+                                        <div class="overview-panel-header">
+                                            <h4 class="overview-panel-title">直近の対応履歴</h4>
+                                            <button type="button" class="btn-panel-action" id="btn-goto-history">一覧へ</button>
+                                        </div>
+                                        <div id="ov-history-list" class="ov-history-list">
+                                            <div style="padding: 12px; text-align: center; color: #999; font-style: italic;">読み込み中...</div>
                                         </div>
                                     </div>
                                 </div>
@@ -2005,6 +2008,7 @@
                                                 <th>許認可種別</th>
                                                 <th>管轄官公庁</th>
                                                 <th>許可番号</th>
+                                                <th>開始日</th>
                                                 <th>期限（満了日）</th>
                                                 <th>期限まで</th>
                                                 <th>状態</th>

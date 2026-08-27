@@ -71,6 +71,15 @@
         const cust = customers[i % 10];
         const StaffId = staffList[i % 5].id;
         const status = statuses[i % 5];
+        // 管轄官公庁のテストパターン（マスタID紐付け、直接入力、未設定）
+        const officePattern = i % 3;
+        let govOfficeId = null;
+        let govOfficeName = '';
+        if (officePattern === 0) {
+            govOfficeId = offices[i % offices.length].id;
+        } else if (officePattern === 1) {
+            govOfficeName = '埼玉県知事（直接入力）';
+        } // officePattern === 2 は未設定（空）
 
         await db.collection('cases').doc(`case_${i.toString().padStart(3, '0')}`).set({
             case_id: `C${20000 + i}`,
@@ -79,8 +88,11 @@
             license_type: licenseTypes[i % 4],
             procedure_name: '新規申請',
             status: status,
+            government_office_id: govOfficeId,
+            government_office: govOfficeName,
             field_staff_id: StaffId, // Store as string to match schema update
             document_staff_id: StaffId,
+            contract_date: '2026-08-01',
             application_scheduled_date: futureDate,
             created_date: timestamp,
             updated_date: timestamp,

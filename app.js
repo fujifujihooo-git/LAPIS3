@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let cases = [];
     let customers = [];
     let staffMembers = [];
+    let governmentOffices = [];
 
     /**
      * @typedef {'asc' | 'desc' | null} SortOrder
@@ -43,13 +44,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function init() {
         console.log('Fetching initial data from Firestore...');
         try {
-            // Fetch Masters (Staff & License Types only)
-            const [staffData, licenseTypesData] = await Promise.all([
+            // Fetch Masters (Staff, License Types & Government Offices)
+            const [staffData, licenseTypesData, govOfficesData] = await Promise.all([
                 getAllFromFirestore('staff'),
-                getAllFromFirestore('license_types')
+                getAllFromFirestore('license_types'),
+                getAllFromFirestore('government_offices')
             ]);
 
             staffMembers = staffData;
+            governmentOffices = govOfficesData;
             // customers are not fetched initially to save quota.
             // Case documents contain 'customer_name' for display.
 
@@ -92,7 +95,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('[DEBUG] executeSearch called');
         console.log('[DEBUG] Params:', { statusVal, licenseVal, staffVal, custName, deadlineNear, dateTypeVal, dateStartVal, dateEndVal });
 
-        caseListBody.innerHTML = '<tr><td colspan="6" style="text-align:center">検索中...</td></tr>';
+        caseListBody.innerHTML = '<tr><td colspan="7" style="text-align:center">検索中...</td></tr>';
 
         try {
             let results = [];
@@ -117,13 +120,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log('[DEBUG] Matching Customers:', matchingCustomers.length);
 
                 if (matchingCustomers.length === 0) {
-                    caseListBody.innerHTML = '<tr><td colspan="6" style="text-align:center">該当する顧客が見つかりません</td></tr>';
+                    caseListBody.innerHTML = '<tr><td colspan="7" style="text-align:center">該当する顧客が見つかりません</td></tr>';
                     return;
                 }
 
                 if (matchingCustomers.length > 10) {
                     alert('該当する顧客が多すぎます。検索条件を詳しくしてください。');
-                    caseListBody.innerHTML = '<tr><td colspan="6" style="text-align:center">検索条件を絞ってください</td></tr>';
+                    caseListBody.innerHTML = '<tr><td colspan="7" style="text-align:center">検索条件を絞ってください</td></tr>';
                     return;
                 }
 
@@ -216,7 +219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 alert('検索に失敗しました。');
             }
-            caseListBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red">エラーが発生しました</td></tr>';
+            caseListBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red">エラーが発生しました</td></tr>';
         }
     }
 
@@ -264,6 +267,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Core Logic (Filtering & Rendering) ---
     // handleFilter removed, replaced by executeSearch
 
+    // 管轄官公庁名称解決（customer_detail.js と同一ロジック）
+    function getGovernmentOfficeName(entity) {
+        if (!entity) return '';
+        if (entity.government_office_id) {
+            const office = governmentOffices.find(
+                o => Number(o.office_id) === Number(entity.government_office_id)
+            );
+            if (office) {
+                return office.office_name;
+            }
+        }
+        return entity.government_office || '';
+    }
+
     function renderTable(data) {
         if (!caseListBody) return;
         caseListBody.innerHTML = '';
@@ -272,7 +289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const sorted = sortCasesCommon(data, currentSort);
 
         if (sorted.length === 0) {
-            caseListBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-muted);">該当する案件はありません</td></tr>';
+            caseListBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 40px; color: var(--text-muted);">該当する案件はありません</td></tr>';
             return;
         }
 
@@ -290,6 +307,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td class="customer-cell">
                     <a href="customer_detail.html?id=${c.customer_id}">${c.customer_name || '-'}</a>
                 </td>
+                <td>${getGovernmentOfficeName(c) || '-'}</td>
                 <td>
                     <div style="font-weight: 600;">${c.license_type || '-'}</div>
                     <div style="font-size: 0.8rem; color: var(--text-muted);">${c.procedure_name || '-'}</div>

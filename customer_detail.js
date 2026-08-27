@@ -1614,7 +1614,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         licensesListBody.innerHTML = '';
 
         if (related.length === 0) {
-            licensesListBody.innerHTML = '<tr><td colspan="6" class="no-data-cell">許認可データがありません</td></tr>';
+            licensesListBody.innerHTML = '<tr><td colspan="7" class="no-data-cell">許認可データがありません</td></tr>';
             return;
         }
 
@@ -1649,6 +1649,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td style="font-weight: 600;">${typeName}</td>
                 <td>${officeName}</td>
                 <td>${licenseNum}</td>
+                <td>${formatDate(l.start_date)}</td>
                 <td>${formatDate(l.expiry_date)}</td>
                 <td><span class="days-badge ${daysClass}">${formatRemainingDays(days)}</span></td>
                 <td><span class="badge ${l.status === '有効' ? 'status-junin' : 'status-torisage'}">${l.status || '-'}</span></td>
@@ -1675,7 +1676,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (lastVisibleDoc.licenses && related.length >= 20) {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td colspan="6" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreLicenses(${customerId})">もっと見る <i data-lucide="chevron-down"></i></button></td>`;
+            tr.innerHTML = `<td colspan="7" style="text-align:center; padding:16px; background: transparent; border-bottom: none;"><button type="button" class="btn btn-load-more" onclick="window.loadMoreLicenses(${customerId})">もっと見る <i data-lucide="chevron-down"></i></button></td>`;
             licensesListBody.appendChild(tr);
             if (window.lucide) lucide.createIcons();
         }
@@ -2124,15 +2125,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     // 2. 許認可シート用のデータ配列 (全件出力)
                     const relatedLicenses = licenses.filter(l => l.customer_id === currentCustomer.customer_id);
-                    const licenseHeaders = ['許認可名', '許可番号', '有効期限', '状態', '管轄官公庁'];
+                    const licenseHeaders = ['許認可名', '管轄官公庁', '許可番号', '開始日', '有効期限', '状態'];
                     const licenseRows = relatedLicenses.map(l => {
                         const type = licenseTypes.find(lt => lt.license_type_id === l.license_type_id);
                         return [
                             type ? type.license_type_name : '-',
+                            l.jurisdiction || '-',
                             plainLicenseNumber(l) || '-',
+                            plainDate(l.start_date) || '-',
                             plainDate(l.expiry_date) || '-',
-                            labelStatus(l.status),
-                            l.jurisdiction || '-'
+                            labelStatus(l.status)
                         ];
                     });
 
@@ -2221,15 +2223,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     // 2. 許認可 (全件)
                     const relatedLicenses = licenses.filter(l => l.customer_id === currentCustomer.customer_id);
-                    const licenseHeaders = ['許認可名', '許可番号', '有効期限', '状態', '管轄官公庁'];
+                    const licenseHeaders = ['許認可名', '管轄官公庁', '許可番号', '開始日', '有効期限', '状態'];
                     const licenseRows = relatedLicenses.map(l => {
                         const type = licenseTypes.find(lt => lt.license_type_id === l.license_type_id);
                         return [
                             type ? type.license_type_name : '-',
+                            l.jurisdiction || '-',
                             plainLicenseNumber(l) || '-',
+                            plainDate(l.start_date) || '-',
                             plainDate(l.expiry_date) || '-',
-                            labelStatus(l.status),
-                            l.jurisdiction || '-'
+                            labelStatus(l.status)
                         ];
                     });
 
