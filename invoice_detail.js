@@ -41,8 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnExecuteImport = document.getElementById('btn-execute-import');
     const importCheckAll = document.getElementById('import-check-all');
     // --- Constants ---
-    // 案件プルダウンから除外するステータス（完了・取下げは請求不要）
-    const EXCLUDED_CASE_STATUSES = ['完了', '取下げ'];
+    // 終了案件ステータス（完了・取下げ・返却済は通常の請求対象外）
+    const EXCLUDED_CASE_STATUSES = ['完了', '取下げ', '返却済'];
 
     // PDF出力などに現在の顧客スナップショットを渡すためのGetter
     window.getCurrentCustomerSnapshot = function () {
@@ -1166,6 +1166,87 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Estimate Import Logic ---
     const importCandidatesState = { items: [] }; // Using object for reference if needed, or just let var
+    const importShowCompleted = document.getElementById('import-show-completed');
+    const importShowBilled = document.getElementById('import-show-billed');
+
+    /**
+     * 取込モーダル用 案件プルダウン再描画
+     * 
+     * デフォルト: billing_summary.has_billable_items === true の案件のみ
+     * ☑ 終了案件も表示: 完了・取下げ・返却済を含める
+     * ☑ 請求済案件も表示: has_billable_items === false も含める
+     */
+    function renderImportCaseOptions() {
+        const showCompleted = importShowCompleted ? importShowCompleted.checked : false;
+        const showBilled = importShowBilled ? importShowBilled.checked : false;
+
+        importCaseSelect.innerHTML = '<option value="">-- 案件を選択してください --</option>';
+
+        let addedCount = 0;
+
+        casesCache.forEach(c => {
+            // フィルタ①: 終了案件の除外（チェックOFFの場合）
+            if (!showCompleted && EXCLUDED_CASE_STATUSES.includes(c.status)) {
+                return;
+            }
+
+            // フィルタ②: 請求可能案件の判定（billing_summary ベース）
+            const summary = c.billing_summary;
+            const isFallback = !summary || summary.schema_version !== 1;
+
+            if (!showBilled && !isFallback) {
+                // has_billable_items === false → 未請求明細なし → スキップ
+                if (summary.has_billable_items !== true) {
+                    return;
+                }
+            }
+
+            // 表示テキスト構築: 案件名【ステータス】【請求状況】
+            const statusLabel = c.status ? `【${c.status}】` : '';
+            let billingLabel = '';
+            if (isFallback) {
+                billingLabel = ''; // billing_summary 未設定
+            } else if (summary.has_billable_items === true) {
+                billingLabel = `【未請求 ${summary.unbilled_count}件】`;
+            } else if (summary.active_estimate_count > 0) {
+                billingLabel = '【請求完了】';
+            } else if (summary.has_legacy_items === true) {
+                billingLabel = '【追跡対象外】';
+            } else {
+                billingLabel = '【見積なし】';
+            }
+
+            const opt = document.createElement('option');
+            opt.value = c.case_id;
+            opt.textContent = `${c.procedure_name || `案件 #${c.case_id}`} ${statusLabel}${billingLabel}`;
+            importCaseSelect.appendChild(opt);
+            addedCount++;
+        });
+
+        if (addedCount === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '該当する案件がありません';
+            opt.disabled = true;
+            importCaseSelect.appendChild(opt);
+        }
+    }
+
+    // チェックボックス変更 → 案件リスト再描画
+    if (importShowCompleted) {
+        importShowCompleted.addEventListener('change', () => {
+            renderImportCaseOptions();
+            importItemList.innerHTML = '<tr><td colspan="5" style="padding: 16px; text-align: center; color: #64748b;">案件を選択してください</td></tr>';
+            importCandidatesState.items = [];
+        });
+    }
+    if (importShowBilled) {
+        importShowBilled.addEventListener('change', () => {
+            renderImportCaseOptions();
+            importItemList.innerHTML = '<tr><td colspan="5" style="padding: 16px; text-align: center; color: #64748b;">案件を選択してください</td></tr>';
+            importCandidatesState.items = [];
+        });
+    }
 
     if (btnImport) {
         btnImport.addEventListener('click', async () => {
@@ -1175,11 +1256,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Populate Cases
+            // リセット
             importCaseSelect.innerHTML = '<option value="">-- 案件を選択してください --</option>';
             importItemList.innerHTML = '<tr><td colspan="5" style="padding: 16px; text-align: center; color: #64748b;">案件を選択してください</td></tr>';
             importCandidatesState.items = [];
             importCheckAll.checked = false;
+            if (importShowCompleted) importShowCompleted.checked = false;
+            if (importShowBilled) importShowBilled.checked = false;
 
             // Fetch cases
             const snap = await db.collection('cases').where('customer_id', '==', Number(custId)).get();
@@ -1190,12 +1273,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             casesCache = snap.docs.map(d => d.data()); // Update cache
 
-            casesCache.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.case_id;
-                opt.textContent = c.procedure_name || `案件 #${c.case_id}`;
-                importCaseSelect.appendChild(opt);
-            });
+            // フィルタリング適用して描画
+            renderImportCaseOptions();
 
             importModal.style.display = 'block';
         });

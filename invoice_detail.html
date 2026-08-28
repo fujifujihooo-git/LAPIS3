@@ -731,6 +731,16 @@
                 <select id="import-case-select" class="form-select">
                     <option value="">-- 案件を選択してください --</option>
                 </select>
+                <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 12px;">
+                    <label style="display: flex; align-items: center; gap: 4px; margin: 0; font-size: 0.85rem; font-weight: normal; color: var(--text-muted); cursor: pointer;">
+                        <input type="checkbox" id="import-show-completed" style="width: auto;">
+                        終了案件も表示
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 4px; margin: 0; font-size: 0.85rem; font-weight: normal; color: var(--text-muted); cursor: pointer;">
+                        <input type="checkbox" id="import-show-billed" style="width: auto;">
+                        請求済案件も表示
+                    </label>
+                </div>
             </div>
             <div
                 style="margin-top: 16px; max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px;">
