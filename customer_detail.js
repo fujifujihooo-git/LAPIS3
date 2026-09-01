@@ -430,12 +430,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     /** 概要タブ 許認可・案件ミニテーブル描画 */
     function renderOverviewLists(cId) {
-        // 許認可テーブル（上位5件）
+        // 許認可テーブル（全件表示・スクロールコンテナ対応）
         const licBody = document.getElementById('ov-license-body');
+        const licCountEl = document.getElementById('ov-license-count');
         if (licBody) {
             const custLics = licenses.filter(l => l.customer_id === cId);
+            if (licCountEl) {
+                licCountEl.textContent = `(${custLics.length}件)`;
+            }
+
+            licBody.innerHTML = '';
             if (custLics.length === 0) {
-                licBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999;font-style:italic;padding:12px;">許認可データなし</td></tr>';
+                licBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;font-style:italic;padding:12px;">許認可データなし</td></tr>';
             } else {
                 // 期限リスク順ソート: 期限切れ(古い順) → 期限あり(近い順) → 期限なし(最後尾)
                 const MAX_DATE = new Date('9999-12-31');
@@ -448,10 +454,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                licBody.innerHTML = sortedLics.slice(0, 5).map(l => {
+                sortedLics.forEach(l => {
                     const type = licenseTypes.find(lt => lt.license_type_id === l.license_type_id);
+                    const startStr = formatDate(l.start_date) || '―';
                     const expDate = l.expiry_date ? (l.expiry_date.toDate ? l.expiry_date.toDate() : new Date(l.expiry_date)) : null;
-                    const expStr = expDate ? expDate.toLocaleDateString('ja-JP') : '―';
+                    const expStr = formatDate(l.expiry_date) || '―';
                     const statusClass = l.status === '有効' ? 'badge-success-sm' : (l.status === '期限切れ' ? 'badge-danger-sm' : 'badge-warning-sm');
                     const licenseNum = typeof formatLicenseNumber === 'function' ? formatLicenseNumber(l) : (l.license_number || '―');
                     const officeName = typeof getGovernmentOfficeName === 'function' ? getGovernmentOfficeName(l) || '―' : '―';
@@ -466,16 +473,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                         rowClass = 'license-row-notice';
                     }
 
-                    return `<tr class="${rowClass}">
+                    const tr = document.createElement('tr');
+                    if (rowClass) tr.className = rowClass;
+                    tr.innerHTML = `
                         <td>${type ? type.license_type_name : '―'}</td>
                         <td>
                             <div class="overview-primary-text">${licenseNum}</div>
                             <div class="overview-secondary-text">${officeName}</div>
                         </td>
+                        <td>${startStr}</td>
                         <td>${expStr}</td>
                         <td><span class="${statusClass}">${l.status || '―'}</span></td>
-                    </tr>`;
-                }).join('');
+                    `;
+                    tr.style.cursor = 'pointer';
+                    // 許認可タブ（renderLicenses）と完全一致の行クリック遷移
+                    tr.addEventListener('click', () => {
+                        window.location.href = `license_detail.html?docId=${l._docId}&customer_id=${cId}&id=${l.license_id}`;
+                    });
+                    licBody.appendChild(tr);
+                });
             }
         }
 

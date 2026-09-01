@@ -49,7 +49,7 @@
 
 | 項目 | 対象セレクタ・ID | フォントサイズ | 太さ(Weight) | 備考 |
 | :--- | :--- | :--- | :--- | :--- |
-| **項目名ラベル（TH）**<br>（顧客名、フリガナ、住所、代表者名、電話番号、主担当者等） | `.info-readonly-table th` | **11pt** | **500** | 背景 `#f8fafc` / 文字色 `#64748b` |
+| **項目名ラベル（TH）**<br>（顧客名、フリガナ、住所、代表者名、電話番号、主担当者等） | `.info-readonly-table th` | **12pt** | **500** | 背景 `#f8fafc` / 文字色 `#64748b`（11ptから12ptへ拡大） |
 | **顧客名（TD値）** | `#ov-name` | **13pt** | **700** | インラインスタイル指定 |
 | **一般データ値（TD値）**<br>（フリガナ、住所、代表者名、電話、FAX、メール、担当等） | `.info-readonly-table td` | **13pt** | **600** | 文字色 `#0f172a` (濃い黒紺)（12ptから13ptへ拡大） |
 
@@ -60,23 +60,27 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **特記事項テキスト本文** | `.memo-content`<br>`#ov-remarks` | **13pt** | **400** (Normal) | `line-height: 1.7` / 改行保持（2026-09-01に11ptから13ptへ拡大） |
 
-#### パネル3:「許認可（主要なもの）」
-定義箇所: [customer_detail.html (Line 533-557, 1451-1463)](file:///d:/Antigravity/LAPIS3/customer_detail.html#L533-L557), [customer_detail.js (Line 451-478)](file:///d:/Antigravity/LAPIS3/customer_detail.js#L451-L478)
+#### パネル3:「許認可」
+定義箇所: [customer_detail.html (Line 533-585, 1451-1463)](file:///d:/Antigravity/LAPIS3/customer_detail.html#L533-L585), [customer_detail.js (Line 431-488)](file:///d:/Antigravity/LAPIS3/customer_detail.js#L431-L488)
 
 | 項目 | 対象セレクタ・ID | フォントサイズ | 太さ(Weight) | 備考 |
 | :--- | :--- | :--- | :--- | :--- |
-| **テーブル見出し（TH）**<br>（許認可名、許可番号、有効期限、ステータス） | `.mini-table th` | **10pt** | **400** (Normal) | 文字色 `#6b7280` |
-| **許認可名・有効期限（TD）** | `.mini-table td` | **13pt** | **600** | 文字色 `#1f2937`（11.5ptから13ptへ拡大） |
-| **許可番号（上段）** | `.overview-primary-text` | **13pt** | **600** | 文字色 `#343a40`（11.5ptから13ptへ拡大） |
+| **パネル見出し件数バッジ** | `.overview-panel-count`<br>`#ov-license-count` | **11pt** | **500** | 文字色 `#64748b`（例: `(3件)`） |
+| **テーブル見出し（TH）**<br>（許認可名、許可番号、開始日、有効期限、ステータス） | `.mini-table th` | **12pt** | **400** (Normal) | 文字色 `#6b7280` / `position: sticky` 固定 |
+| **許認可名（TD）** | `.mini-table td` | **13pt** | **600** | 文字色 `#1f2937` |
+| **許可番号（上段）** | `.overview-primary-text` | **13pt** | **600** | 文字色 `#343a40` |
 | **管轄官公庁名（下段）** | `.overview-secondary-text` | **11pt** | **400** (Normal) | 文字色 `#6c757d` |
+| **開始日（TD）** | `.mini-table td` | **13pt** | **600** | 文字色 `#1f2937`（新設列） |
+| **有効期限（TD）** | `.mini-table td` | **13pt** | **600** | 文字色 `#1f2937` |
 | **ステータスバッジ（有効/期限切れ等）** | `.badge-*-sm` | **9pt** | **700** (Bold) | 有効: 緑 / 期限切: 赤 / 警告: 黄 |
+| **スクロールコンテナ** | `.overview-scroll-container` | ― | ― | `max-height: 380px; overflow-y: auto;`（全件表示） |
 
 #### パネル4:「直近の案件」
 定義箇所: [customer_detail.html (Line 533-557)](file:///d:/Antigravity/LAPIS3/customer_detail.html#L533-L557), [customer_detail.js (Line 496-541)](file:///d:/Antigravity/LAPIS3/customer_detail.js#L496-L541)
 
 | 項目 | 対象セレクタ・ID | フォントサイズ | 太さ(Weight) | 備考 |
 | :--- | :--- | :--- | :--- | :--- |
-| **テーブル見出し（TH）**<br>（案件名、ステータス、見積合計、完了日） | `.mini-table th` | **10pt** | **400** (Normal) | 文字色 `#6b7280` |
+| **テーブル見出し（TH）**<br>（案件名、ステータス、見積合計、完了日） | `.mini-table th` | **12pt** | **400** (Normal) | 文字色 `#6b7280`（10ptから12ptへ拡大） |
 | **案件名（主タイトル）** | `.mini-table td > div:first` | **13pt** | **600** | 親TDサイズ継承（11.5ptから13ptへ拡大） |
 | **管轄官公庁名（カッコ表記）** | `.ov-case-office` | **11pt** | **400** (Normal) | 文字色 `#6c757d`（0.8remから11ptへ拡大） |
 | **受任日（サブテキスト）** | `.overview-secondary-text` | **11pt** | **400** (Normal) | 文字色 `#6c757d`（0.85remから11ptへ拡大） |

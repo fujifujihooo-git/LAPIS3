@@ -520,6 +520,7 @@
             border-bottom: 1px solid #f1f5f9;
             white-space: nowrap;
             width: 15%;
+            font-size: 12pt;
         }
         .info-readonly-table td {
             padding: 7px 10px;
@@ -542,7 +543,7 @@
             font-weight: 400;
             color: #6b7280;
             border-bottom: 1px solid var(--border-color);
-            font-size: 10pt;
+            font-size: 12pt;
         }
         .mini-table td {
             padding: 5px 8px;
@@ -555,6 +556,33 @@
             background: #f8fbff;
             cursor: pointer;
         }
+
+        /* 概要タブ 汎用スクロールコンテナ */
+        .overview-scroll-container {
+            max-height: 380px;
+            overflow-y: auto;
+            border-radius: 4px;
+            border: 1px solid var(--border-color, #e2e8f0);
+        }
+        .overview-scroll-container .mini-table {
+            margin: 0;
+        }
+        .overview-scroll-container .mini-table th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #f8fafc;
+            box-shadow: 0 1px 0 var(--border-color, #e2e8f0);
+        }
+
+        /* 概要パネル見出し 件数バッジ */
+        .overview-panel-count {
+            font-size: 11pt;
+            font-weight: 500;
+            color: var(--text-muted, #64748b);
+            margin-left: 6px;
+        }
+
         .memo-content {
             font-size: 13pt;
             line-height: 1.7;
@@ -1838,20 +1866,28 @@
                                         <div class="memo-content" id="ov-remarks">―</div>
                                     </div>
 
-                                    <!-- ③ 許認可（主要なもの） -->
+                                    <!-- ③ 許認可 -->
                                     <div class="overview-panel">
                                         <div class="overview-panel-header">
-                                            <h4 class="overview-panel-title">許認可（主要なもの）</h4>
+                                            <h4 class="overview-panel-title">許認可 <span class="overview-panel-count" id="ov-license-count"></span></h4>
                                             <button type="button" class="btn-panel-action" id="btn-goto-licenses">一覧へ</button>
                                         </div>
-                                        <table class="mini-table" id="ov-license-table">
-                                            <thead>
-                                                <tr><th>許認可名</th><th>許可番号</th><th>有効期限</th><th>ステータス</th></tr>
-                                            </thead>
-                                            <tbody id="ov-license-body">
-                                                <tr><td colspan="4" class="no-data-cell">読み込み中...</td></tr>
-                                            </tbody>
-                                        </table>
+                                        <div class="overview-scroll-container">
+                                            <table class="mini-table" id="ov-license-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>許認可名</th>
+                                                        <th>許可番号</th>
+                                                        <th>開始日</th>
+                                                        <th>有効期限</th>
+                                                        <th>ステータス</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="ov-license-body">
+                                                    <tr><td colspan="5" class="no-data-cell">読み込み中...</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
 
                                     <!-- ④ 直近の案件 -->
