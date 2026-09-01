@@ -532,7 +532,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return `<tr>
                         <td>
                             <div style="font-weight: 600;">${c.license_type || '―'}${officeHtml}</div>
-                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">${contStr === '―' ? '―' : contStr + ' 受任'}</div>
+                            <div class="overview-secondary-text">${contStr === '―' ? '―' : contStr + ' 受任'}</div>
                         </td>
                         <td>${statusBadgeHtml}</td>
                         <td>${feeStr}</td>
