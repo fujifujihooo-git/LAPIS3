@@ -147,7 +147,10 @@
 
                         <!-- 送付理由テンプレート選択 -->
                         <div class="form-group" style="margin-bottom:16px;">
-                            <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.9rem;">送付理由テンプレート</label>
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                                <label style="font-weight:600; font-size:0.9rem; margin:0;">送付理由テンプレート</label>
+                                <span id="doc-return-tpl-edited-badge" style="display:none; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:1px 6px; border-radius:10px; font-weight:600;">編集済</span>
+                            </div>
                             <div style="background:#f8fafc; padding:10px 14px; border:1px solid #e2e8f0; border-radius:6px; display:flex; flex-wrap:wrap; gap:14px;">
                                 <label style="cursor:pointer;"><input type="radio" name="doc_return_template" value="complete" checked> 完了返却</label>
                                 <label style="cursor:pointer;"><input type="radio" name="doc_return_template" value="under_review"> 審査中返却</label>
@@ -308,9 +311,11 @@
             const tplRadio = document.querySelector(`input[name="doc_return_template"][value="${tplToRestore}"]`);
             if (tplRadio) tplRadio.checked = true;
 
-            // isBodyDirty リセット
+            // isBodyDirty & generatedTemplateText リセット
             this.isBodyDirty = false;
             this.isProgrammaticUpdate = false;
+            this.generatedTemplateText = '';
+            this.updateTemplateStatusUI();
 
             this.handleMethodChange();
             // テンプレート本文を初期生成
@@ -391,6 +396,24 @@
         }
 
         /**
+         * テンプレート編集ステータスUI（「編集済」バッジ）の更新
+         */
+        updateTemplateStatusUI() {
+            const badge = document.getElementById('doc-return-tpl-edited-badge');
+            const bodyInput = document.getElementById('doc-return-body-input');
+            const selectedTpl = document.querySelector('input[name="doc_return_template"]:checked');
+            const templateType = selectedTpl ? selectedTpl.value : 'complete';
+
+            if (!badge || !bodyInput) return;
+
+            // 自由入力以外で、生成されたテンプレート文面と異なる場合に「編集済」と判定
+            const isEdited = (templateType !== 'custom') && (bodyInput.value.trim() !== (this.generatedTemplateText || '').trim());
+            this.isBodyDirty = isEdited;
+
+            badge.style.display = isEdited ? 'inline-block' : 'none';
+        }
+
+        /**
          * テキストエリアに本文をプログラム的にセット（isProgrammaticUpdate保護付き）
          */
         generateAndSetBody() {
@@ -398,20 +421,33 @@
             if (!bodyInput) return;
 
             const text = this.generateBodyText();
+            this.generatedTemplateText = text;
             this.isProgrammaticUpdate = true;
             bodyInput.value = text;
             this.isProgrammaticUpdate = false;
+            this.updateTemplateStatusUI();
             this.updateBodyCounter();
         }
 
         /**
-         * 文字数カウンタ更新
+         * 文字数カウンタ更新（700文字注意・1000文字警告：ソフトアラート）
          */
         updateBodyCounter() {
             const bodyInput = document.getElementById('doc-return-body-input');
             const counter = document.getElementById('doc-return-body-counter');
-            if (bodyInput && counter) {
-                counter.textContent = `${bodyInput.value.length}文字`;
+            if (!bodyInput || !counter) return;
+
+            const len = bodyInput.value.length;
+            if (len >= 1000) {
+                counter.innerHTML = `<span style="color:#dc2626; font-weight:600;">⚠️ ${len}文字 (1,000文字超：A4 1ページを超える可能性があります)</span>`;
+                bodyInput.style.borderColor = '#f87171';
+            } else if (len >= 700) {
+                counter.innerHTML = `<span style="color:#d97706; font-weight:600;">⚠️ ${len}文字 (700文字超：A4 1枚に収まらない可能性があります)</span>`;
+                bodyInput.style.borderColor = '#fbbf24';
+            } else {
+                counter.textContent = `${len}文字`;
+                counter.style.color = '#94a3b8';
+                bodyInput.style.borderColor = '#cbd5e1';
             }
         }
 
@@ -450,14 +486,11 @@
                 };
             });
 
-            // 本文テキストエリア入力 → isProgrammaticUpdate保護 + isBodyDirty + 自由入力切替
+            // 本文テキストエリア入力 → isProgrammaticUpdate保護 + リアルタイム編集判定（ラジオ維持） + カウンタ更新
             if (bodyInput) {
                 bodyInput.addEventListener('input', () => {
                     if (this.isProgrammaticUpdate) return;
-                    this.isBodyDirty = true;
-                    // 自由入力ラジオへ自動切替
-                    const customRadio = document.querySelector('input[name="doc_return_template"][value="custom"]');
-                    if (customRadio) customRadio.checked = true;
+                    this.updateTemplateStatusUI();
                     this.updateBodyCounter();
                 });
             }
@@ -587,6 +620,25 @@
                 // 返却書類リストのテキスト化
                 const itemsListStr = itemLabels.map(item => `・${item}`).join('\n');
 
+                // テンプレート種別および編集状態の厳密判定
+                const selectedTpl = document.querySelector('input[name="doc_return_template"]:checked');
+                const templateType = selectedTpl ? selectedTpl.value : 'complete';
+                const isTemplateEdited = Boolean(
+                    templateType !== 'custom' &&
+                    bodyMessage !== (this.generatedTemplateText || '').trim()
+                );
+
+                const tplNames = {
+                    complete: '完了返却',
+                    under_review: '審査中返却',
+                    original_return: '原本返却',
+                    custom: '自由入力'
+                };
+                const tplLabel = tplNames[templateType] || '完了返却';
+                const tplHeading = isTemplateEdited
+                    ? `通知文（${tplLabel}・編集済）：`
+                    : (templateType === 'custom' ? '通知文（自由入力）：' : `通知文（${tplLabel}）：`);
+
                 // 履歴本文（content）: 発送の事実が100%再現できる完全フォーマット
                 const contentLines = [
                     `発行日時：${issuedAtStr}`,
@@ -596,7 +648,7 @@
                     shipDate ? `発送日：${shipDate}` : null,
                     arrivalDate ? `到着予定日：${arrivalDate}` : null,
                     '',
-                    '通知文：',
+                    tplHeading,
                     bodyMessage || '（通知文なし）',
                     '',
                     '返却書類：',
@@ -616,6 +668,8 @@
 
                     subject: subject,
                     content: fullContent,
+                    template_type: templateType,
+                    is_template_edited: isTemplateEdited,
                     body_message: bodyMessage || null,  // 通知文を独立保存（スネークケース統一）
 
                     delivery_method: method,

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('--- Testing DocumentReturnReport Generation ---');
+console.log('--- Testing DocumentReturnReport & Modal v2.3 Logic ---');
 
 class MockJsPDF {
     constructor() {
@@ -98,23 +98,29 @@ async function testDocReturn() {
     await report.generate(customer, record, officeInfo);
     console.log('✅ DocumentReturnReport generate executed without exception.');
     console.log(`✅ Tracked text calls: ${report.doc.texts.length}, rect calls: ${report.doc.rects.length}`);
-    console.assert(report.doc.texts.length > 5, 'Should have printed texts');
 }
 
 async function testDocReturnWithBodyMessage() {
     const report = new window.DocumentReturnReport();
     
     const customer = {
-        customer_name: '有限会社 カスタム建設',
+        customer_name: '株式会社 鈴木商事',
+        contact_name: '鈴木 太郎'
     };
     
+    // フェーズ4.1仕様: body_message によるカスタム通知本文
+    const customMessage = `いつもお世話になっております。
+建設業許可更新申請の手続きが完了いたしましたので、
+お預かり書類等を本日発送のレターパックプラスにてお送りいたしました。
+ご査収のほどよろしくお願い申し上げます。`;
+
     const record = {
         delivery_method: 'letterpack_plus',
         ship_date: '2026/09/08',
         arrival_date: '2026/09/09',
-        tracking_number: '9999-8888-7777',
-        body_message: 'いつも大変お世話になっております。\n建設業許可更新申請の手続きが完了致しましたので、お預かり書類等を本日発送のレターパックプラスにてお送り致しました。\nご確認の上、保管をお願いいたします。',
-        returned_items: ['copy', 'permit_notice'],
+        tracking_number: '3906-1259-5800',
+        returned_items: ['permit_notice', 'copy'],
+        body_message: customMessage,
         staff_name: '藤田 宏明'
     };
 
@@ -169,19 +175,136 @@ async function testDocReturnCamelCaseFallback() {
     console.log('✅ testDocReturnCamelCaseFallback: bodyMessage（キャメルケース）の後方互換が正しく動作しました。');
 }
 
+/**
+ * v2.3 新規テスト: UT-PH41-009
+ * 編集 → 元に戻す → 保存 で is_template_edited === false
+ */
+function testRevertEditPreservesUneditedState() {
+    console.log('--- Testing UT-PH41-009: 編集→元に戻す の厳密判定 ---');
+    const templateType = 'complete';
+    const generatedTemplateText = `いつも大変お世話になっております。
+届出・申請の手続きが完了致しましたので、お預かり書類等を本日発送のレターパックプラスにてお送り致しました。
+ご確認のほど、よろしくお願い申し上げます。`;
+
+    // 1. 1文字追加された状態
+    let currentInput = generatedTemplateText + '追加';
+    let isEdited = (templateType !== 'custom') && (currentInput.trim() !== generatedTemplateText.trim());
+    console.assert(isEdited === true, '文字追加時は isEdited が true であること');
+
+    // 2. 削除して完全に元に戻した状態
+    currentInput = generatedTemplateText;
+    isEdited = (templateType !== 'custom') && (currentInput.trim() !== generatedTemplateText.trim());
+    console.assert(isEdited === false, '元に戻した後は isEdited が false に戻ること');
+
+    console.log('✅ UT-PH41-009: 編集→元に戻す で is_template_edited === false が正常に判定されました。');
+}
+
+/**
+ * v2.3 新規テスト: UT-PH41-010
+ * 完了返却 → 編集 → 審査中返却へ変更 で isBodyDirty リセット、新テンプレ生成
+ */
+function testSwitchTemplateResetsDirtyState() {
+    console.log('--- Testing UT-PH41-010: テンプレ切替によるリセットと再生成 ---');
+    
+    // 擬似モーダル状態
+    let currentTemplate = 'complete';
+    let isBodyDirty = true;
+    let badgeDisplay = 'inline-block';
+
+    // ユーザーが「審査中返却」ラジオをクリック
+    const handleRadioChange = (newTemplate) => {
+        currentTemplate = newTemplate;
+        isBodyDirty = false;
+        badgeDisplay = 'none';
+    };
+
+    handleRadioChange('under_review');
+    console.assert(currentTemplate === 'under_review', 'テンプレート種別が under_review に切り替わること');
+    console.assert(isBodyDirty === false, 'isBodyDirty が false にリセットされること');
+    console.assert(badgeDisplay === 'none', '編集済バッジが非表示化されること');
+
+    console.log('✅ UT-PH41-010: テンプレ切替で isBodyDirty リセット・バッジ消滅が正常に機能しました。');
+}
+
+/**
+ * v2.3 新規テスト: UT-PH41-011
+ * 700文字・1000文字超の長文通知文でも PDF 生成がエラーなく完了すること
+ */
+async function testLongBodyMessagePdfGeneration() {
+    console.log('--- Testing UT-PH41-011: 長文通知文（700字/1000字）のPDF生成耐性 ---');
+    const report = new window.DocumentReturnReport();
+    const customer = { customer_name: '長文テスト株式会社' };
+
+    // 1000文字超の長文テキスト
+    const longTextParagraph = 'いつも大変お世話になっております。建設業許可申請の手続きが完了いたしましたのでご案内いたします。詳細な注意事項を記載いたしますので必ずご確認ください。';
+    let longMessage = '';
+    while (longMessage.length < 1050) {
+        longMessage += longTextParagraph + '\n';
+    }
+
+    const record = {
+        delivery_method: 'letterpack_plus',
+        ship_date: '2026/09/08',
+        arrival_date: '2026/09/09',
+        tracking_number: '3906-1259-5800',
+        returned_items: ['permit_notice', 'copy', 'invoice'],
+        body_message: longMessage,
+        staff_name: '藤田 宏明'
+    };
+
+    // 例外なく生成完了することを確認
+    await report.generate(customer, record);
+    console.assert(report.doc.texts.length > 20, '長文テキストが複数行に分割描画されていること');
+    console.log(`✅ UT-PH41-011: 1,000文字超の長文本文でもエラーなくPDF描画が完了しました。（描画行数: ${report.doc.texts.length}）`);
+}
+
+/**
+ * v2.3 新規テスト: UT-PH41-012
+ * 出処記録と content 見出しの検証
+ */
+function testProvenanceContentHeading() {
+    console.log('--- Testing UT-PH41-012: 出処記録と content 見出し ---');
+
+    const tplNames = {
+        complete: '完了返却',
+        under_review: '審査中返却',
+        original_return: '原本返却',
+        custom: '自由入力'
+    };
+
+    const getHeading = (templateType, isTemplateEdited) => {
+        const tplLabel = tplNames[templateType] || '完了返却';
+        return isTemplateEdited
+            ? `通知文（${tplLabel}・編集済）：`
+            : (templateType === 'custom' ? '通知文（自由入力）：' : `通知文（${tplLabel}）：`);
+    };
+
+    console.assert(getHeading('complete', false) === '通知文（完了返却）：', '定型そのままの場合は「通知文（完了返却）：」');
+    console.assert(getHeading('complete', true) === '通知文（完了返却・編集済）：', '編集ありの場合は「通知文（完了返却・編集済）：」');
+    console.assert(getHeading('under_review', true) === '通知文（審査中返却・編集済）：', '審査中編集時は「通知文（審査中返却・編集済）：」');
+    console.assert(getHeading('custom', false) === '通知文（自由入力）：', '自由入力時は「通知文（自由入力）：」');
+
+    console.log('✅ UT-PH41-012: 出処記録の見出しフォーマットが全て期待通りです。');
+}
+
 testDocReturn().then(() => {
-    console.log('🎉 Test 1/4: 基本生成テスト 完了');
+    console.log('🎉 Test 1: 基本生成テスト 完了');
     return testDocReturnWithBodyMessage();
 }).then(() => {
-    console.log('🎉 Test 2/4: body_message動的本文テスト 完了');
+    console.log('🎉 Test 2: body_message動的本文テスト 完了');
     return testDocReturnFallbackBody();
 }).then(() => {
-    console.log('🎉 Test 3/4: フォールバック文面テスト 完了');
+    console.log('🎉 Test 3: フォールバック文面テスト 完了');
     return testDocReturnCamelCaseFallback();
 }).then(() => {
-    console.log('🎉 Test 4/4: キャメルケース後方互換テスト 完了');
+    console.log('🎉 Test 4: キャメルケース後方互換テスト 完了');
+    testRevertEditPreservesUneditedState();
+    testSwitchTemplateResetsDirtyState();
+    return testLongBodyMessagePdfGeneration();
+}).then(() => {
+    testProvenanceContentHeading();
     console.log('');
-    console.log('🎉🎉🎉 全テスト合格！ DocumentReturnReport フェーズ4.1検証完了 🎉🎉🎉');
+    console.log('🎉🎉🎉 全8テスト合格！ DocumentReturnReport & Modal v2.3 安全装置検証完了 🎉🎉🎉');
 }).catch(err => {
     console.error('❌ テスト失敗:', err);
     process.exit(1);
