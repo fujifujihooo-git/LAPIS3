@@ -273,3 +273,47 @@ window.DetailPageHelper = {
 };
 
 console.log('[LAPIS3] DetailPageHelper loaded');
+
+// ========================================
+// 操作メニュー（三点ドロップダウン）共通制御
+// ========================================
+window.toggleActionDropdown = function (event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const container = event.currentTarget ? event.currentTarget.closest('.action-dropdown') : null;
+    if (!container) return;
+    const menu = container.querySelector('.action-dropdown-menu');
+    if (!menu) return;
+
+    // 他の開いているメニューをすべて閉じる
+    document.querySelectorAll('.action-dropdown-menu.show').forEach(m => {
+        if (m !== menu) m.classList.remove('show');
+    });
+
+    menu.classList.toggle('show');
+};
+
+// 重複登録防止ガード付きイベントリスナー（外部クリック・Escapeキーで閉じる）
+if (!window.actionDropdownInitialized) {
+    window.actionDropdownInitialized = true;
+
+    // 外部クリックで閉じる
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.action-dropdown')) {
+            document.querySelectorAll('.action-dropdown-menu.show').forEach(m => {
+                m.classList.remove('show');
+            });
+        }
+    });
+
+    // Escapeキーで閉じる
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('.action-dropdown-menu.show').forEach(m => {
+                m.classList.remove('show');
+            });
+        }
+    });
+}

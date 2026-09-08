@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnBack = document.getElementById('btn-back');
     const btnSave = document.getElementById('btn-save');
     const btnDelete = document.getElementById('btn-delete');
+    const licenseActionDropdown = document.getElementById('license-action-dropdown');
     const btnAddHistory = document.getElementById('btn-add-history');
 
     // New UI selectors
@@ -42,7 +43,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nextActionText = document.getElementById('next-action-text');
     const stickyBar = document.getElementById('sticky-action-bar');
     const stickyBtnSave = document.getElementById('sticky-btn-save');
-    const stickyBtnDelete = document.getElementById('sticky-btn-delete');
     const topActionBar = document.getElementById('top-action-bar');
     const newModeGuide = document.getElementById('new-mode-guide');
 
@@ -259,9 +259,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentId = getUrlParameter('id');
     const isNewMode = (currentId === 'new');
 
-    // RBAC: 削除ボタンは管理者のみ
-    if (btnDelete && typeof isUserAdmin === 'function' && !isUserAdmin()) {
-        btnDelete.style.display = 'none';
+    // RBAC: 削除メニューは管理者のみ
+    if (licenseActionDropdown && typeof isUserAdmin === 'function' && !isUserAdmin()) {
+        licenseActionDropdown.style.display = 'none';
     }
 
     // New/Edit mode
@@ -281,7 +281,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (stickyBtnSave) stickyBtnSave.addEventListener('click', handleSave);
     if (btnSearchCustomer) btnSearchCustomer.addEventListener('click', searchCustomer);
     if (btnDelete) btnDelete.addEventListener('click', handleDelete);
-    if (stickyBtnDelete) stickyBtnDelete.addEventListener('click', handleDelete);
     if (btnAddHistory) btnAddHistory.addEventListener('click', addHistory);
 
     [btnBack].forEach(btn => btn?.addEventListener('click', () => {
@@ -409,8 +408,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // ライセンスデータをフォームに反映
                 loadData(licenseData);
-                if (btnDelete) btnDelete.style.display = 'inline-block';
-                if (stickyBtnDelete) stickyBtnDelete.style.display = 'inline-block';
+                if (licenseActionDropdown && (typeof isUserAdmin !== 'function' || isUserAdmin())) {
+                    licenseActionDropdown.style.display = 'inline-block';
+                }
 
                 console.log(`[Perf] License data loaded in ${(performance.now() - t2Start).toFixed(1)}ms`);
 

@@ -390,8 +390,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnSaveHistory) btnSaveHistory.addEventListener('click', saveHistoryChanges);
 
     const btnDelete = document.getElementById('btn-delete');
+    const caseActionDropdown = document.getElementById('case-action-dropdown');
     if (caseId === 'new') {
-        if (btnDelete) btnDelete.style.display = 'none';
+        if (caseActionDropdown) caseActionDropdown.style.display = 'none';
+        else if (btnDelete) btnDelete.style.display = 'none';
     } else {
         if (btnDelete) btnDelete.addEventListener('click', handleDelete);
     }

@@ -154,11 +154,17 @@
                             <button type="button" class="btn btn-nav-customer" id="btn-back-to-customer"><i
                                     data-lucide="user-search"></i> 顧客詳細に戻る</button>
                         </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-delete" id="btn-delete"><i data-lucide="trash-2"></i>
-                                削除</button>
+                        <div class="d-flex gap-2 align-items-center">
                             <button type="submit" form="case-form" class="btn btn-save" style="min-width: 120px;"><i
                                     data-lucide="save"></i> 保存</button>
+                            <div class="action-dropdown" id="case-action-dropdown">
+                                <button type="button" class="btn-icon-only" title="その他の操作" onclick="toggleActionDropdown(event)">⋮</button>
+                                <div class="action-dropdown-menu">
+                                    <button type="button" class="action-dropdown-item text-danger" id="btn-delete">
+                                        <i data-lucide="trash-2"></i> 案件を削除
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
