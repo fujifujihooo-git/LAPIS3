@@ -15,11 +15,37 @@
         RENEWAL_NOTICE:  'renewal_notice'
     };
 
+    // 送付理由テンプレート定義
+    const BODY_TEMPLATES = {
+        complete: {
+            label: '完了返却',
+            shipping: (shipDateStr, methodName) => `いつも大変お世話になっております。\n届出・申請の手続きが完了致しましたので、お預かり書類等を${shipDateStr}発送の${methodName}にてお送り致しました。`,
+            handDelivery: (shipDateStr) => `いつも大変お世話になっております。\n届出・申請の手続きが完了致しましたので、${shipDateStr}にお手渡しにて書類をお渡し致しました。`
+        },
+        under_review: {
+            label: '審査中返却',
+            shipping: (shipDateStr, methodName) => `いつも大変お世話になっております。\n届出・申請の手続きを行い、現在審査中となりましたので、お預かり書類等を${shipDateStr}発送の${methodName}にてお送り致しました。`,
+            handDelivery: (shipDateStr) => `いつも大変お世話になっております。\n届出・申請の手続きを行い、現在審査中となりましたので、${shipDateStr}にお手渡しにて書類をお渡し致しました。`
+        },
+        original_return: {
+            label: '原本返却',
+            shipping: (shipDateStr, methodName) => `いつも大変お世話になっております。\n原本確認・申請手続きが完了致しましたので、お預かりしておりました原本書類等を${shipDateStr}発送の${methodName}にて返却・お送り致しました。`,
+            handDelivery: (shipDateStr) => `いつも大変お世話になっております。\n原本確認・申請手続きが完了致しましたので、お預かりしておりました原本書類等を${shipDateStr}にお手渡しにて返却・お渡し致しました。`
+        },
+        custom: {
+            label: '自由入力',
+            shipping: () => `いつも大変お世話になっております。\n`,
+            handDelivery: () => `いつも大変お世話になっております。\n`
+        }
+    };
+
     class DocumentReturnModal {
         constructor() {
             this.modalElement = null;
             this.currentCustomer = null;
             this.onSuccessCallback = null;
+            this.isBodyDirty = false;
+            this.isProgrammaticUpdate = false;
         }
 
         /**
@@ -119,6 +145,27 @@
                             <input type="text" id="doc-return-tracking-input" class="form-control" placeholder="例: 3906-1259-5800" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px;">
                         </div>
 
+                        <!-- 送付理由テンプレート選択 -->
+                        <div class="form-group" style="margin-bottom:16px;">
+                            <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.9rem;">送付理由テンプレート</label>
+                            <div style="background:#f8fafc; padding:10px 14px; border:1px solid #e2e8f0; border-radius:6px; display:flex; flex-wrap:wrap; gap:14px;">
+                                <label style="cursor:pointer;"><input type="radio" name="doc_return_template" value="complete" checked> 完了返却</label>
+                                <label style="cursor:pointer;"><input type="radio" name="doc_return_template" value="under_review"> 審査中返却</label>
+                                <label style="cursor:pointer;"><input type="radio" name="doc_return_template" value="original_return"> 原本返却</label>
+                                <label style="cursor:pointer;"><input type="radio" name="doc_return_template" value="custom"> 自由入力</label>
+                            </div>
+                        </div>
+
+                        <!-- 通知書本文テキストエリア -->
+                        <div class="form-group" style="margin-bottom:16px; position:relative;">
+                            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.9rem;">通知書本文</label>
+                            <textarea id="doc-return-body-input" class="form-control" rows="4" placeholder="通知書に印字される本文" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem; resize:vertical;"></textarea>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:3px;">
+                                <small style="color:#64748b; font-size:0.78rem;">※テンプレート選択後に手続き名や一言を自由に加筆・修正できます。編集内容はPDFおよび履歴にそのまま反映されます。</small>
+                                <small id="doc-return-body-counter" style="color:#94a3b8; font-size:0.78rem; white-space:nowrap;">0文字</small>
+                            </div>
+                        </div>
+
                         <!-- 返却物・同封物 チェックボックス群 -->
                         <div class="form-group" style="margin-bottom:16px;">
                             <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.9rem;">ご返却書類・同封物 <span style="color:#ef4444;">*</span></label>
@@ -145,8 +192,8 @@
 
                         <!-- 備考 -->
                         <div class="form-group" style="margin-bottom:20px;">
-                            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.9rem;">備考・自由入力欄</label>
-                            <textarea id="doc-return-remarks-input" class="form-control" rows="2" placeholder="お客様への伝達事項や自由記述" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;"></textarea>
+                            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.9rem;">備考・伝達事項</label>
+                            <textarea id="doc-return-remarks-input" class="form-control" rows="2" placeholder="お客様への伝達事項（通知書本文とは別に記録されます）" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;"></textarea>
                         </div>
 
                         <!-- 履歴自動登録オプション (推奨) -->
@@ -254,7 +301,20 @@
                 if (submitBtn) submitBtn.innerText = '💾 保存 & 帳票PDF発行';
             }
 
+            // テンプレート種別のlocalStorage復元（種別のみ。本文は保存しない = 証跡汚染防止）
+            const lastTpl = localStorage.getItem('lapis3_doc_return_last_tpl');
+            const validTpls = ['complete', 'under_review', 'original_return', 'custom'];
+            const tplToRestore = (lastTpl && validTpls.includes(lastTpl)) ? lastTpl : 'complete';
+            const tplRadio = document.querySelector(`input[name="doc_return_template"][value="${tplToRestore}"]`);
+            if (tplRadio) tplRadio.checked = true;
+
+            // isBodyDirty リセット
+            this.isBodyDirty = false;
+            this.isProgrammaticUpdate = false;
+
             this.handleMethodChange();
+            // テンプレート本文を初期生成
+            this.generateAndSetBody();
         }
 
         /**
@@ -282,6 +342,77 @@
                 arrivalContainer.style.display = 'block';
                 trackingContainer.style.display = 'block';
             }
+
+            // リアルタイム本文更新（isBodyDirty === false の場合のみ）
+            if (!this.isBodyDirty) {
+                this.generateAndSetBody();
+            }
+        }
+
+        /**
+         * 現在のテンプレート種別・発送方法・発送日から本文テキストを生成
+         */
+        generateBodyText() {
+            const tplRadio = document.querySelector('input[name="doc_return_template"]:checked');
+            const tplKey = tplRadio ? tplRadio.value : 'complete';
+            const tpl = BODY_TEMPLATES[tplKey];
+            if (!tpl) return '';
+
+            const method = document.getElementById('doc-return-method-select').value;
+            const methodOther = document.getElementById('doc-return-method-other-input').value.trim();
+            const shipDateRaw = document.getElementById('doc-return-ship-date').value;
+
+            // 発送方法名取得
+            const deliveryMethodNames = {
+                takkyubin:        '宅急便',
+                letterpack_plus:  'レターパックプラス',
+                letterpack_light: 'レターパックライト',
+                kani_kakitome:    '簡易書留',
+                ordinary_mail:    '普通郵便',
+                hand_delivery:    '直接手渡し',
+                other:            methodOther || 'その他'
+            };
+            const methodName = deliveryMethodNames[method] || 'その他';
+
+            // 発送日テキスト
+            let shipDateStr = '本日';
+            if (shipDateRaw) {
+                const parts = shipDateRaw.split('-');
+                if (parts.length >= 3) {
+                    shipDateStr = `${parseInt(parts[1], 10)}月${parseInt(parts[2], 10)}日`;
+                }
+            }
+
+            if (method === 'hand_delivery') {
+                return tpl.handDelivery(shipDateStr);
+            } else {
+                return tpl.shipping(shipDateStr, methodName);
+            }
+        }
+
+        /**
+         * テキストエリアに本文をプログラム的にセット（isProgrammaticUpdate保護付き）
+         */
+        generateAndSetBody() {
+            const bodyInput = document.getElementById('doc-return-body-input');
+            if (!bodyInput) return;
+
+            const text = this.generateBodyText();
+            this.isProgrammaticUpdate = true;
+            bodyInput.value = text;
+            this.isProgrammaticUpdate = false;
+            this.updateBodyCounter();
+        }
+
+        /**
+         * 文字数カウンタ更新
+         */
+        updateBodyCounter() {
+            const bodyInput = document.getElementById('doc-return-body-input');
+            const counter = document.getElementById('doc-return-body-counter');
+            if (bodyInput && counter) {
+                counter.textContent = `${bodyInput.value.length}文字`;
+            }
         }
 
         /**
@@ -293,11 +424,43 @@
             const methodSelect = document.getElementById('doc-return-method-select');
             const itemOtherChk = document.getElementById('doc-return-item-other-chk');
             const form = document.getElementById('doc-return-form');
+            const bodyInput = document.getElementById('doc-return-body-input');
+            const shipDateInput = document.getElementById('doc-return-ship-date');
 
             closeBtn.onclick = () => this.close();
             cancelBtn.onclick = () => this.close();
 
             methodSelect.onchange = () => this.handleMethodChange();
+
+            // 発送日変更 → リアルタイム本文更新（isBodyDirty保護）
+            if (shipDateInput) {
+                shipDateInput.onchange = () => {
+                    if (!this.isBodyDirty) {
+                        this.generateAndSetBody();
+                    }
+                };
+            }
+
+            // テンプレートラジオ変更 → isBodyDirtyリセット + 本文再生成
+            const tplRadios = document.querySelectorAll('input[name="doc_return_template"]');
+            tplRadios.forEach(radio => {
+                radio.onchange = () => {
+                    this.isBodyDirty = false;
+                    this.generateAndSetBody();
+                };
+            });
+
+            // 本文テキストエリア入力 → isProgrammaticUpdate保護 + isBodyDirty + 自由入力切替
+            if (bodyInput) {
+                bodyInput.addEventListener('input', () => {
+                    if (this.isProgrammaticUpdate) return;
+                    this.isBodyDirty = true;
+                    // 自由入力ラジオへ自動切替
+                    const customRadio = document.querySelector('input[name="doc_return_template"][value="custom"]');
+                    if (customRadio) customRadio.checked = true;
+                    this.updateBodyCounter();
+                });
+            }
 
             itemOtherChk.onchange = (e) => {
                 const container = document.getElementById('doc-return-items-other-container');
@@ -369,6 +532,7 @@
                 const staffName = document.getElementById('doc-return-staff-input').value.trim();
                 const remarks = document.getElementById('doc-return-remarks-input').value.trim();
                 const itemsOther = document.getElementById('doc-return-items-other-input').value.trim();
+                const bodyMessage = document.getElementById('doc-return-body-input').value.trim();
 
                 const customerId = this.currentCustomer ? (this.currentCustomer.customer_id || this.currentCustomer.id) : '';
 
@@ -432,6 +596,9 @@
                     shipDate ? `発送日：${shipDate}` : null,
                     arrivalDate ? `到着予定日：${arrivalDate}` : null,
                     '',
+                    '通知文：',
+                    bodyMessage || '（通知文なし）',
+                    '',
                     '返却書類：',
                     itemsListStr
                 ];
@@ -440,7 +607,7 @@
                 }
                 const fullContent = contentLines.filter(line => line !== null).join('\n');
 
-                // レコードオブジェクト (第1弾: history_typeは「その他」を維持、remarksはcontentに統合)
+                // レコードオブジェクト
                 const record = {
                     customer_id: Number(customerId),
 
@@ -449,6 +616,7 @@
 
                     subject: subject,
                     content: fullContent,
+                    body_message: bodyMessage || null,  // 通知文を独立保存（スネークケース統一）
 
                     delivery_method: method,
                     delivery_method_other: method === 'other' ? methodOther : null,
@@ -463,6 +631,12 @@
                     staff_name: staffName || '担当者',
                     remarks: null
                 };
+
+                // localStorage にテンプレート種別のみ保存（本文は保存しない = 証跡汚染防止）
+                const selectedTpl = document.querySelector('input[name="doc_return_template"]:checked');
+                if (selectedTpl) {
+                    localStorage.setItem('lapis3_doc_return_last_tpl', selectedTpl.value);
+                }
 
                 // 4. customer_histories コレクションへの保存 (チェックON時のみ実行)
                 if (shouldSaveHistory) {
@@ -485,7 +659,7 @@
                     console.log('ℹ️ 「対応履歴に記録する」がOFFのため、履歴保存はスキップされました。');
                 }
 
-                // 5. PDF 帳票発行
+                // 5. PDF 帳票発行（body_messageをrecordに含めて渡す → PDFが動的本文を使用）
                 const printCustomer = Object.assign({}, this.currentCustomer);
                 printCustomer.contact_name = selectedContactName || '';
 

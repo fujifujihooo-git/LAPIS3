@@ -178,11 +178,15 @@
             const shipDateVal = record ? (record.shipDate || record.ship_date) : null;
             const shipDateStr = shipDateVal ? this.formatMonthDay(shipDateVal) : '本日';
 
-            let bodyMessage = '';
-            if (methodKey === 'hand_delivery') {
-                bodyMessage = `いつも大変お世話になっております。\n届出・申請の手続きが完了致しましたので、${shipDateStr}にお手渡しにて書類をお渡し致しました。`;
-            } else {
-                bodyMessage = `いつも大変お世話になっております。\n届出・申請の手続きが完了致しましたので、お預かり書類等を${shipDateStr}発送の${methodName}にてお送り致しました。`;
+            // 動的本文: record.body_message（スネークケース統一）を優先採用
+            // 未指定時は後方互換として従来の固定文面をフォールバック生成
+            let bodyMessage = record ? (record.body_message ?? record.bodyMessage) : null;
+            if (!bodyMessage) {
+                if (methodKey === 'hand_delivery') {
+                    bodyMessage = `いつも大変お世話になっております。\n届出・申請の手続きが完了致しましたので、${shipDateStr}にお手渡しにて書類をお渡し致しました。`;
+                } else {
+                    bodyMessage = `いつも大変お世話になっております。\n届出・申請の手続きが完了致しましたので、お預かり書類等を${shipDateStr}発送の${methodName}にてお送り致しました。`;
+                }
             }
 
             // doc.splitTextToSize による確実な右端自動改行
