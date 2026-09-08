@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAPIS3 請求書デザインモック・比較ラボ</title>
+    <!-- Google Fonts: Noto Sans JP & Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Zen+Old+Mincho:wght@600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-canvas: #0f172a;
+            --panel-bg: #1e293b;
+            --panel-border: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: var(--bg-canvas);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* ===== Header Bar ===== */
+        header {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--panel-border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-badge {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .header-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* ===== Tab Navigation ===== */
+        .tab-nav {
+            display: flex;
+            background: #0f172a;
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid var(--panel-border);
+            gap: 4px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 7px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-action {
+            background: #334155;
+            border: 1px solid #475569;
+            color: #f8fafc;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn-action:hover {
+            background: #475569;
+            color: #fff;
+        }
+
+        .btn-print {
+            background: linear-gradient(135deg, #059669, #10b981);
+            border: none;
+        }
+        .btn-print:hover {
+            background: linear-gradient(135deg, #047857, #059669);
+        }
+
+        /* ===== Main Container ===== */
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ===== Control Sidebar ===== */
+        .sidebar {
+            width: 340px;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--panel-border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            max-height: calc(100vh - 65px);
+        }
+
+        .sidebar-section {
+            background: #0f172a;
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .design-card {
+            background: #1e293b;
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .design-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .design-card.active {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .design-card-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .design-card-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .badge-slate { background: #334155; color: #94a3b8; }
+        .badge-navy { background: #1e3a8a; color: #93c5fd; }
+        .badge-emerald { background: #064e3b; color: #6ee7b7; }
+        .badge-minimal { background: #27272a; color: #e4e4e7; }
+
+        .design-card-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            line-height: 1.5;
+        }
+
+        .points-list {
+            margin-top: 8px;
+            padding-left: 16px;
+            font-size: 11px;
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        /* ===== Preview Stage ===== */
+        .preview-stage {
+            flex: 1;
+            background: #090d16;
+            padding: 40px 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            background-image: radial-gradient(#1e293b 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        .comparison-wrapper {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        .sheet-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sheet-label {
+            font-size: 14px;
+            font-weight: 700;
+            color: #cbd5e1;
+            background: #1e293b;
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ===== A4 Sheet Base (Exact Ratio) ===== */
+        .a4-sheet {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm 20mm;
+            background: #ffffff;
+            color: #1e293b;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            position: relative;
+            box-sizing: border-box;
+            transform-origin: top center;
+            transition: transform 0.2s ease;
+        }
+
+        /* ======================================================== */
+        /* =================== THEME 0: CURRENT =================== */
+        /* ======================================================== */
+        .theme-current {
+            font-family: 'Noto Sans JP', sans-serif;
+            color: #1e293b;
+        }
+        .theme-current .doc-title {
+            text-align: center;
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 12px;
+            margin-bottom: 4px;
+            color: #1e293b;
+        }
+        .theme-current .doc-title-line {
+            width: 80px;
+            height: 2px;
+            background: #1e293b;
+            margin: 0 auto 20px auto;
+        }
+        .theme-current .header-grid {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .theme-current .customer-box {
+            max-width: 60%;
+        }
+        .theme-current .customer-name {
+            font-size: 15px;
+            font-weight: 700;
+            border-bottom: 1.5px solid #1e293b;
+            padding-bottom: 2px;
+            margin-bottom: 8px;
+            display: inline-block;
+        }
+        .theme-current .customer-address {
+            font-size: 9.5px;
+            color: #4b5563;
+            line-height: 1.4;
+        }
+        .theme-current .meta-box {
+            text-align: right;
+            font-size: 10px;
+            color: #374151;
+            line-height: 1.6;
+        }
+        .theme-current .issuer-box {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        .theme-current .issuer-inner {
+            width: 250px;
+            text-align: left;
+            position: relative;
+        }
+        .theme-current .issuer-logo {
+            max-width: 220px;
+            height: auto;
+            max-height: 50px;
+            object-fit: contain;
+        }
+        .theme-current .issuer-rep {
+            font-size: 10px;
+            margin-top: 4px;
+            padding-left: 12px;
+            color: #1f2937;
+        }
+        .theme-current .hanko-img {
+            position: absolute;
+            right: 0;
+            top: -10px;
+            width: 65px;
+            height: 65px;
+            opacity: 0.9;
+        }
+        .theme-current .amount-box {
+            background: #e6f3e6;
+            border: 1.5px solid #006400;
+            border-radius: 4px;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .theme-current .amount-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #000;
+        }
+        .theme-current .amount-value {
+            font-size: 20px;
+            font-weight: 800;
+            color: #000;
+        }
+        .theme-current .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 11px;
+        }
+        .theme-current .items-table th {
+            background: #e6f3e6;
+            color: #1e293b;
+            border: 1px solid #006400;
+            padding: 6px 8px;
+            font-weight: 700;
+            text-align: center;
+        }
+        .theme-current .items-table td {
+            border: 1px solid #006400;
+            padding: 6px 8px;
+            color: #1e293b;
+        }
+        .theme-current .items-table .subtotal-row td {
+            background: #fff;
+            font-weight: 700;
+            border: 1px solid #006400;
+        }
+        .theme-current .items-table .nontax-header td {
+            background: #e6f3e6;
+            font-weight: 700;
+            font-size: 10px;
+            border: 1px solid #006400;
+        }
+        .theme-current .items-table .total-row td {
+            background: #e6f3e6;
+            font-weight: 800;
+            font-size: 13px;
+            border: 1px solid #006400;
+        }
+        .theme-current .footer-grid {
+            display: flex;
+            gap: 20px;
+            font-size: 10px;
+        }
+        .theme-current .footer-col {
+            flex: 1;
+        }
+        .theme-current .footer-title {
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        .theme-current .disclaimer {
+            font-size: 8px;
+            color: #6b7280;
+            line-height: 1.5;
+            margin-top: 8px;
+        }
+
+        /* ======================================================== */
+        /* ============ THEME A: MODERN SLATE & NAVY ============= */
+        /* ======================================================== */
+        .theme-modern {
+            font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+            color: #0f172a;
+        }
+        .theme-modern .top-accent-bar {
+            height: 4px;
+            background: linear-gradient(90deg, #1e293b 0%, #3b82f6 50%, #60a5fa 100%);
+            margin: -20mm -20mm 15mm -20mm;
+        }
+        .theme-modern .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+        .theme-modern .doc-badge-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .theme-modern .doc-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: #3b82f6;
+            text-transform: uppercase;
+        }
+        .theme-modern .doc-main-title {
+            font-size: 26px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: 4px;
+        }
+        .theme-modern .meta-table {
+            font-size: 10px;
+            color: #64748b;
+            border-spacing: 0;
+            line-height: 1.6;
+        }
+        .theme-modern .meta-table td:first-child {
+            padding-right: 12px;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        .theme-modern .meta-table td:last-child {
+            font-weight: 600;
+            color: #1e293b;
+            text-align: right;
+        }
+
+        .theme-modern .address-issuer-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 24px;
+            align-items: flex-start;
+        }
+        .theme-modern .client-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-left: 3px solid #3b82f6;
+            border-radius: 6px;
+            padding: 14px 16px;
+        }
+        .theme-modern .client-card-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .theme-modern .client-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 6px;
+        }
+        .theme-modern .client-address {
+            font-size: 9.5px;
+            color: #475569;
+            line-height: 1.45;
+        }
+
+        .theme-modern .issuer-card {
+            position: relative;
+            text-align: right;
+            padding-right: 8px;
+        }
+        .theme-modern .issuer-logo {
+            max-width: 180px;
+            height: auto;
+            max-height: 42px;
+            margin-bottom: 6px;
+        }
+        .theme-modern .issuer-detail {
+            font-size: 9.5px;
+            color: #475569;
+            line-height: 1.5;
+        }
+        .theme-modern .hanko-modern {
+            position: absolute;
+            right: 0;
+            top: -6px;
+            width: 58px;
+            height: 58px;
+            opacity: 0.85;
+        }
+
+        /* Modern Amount Hero */
+        .theme-modern .amount-hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #fff;
+            border-radius: 8px;
+            padding: 14px 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+        }
+        .theme-modern .amount-hero-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            letter-spacing: 0.5px;
+        }
+        .theme-modern .amount-hero-sub {
+            font-size: 9px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        .theme-modern .amount-hero-value {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: #ffffff;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Modern Crisp Table */
+        .theme-modern .modern-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+        }
+        .theme-modern .modern-table th {
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 9px 12px;
+            border-bottom: 2px solid #cbd5e1;
+            text-align: left;
+        }
+        .theme-modern .modern-table th.th-right { text-align: right; }
+        .theme-modern .modern-table th.th-center { text-align: center; }
+        .theme-modern .modern-table td {
+            padding: 10px 12px;
+            font-size: 11px;
+            color: #1e293b;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .theme-modern .modern-table .td-num {
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+        }
+        .theme-modern .modern-table .row-subtotal td {
+            border-bottom: 1px solid #cbd5e1;
+            color: #64748b;
+            font-size: 10.5px;
+            padding: 7px 12px;
+        }
+        .theme-modern .modern-table .row-nontax-header td {
+            background: #f8fafc;
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 10px;
+            padding: 6px 12px;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .theme-modern .modern-table .row-grandtotal td {
+            border-top: 2px solid #0f172a;
+            border-bottom: 2px solid #0f172a;
+            background: #f8fafc;
+            color: #0f172a;
+            font-size: 13px;
+            font-weight: 800;
+            padding: 10px 12px;
+        }
+
+        .theme-modern .footer-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            font-size: 9.5px;
+        }
+        .theme-modern .info-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px 14px;
+        }
+        .theme-modern .info-card-header {
+            font-size: 10px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .theme-modern .bank-table {
+            width: 100%;
+            line-height: 1.5;
+            color: #334155;
+        }
+        .theme-modern .bank-table td:first-child {
+            color: #64748b;
+            width: 60px;
+        }
+        .theme-modern .disclaimer-box {
+            font-size: 8px;
+            color: #64748b;
+            line-height: 1.45;
+        }
+
+        /* ======================================================== */
+        /* ============ THEME B: EXECUTIVE FOREST EMERALD ======== */
+        /* ======================================================== */
+        .theme-executive {
+            font-family: 'Noto Sans JP', sans-serif;
+            color: #1f2937;
+        }
+        .theme-executive .header-banner {
+            border-bottom: 2px solid #047857;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        .theme-executive .doc-title-exec {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 6px;
+            color: #064e3b;
+            font-family: 'Zen Old Mincho', serif;
+        }
+        .theme-executive .exec-meta {
+            text-align: right;
+            font-size: 9.5px;
+            color: #4b5563;
+            line-height: 1.5;
+        }
+        .theme-executive .meta-highlight {
+            color: #047857;
+            font-weight: 600;
+        }
+
+        .theme-executive .split-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+        .theme-executive .exec-client {
+            flex: 1;
+            padding: 8px 0;
+        }
+        .theme-executive .exec-client-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #111827;
+            border-bottom: 1.5px solid #047857;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+            display: inline-block;
+        }
+        .theme-executive .exec-issuer {
+            width: 260px;
+            text-align: right;
+            position: relative;
+        }
+        .theme-executive .exec-hanko {
+            position: absolute;
+            right: 0;
+            top: -4px;
+            width: 60px;
+            height: 60px;
+            opacity: 0.88;
+        }
+
+        .theme-executive .exec-amount-bar {
+            background: #ecfdf5;
+            border: 1px solid #6ee7b7;
+            border-left: 5px solid #059669;
+            border-radius: 4px;
+            padding: 10px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 22px;
+        }
+        .theme-executive .exec-amount-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #064e3b;
+        }
+        .theme-executive .exec-amount-val {
+            font-size: 22px;
+            font-weight: 800;
+            color: #064e3b;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .theme-executive .exec-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 22px;
+            font-size: 11px;
+        }
+        .theme-executive .exec-table th {
+            background: #064e3b;
+            color: #ffffff;
+            font-weight: 600;
+            padding: 7px 10px;
+            border: 1px solid #064e3b;
+            text-align: center;
+            font-size: 10.5px;
+        }
+        .theme-executive .exec-table td {
+            border: 1px solid #d1fae5;
+            padding: 8px 10px;
+            color: #1f2937;
+        }
+        .theme-executive .exec-table tbody tr:nth-child(even) td {
+            background: #fbfdfc;
+        }
+        .theme-executive .exec-table .row-sub td {
+            background: #fff;
+            border-top: 1px solid #9ca3af;
+            font-weight: 600;
+            color: #4b5563;
+        }
+        .theme-executive .exec-table .row-nontax td {
+            background: #ecfdf5;
+            color: #064e3b;
+            font-weight: 700;
+            border: 1px solid #a7f3d0;
+        }
+        .theme-executive .exec-table .row-total td {
+            background: #ecfdf5;
+            color: #064e3b;
+            font-weight: 800;
+            font-size: 13px;
+            border: 1.5px solid #059669;
+        }
+
+        /* ======================================================== */
+        /* ============ THEME C: MINIMALIST PURE ================== */
+        /* ======================================================== */
+        .theme-minimal {
+            font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+            color: #18181b;
+        }
+        .theme-minimal .minimal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            border-bottom: 1px solid #18181b;
+            padding-bottom: 14px;
+            margin-bottom: 24px;
+        }
+        .theme-minimal .minimal-title {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .theme-minimal .minimal-meta {
+            font-size: 10px;
+            color: #71717a;
+            display: flex;
+            gap: 20px;
+        }
+        .theme-minimal .minimal-meta strong {
+            color: #18181b;
+            font-weight: 600;
+        }
+
+        .theme-minimal .minimal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 28px;
+        }
+        .theme-minimal .minimal-client-name {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .theme-minimal .minimal-client-address {
+            font-size: 10px;
+            color: #71717a;
+            line-height: 1.5;
+        }
+
+        .theme-minimal .minimal-issuer {
+            text-align: right;
+            position: relative;
+        }
+        .theme-minimal .minimal-hanko {
+            position: absolute;
+            right: -6px;
+            top: -8px;
+            width: 56px;
+            height: 56px;
+            opacity: 0.8;
+        }
+
+        .theme-minimal .minimal-amount-section {
+            margin-bottom: 28px;
+            border-bottom: 1px solid #e4e4e7;
+            padding-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .theme-minimal .minimal-amount-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #71717a;
+            font-weight: 600;
+        }
+        .theme-minimal .minimal-amount-num {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #18181b;
+        }
+
+        .theme-minimal .minimal-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .theme-minimal .minimal-table th {
+            font-size: 9.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #71717a;
+            padding: 8px 0;
+            border-bottom: 1px solid #18181b;
+            text-align: left;
+        }
+        .theme-minimal .minimal-table th.th-right { text-align: right; }
+        .theme-minimal .minimal-table th.th-center { text-align: center; }
+        .theme-minimal .minimal-table td {
+            padding: 12px 0;
+            font-size: 11px;
+            color: #18181b;
+            border-bottom: 1px solid #f4f4f5;
+        }
+        .theme-minimal .minimal-table .row-calc td {
+            padding: 6px 0;
+            border-bottom: none;
+            color: #71717a;
+            font-size: 10.5px;
+        }
+        .theme-minimal .minimal-table .row-calc-total td {
+            padding: 12px 0;
+            border-top: 1px solid #18181b;
+            border-bottom: 1px solid #18181b;
+            font-size: 13px;
+            font-weight: 800;
+            color: #18181b;
+        }
+
+        /* ===== Zoom Controls ===== */
+        .zoom-widget {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #1e293b;
+            border: 1px solid var(--panel-border);
+            border-radius: 30px;
+            padding: 6px 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            z-index: 100;
+        }
+
+        .zoom-btn {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        .zoom-btn:hover {
+            color: #fff;
+            background: #334155;
+        }
+        .zoom-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: #f8fafc;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        /* ===== Print CSS ===== */
+        @media print {
+            header, .sidebar, .zoom-widget, .sheet-label {
+                display: none !important;
+            }
+            body, .workspace, .preview-stage {
+                background: #fff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: visible !important;
+            }
+            .a4-sheet {
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                min-height: 100vh !important;
+                padding: 15mm 15mm !important;
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="header-brand">
+            <span class="brand-badge">LAPIS3 LAB</span>
+            <div>
+                <div class="header-title">請求書デザインモック・比較スタジオ</div>
+                <div class="header-subtitle">直感で選ぶ、次世代PDF帳票UIデザイン案</div>
+            </div>
+        </div>
+
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTheme('modern')">
+                <i data-lucide="sparkles" size="16"></i> A案: 洗練モダン (Modern Slate)
+            </button>
+            <button class="tab-btn" onclick="switchTheme('executive')">
+                <i data-lucide="shield-check" size="16"></i> B案: 上質エメラルド (Executive)
+            </button>
+            <button class="tab-btn" onclick="switchTheme('minimal')">
+                <i data-lucide="feather" size="16"></i> C案: ミニマル (Minimal Pure)
+            </button>
+            <button class="tab-btn" onclick="switchTheme('current')">
+                <i data-lucide="history" size="16"></i> 現行デザイン (Current)
+            </button>
+            <button class="tab-btn" onclick="switchTheme('compare')">
+                <i data-lucide="columns-2" size="16"></i> 並べて比較
+            </button>
+        </div>
+
+        <div class="header-actions">
+            <button class="btn-action btn-print" onclick="window.print()">
+                <i data-lucide="printer" size="16"></i> 印刷プレビュー
+            </button>
+        </div>
+    </header>
+
+    <div class="workspace">
+
+        <!-- Sidebar: Design Analysis & Tips -->
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <div class="section-title">
+                    <i data-lucide="lightbulb" size="14"></i> 言語化サポート・解説
+                </div>
+                <div id="design-explanation">
+                    <!-- Dynamic Content based on active theme -->
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">
+                    <i data-lucide="sliders-horizontal" size="14"></i> サンプルデータ切替
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="font-size: 12px; color: #cbd5e1; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="sample_type" value="standard" checked onchange="updateSampleData('standard')">
+                        標準的な請求書（報酬＋立替金）
+                    </label>
+                    <label style="font-size: 12px; color: #cbd5e1; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="sample_type" value="multi" onchange="updateSampleData('multi')">
+                        明細多数（複数業務＋各種印紙代）
+                    </label>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">
+                    <i data-lucide="check-circle-2" size="14"></i> 改善のポイント比較
+                </div>
+                <ul style="font-size: 11px; color: #94a3b8; line-height: 1.7; padding-left: 16px;">
+                    <li><strong style="color: #f8fafc;">フォント:</strong> 疑似太字の滲みを解消し、視認性の高いウェイトを採用</li>
+                    <li><strong style="color: #f8fafc;">罫線:</strong> 全面格子（Excel風）から、開放感のある水平ボーダーへ</li>
+                    <li><strong style="color: #f8fafc;">金額:</strong> 一目で総額が伝わるモダンカードデザイン</li>
+                    <li><strong style="color: #f8fafc;">ブランド:</strong> LAPISの落ち着いた風格と洗練さを両立</li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Preview Canvas -->
+        <main class="preview-stage" id="preview-stage">
+
+            <!-- Dynamic Sheets Generated via JS -->
+
+        </main>
+
+    </div>
+
+    <!-- Zoom Floating Widget -->
+    <div class="zoom-widget">
+        <button class="zoom-btn" onclick="adjustZoom(-0.1)" title="縮小">
+            <i data-lucide="minus" size="14"></i>
+        </button>
+        <span class="zoom-text" id="zoom-val">100%</span>
+        <button class="zoom-btn" onclick="adjustZoom(0.1)" title="拡大">
+            <i data-lucide="plus" size="14"></i>
+        </button>
+        <button class="zoom-btn" onclick="resetZoom()" title="100%リセット">
+            <i data-lucide="rotate-ccw" size="14"></i>
+        </button>
+    </div>
+
+    <script>
+        // Sample Data Definitions
+        const sampleDataStandard = {
+            invoiceNumber: "2026-0801",
+            invoiceDate: "2026年08月25日",
+            dueDate: "2026年09月30日",
+            customerName: "大和建設株式会社",
+            customerTitle: "御中",
+            customerPostal: "〒160-0022",
+            customerAddress: "東京都新宿区新宿3-1-1",
+            customerBuilding: "新宿ダイワビル 8F",
+            itemsTaxable: [
+                { desc: "建設業許可更新申請（知事・一般・建築一式）書類作成及び申請代理報酬", qty: 1, price: 150000, amount: 150000 },
+                { desc: "決算変更届出書類作成及び提出代行費用（第42期分）", qty: 1, price: 35000, amount: 35000 }
+            ],
+            taxableSubtotal: 185000,
+            taxAmount: 18500,
+            itemsNontaxable: [
+                { desc: "東京都知事許可手数料（証紙代・非課税）", qty: 1, price: 50000, amount: 50000 },
+                { desc: "各種証明書取得立替金（登記事項証明書・納税証明書等）", qty: 4, price: 600, amount: 2400 }
+            ],
+            nontaxableSubtotal: 52400,
+            totalAmount: 255900,
+            salesRep: "中村 宏明"
+        };
+
+        let currentTheme = 'modern';
+        let currentZoom = 1.0;
+
+        const explanations = {
+            modern: `
+                <div class="design-card active">
+                    <div class="design-card-title">
+                        A案: Modern Slate & Navy
+                        <span class="design-card-badge badge-navy">洗練・先進</span>
+                    </div>
+                    <div class="design-card-desc">
+                        現代的なSaaSや洗練されたブランドが採用する、最も見やすくスマートなスタイルです。
+                    </div>
+                    <ul class="points-list">
+                        <li><strong>ダークスレート×ブルー:</strong> 落ち着いた知性と信頼感を醸成</li>
+                        <li><strong>開放的な水平テーブル:</strong> 縦罫線をなくし、明細がスッキリ頭に入る</li>
+                        <li><strong>ダーク金額ヒーロー:</strong> 最重要の「ご請求金額」を高級感のあるカードで強調</li>
+                    </ul>
+                </div>
+            `,
+            executive: `
+                <div class="design-card active">
+                    <div class="design-card-title">
+                        B案: Executive Forest Emerald
+                        <span class="design-card-badge badge-emerald">上質・格式</span>
+                    </div>
+                    <div class="design-card-desc">
+                        行政書士・士業の格式と伝統を、深みのあるエメラルドグリーンでエレガントに刷新したスタイルです。
+                    </div>
+                    <ul class="points-list">
+                        <li><strong>ディープエメラルド:</strong> 既存の緑を「品格のあるフォレストグリーン」に昇華</li>
+                        <li><strong>タイトル明朝アクセント:</strong> 書類の格調高さを際立たせる見出し</li>
+                        <li><strong>コントラストテーブル:</strong> 濃色ヘッダーでフォーマルな引き締め感</li>
+                    </ul>
+                </div>
+            `,
+            minimal: `
+                <div class="design-card active">
+                    <div class="design-card-title">
+                        C案: Minimalist Pure
+                        <span class="design-card-badge badge-minimal">余白美・ミニマル</span>
+                    </div>
+                    <div class="design-card-desc">
+                        枠線や塗りを極限まで削ぎ落とし、美しいタイポグラフィと余白だけで魅せるスイススタイル調です。
+                    </div>
+                    <ul class="points-list">
+                        <li><strong>モノトーン＆グラファイト:</strong> どんな企業・取引先にも馴染む普遍的な美しさ</li>
+                        <li><strong>洗練されたジャンプ率:</strong> 大胆な金額表示と繊細な明細フォントの対比</li>
+                        <li><strong>インク節約＆高精細:</strong> 印刷時にも最も美しく鮮明に印字されます</li>
+                    </ul>
+                </div>
+            `,
+            current: `
+                <div class="design-card active">
+                    <div class="design-card-title">
+                        現行デザイン (Current)
+                        <span class="design-card-badge badge-slate">既存</span>
+                    </div>
+                    <div class="design-card-desc">
+                        現在システムから出力されているjsPDF帳票のデザインです。
+                    </div>
+                    <ul class="points-list">
+                        <li>全面グリッド枠線（Excel風）</li>
+                        <li>黄緑色の塗り背景と濃緑枠線</li>
+                        <li>疑似太字による文字ストローク</li>
+                    </ul>
+                </div>
+            `,
+            compare: `
+                <div class="design-card active">
+                    <div class="design-card-title">
+                        並べて比較モード
+                        <span class="design-card-badge badge-navy">一覧比較</span>
+                    </div>
+                    <div class="design-card-desc">
+                        各案を横に並べて、パッと見の印象・余白・文字の視認性を直接見比べることができます。
+                    </div>
+                </div>
+            `
+        };
+
+        // Renderer Functions for Each Theme
+        function renderCurrentSheet(data) {
+            return `
+                <div class="sheet-container">
+                    <div class="sheet-label"><i data-lucide="history" size="14"></i> 現行デザイン (Before)</div>
+                    <div class="a4-sheet theme-current">
+                        <div class="doc-title">請　求　書</div>
+                        <div class="doc-title-line"></div>
+
+                        <div class="header-grid">
+                            <div class="customer-box">
+                                <div class="customer-name">${data.customerName}　${data.customerTitle}</div>
+                                <div class="customer-address">
+                                    ${data.customerPostal}<br>
+                                    ${data.customerAddress}<br>
+                                    ${data.customerBuilding}
+                                </div>
+                            </div>
+                            <div class="meta-box">
+                                請求番号: ${data.invoiceNumber}<br>
+                                請求日: ${data.invoiceDate}<br>
+                                登録番号: T4011101011419
+                            </div>
+                        </div>
+
+                        <div class="issuer-box">
+                            <div class="issuer-inner">
+                                <img src="invoiceLOGO.png" class="issuer-logo" alt="Logo">
+                                <div class="issuer-rep">担当者: ${data.salesRep}</div>
+                                <img src="HANKO_syokuin.png" class="hanko-img" alt="印">
+                            </div>
+                        </div>
+
+                        <div class="amount-box">
+                            <span class="amount-label">ご請求金額（税込）</span>
+                            <span class="amount-value">¥${data.totalAmount.toLocaleString()}-</span>
+                        </div>
+
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: auto;">内容</th>
+                                    <th style="width: 50px;">数量</th>
+                                    <th style="width: 100px;">単価</th>
+                                    <th style="width: 110px;">金額</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.itemsTaxable.map(i => `
+                                    <tr>
+                                        <td>${i.desc}</td>
+                                        <td style="text-align: center;">${i.qty}</td>
+                                        <td style="text-align: right;">¥${i.price.toLocaleString()}-</td>
+                                        <td style="text-align: right; font-weight: 700;">¥${i.amount.toLocaleString()}-</td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="subtotal-row">
+                                    <td colspan="3" style="text-align: right;">小計</td>
+                                    <td style="text-align: right;">¥${data.taxableSubtotal.toLocaleString()}-</td>
+                                </tr>
+                                <tr class="subtotal-row">
+                                    <td colspan="3" style="text-align: right;">消費税（10%）</td>
+                                    <td style="text-align: right;">¥${data.taxAmount.toLocaleString()}-</td>
+                                </tr>
+                                <tr class="nontax-header">
+                                    <td colspan="4">【非課税項目】</td>
+                                </tr>
+                                ${data.itemsNontaxable.map(i => `
+                                    <tr>
+                                        <td>${i.desc}</td>
+                                        <td style="text-align: center;">${i.qty}</td>
+                                        <td style="text-align: right;">¥${i.price.toLocaleString()}-</td>
+                                        <td style="text-align: right; font-weight: 700;">¥${i.amount.toLocaleString()}-</td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="total-row">
+                                    <td colspan="3" style="text-align: right;">合計金額</td>
+                                    <td style="text-align: right;">¥${data.totalAmount.toLocaleString()}-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="footer-grid">
+                            <div class="footer-col">
+                                <div class="footer-title">【お振込先】</div>
+                                <div>三菱UFJ銀行　新宿中央支店</div>
+                                <div>普通　４８４７０４４</div>
+                                <div>ナカムラヒトシ（中村仁司）</div>
+                                <div style="margin-top: 6px; font-weight: 700;">お支払期日: ${data.dueDate}</div>
+                            </div>
+                            <div class="footer-col">
+                                <div class="footer-title">【備考】</div>
+                                <div>お振込み手数料は貴社にてご負担願います。</div>
+                                <div class="disclaimer">
+                                    ※行政書士の業務に関する報酬については、所得税法第204条第1項に規定する報酬には該当しませんので、「支払調書」の提出は不要です。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderModernSheet(data) {
+            return `
+                <div class="sheet-container">
+                    <div class="sheet-label"><i data-lucide="sparkles" size="14"></i> A案: Modern Slate & Navy</div>
+                    <div class="a4-sheet theme-modern">
+                        <div class="top-accent-bar"></div>
+
+                        <div class="header-section">
+                            <div class="doc-badge-group">
+                                <span class="doc-badge">INVOICE</span>
+                                <div class="doc-main-title">請 求 書</div>
+                            </div>
+                            <table class="meta-table">
+                                <tr><td>請求番号</td><td>${data.invoiceNumber}</td></tr>
+                                <tr><td>発行日</td><td>${data.invoiceDate}</td></tr>
+                                <tr><td>登録番号</td><td>T4011101011419</td></tr>
+                            </table>
+                        </div>
+
+                        <div class="address-issuer-row">
+                            <div class="client-card">
+                                <div class="client-card-label">Billed To</div>
+                                <div class="client-name">${data.customerName}　${data.customerTitle}</div>
+                                <div class="client-address">
+                                    ${data.customerPostal}<br>
+                                    ${data.customerAddress}<br>
+                                    ${data.customerBuilding}
+                                </div>
+                            </div>
+
+                            <div class="issuer-card">
+                                <img src="invoiceLOGO.png" class="issuer-logo" alt="Office Logo"><br>
+                                <div class="issuer-detail">
+                                    <strong>行政書士 中村事務所</strong><br>
+                                    担当者: ${data.salesRep}<br>
+                                    TEL: 03-5386-3001
+                                </div>
+                                <img src="HANKO_syokuin.png" class="hanko-modern" alt="職印">
+                            </div>
+                        </div>
+
+                        <div class="amount-hero">
+                            <div>
+                                <div class="amount-hero-title">ご請求金額（税込）</div>
+                                <div class="amount-hero-sub">お支払期限: ${data.dueDate}</div>
+                            </div>
+                            <div class="amount-hero-value">
+                                ¥${data.totalAmount.toLocaleString()}-
+                            </div>
+                        </div>
+
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50%;">内容 / 項目</th>
+                                    <th class="th-center" style="width: 12%;">数量</th>
+                                    <th class="th-right" style="width: 18%;">単価</th>
+                                    <th class="th-right" style="width: 20%;">金額</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.itemsTaxable.map(i => `
+                                    <tr>
+                                        <td><strong>${i.desc}</strong></td>
+                                        <td class="th-center td-num">${i.qty}</td>
+                                        <td class="th-right td-num">¥${i.price.toLocaleString()}</td>
+                                        <td class="th-right td-num" style="color: #0f172a;">¥${i.amount.toLocaleString()}</td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="row-subtotal">
+                                    <td colspan="3" class="th-right">小計（課税対象）</td>
+                                    <td class="th-right td-num">¥${data.taxableSubtotal.toLocaleString()}</td>
+                                </tr>
+                                <tr class="row-subtotal">
+                                    <td colspan="3" class="th-right">消費税（10%）</td>
+                                    <td class="th-right td-num">¥${data.taxAmount.toLocaleString()}</td>
+                                </tr>
+                                <tr class="row-nontax-header">
+                                    <td colspan="4">【非課税項目・立替実費】</td>
+                                </tr>
+                                ${data.itemsNontaxable.map(i => `
+                                    <tr>
+                                        <td>${i.desc}</td>
+                                        <td class="th-center td-num">${i.qty}</td>
+                                        <td class="th-right td-num">¥${i.price.toLocaleString()}</td>
+                                        <td class="th-right td-num">¥${i.amount.toLocaleString()}</td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="row-grandtotal">
+                                    <td colspan="3" class="th-right">合計請求金額</td>
+                                    <td class="th-right td-num" style="color: #2563eb;">¥${data.totalAmount.toLocaleString()}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="footer-layout">
+                            <div class="info-card">
+                                <div class="info-card-header">
+                                    <i data-lucide="building-2" size="13" color="#3b82f6"></i> お振込先口座
+                                </div>
+                                <table class="bank-table">
+                                    <tr><td>銀行名</td><td><strong>三菱UFJ銀行</strong>　新宿中央支店</td></tr>
+                                    <tr><td>口座種別</td><td>普通　４８４７０４４</td></tr>
+                                    <tr><td>名義人</td><td>ナカムラヒトシ（中村仁司）</td></tr>
+                                </table>
+                            </div>
+
+                            <div class="info-card">
+                                <div class="info-card-header">
+                                    <i data-lucide="info" size="13" color="#64748b"></i> 備考・税法案内
+                                </div>
+                                <div class="disclaimer-box">
+                                    お振込手数料は貴社にてご負担願います。<br>
+                                    ※行政書士報酬は所得税法第204条第1項の報酬に該当しないため、支払調書の提出は不要です。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderExecutiveSheet(data) {
+            return `
+                <div class="sheet-container">
+                    <div class="sheet-label"><i data-lucide="shield-check" size="14"></i> B案: Executive Forest Emerald</div>
+                    <div class="a4-sheet theme-executive">
+                        <div class="header-banner">
+                            <div>
+                                <div class="doc-title-exec">御 請 求 書</div>
+                            </div>
+                            <div class="exec-meta">
+                                <div>請求番号: <span class="meta-highlight">${data.invoiceNumber}</span></div>
+                                <div>発行日: ${data.invoiceDate}</div>
+                                <div>インボイス登録番号: T4011101011419</div>
+                            </div>
+                        </div>
+
+                        <div class="split-info">
+                            <div class="exec-client">
+                                <div class="exec-client-name">${data.customerName}　${data.customerTitle}</div>
+                                <div style="font-size: 10px; color: #4b5563; line-height: 1.5;">
+                                    ${data.customerPostal}<br>
+                                    ${data.customerAddress}<br>
+                                    ${data.customerBuilding}
+                                </div>
+                            </div>
+
+                            <div class="exec-issuer">
+                                <img src="invoiceLOGO.png" style="max-width: 190px; height: auto; margin-bottom: 4px;" alt="Logo"><br>
+                                <div style="font-size: 9.5px; color: #374151; line-height: 1.5;">
+                                    <strong>行政書士 中村事務所</strong><br>
+                                    担当者: ${data.salesRep}<br>
+                                    〒160-0023 東京都新宿区西新宿7-19-7-402<br>
+                                    TEL: 03-5386-3001
+                                </div>
+                                <img src="HANKO_syokuin.png" class="exec-hanko" alt="印">
+                            </div>
+                        </div>
+
+                        <div class="exec-amount-bar">
+                            <div>
+                                <span class="exec-amount-title">ご請求金額（消費税込）</span>
+                                <div style="font-size: 9px; color: #047857; margin-top: 2px;">お支払期日: ${data.dueDate}</div>
+                            </div>
+                            <span class="exec-amount-val">¥${data.totalAmount.toLocaleString()}-</span>
+                        </div>
+
+                        <table class="exec-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left; padding-left: 12px;">業務内容・費目</th>
+                                    <th style="width: 50px;">数量</th>
+                                    <th style="width: 90px; text-align: right;">単価</th>
+                                    <th style="width: 100px; text-align: right; padding-right: 12px;">金額</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.itemsTaxable.map(i => `
+                                    <tr>
+                                        <td>${i.desc}</td>
+                                        <td style="text-align: center;">${i.qty}</td>
+                                        <td style="text-align: right;">¥${i.price.toLocaleString()}</td>
+                                        <td style="text-align: right; font-weight: 700; color: #111827;">¥${i.amount.toLocaleString()}</td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="row-sub">
+                                    <td colspan="3" style="text-align: right;">税抜小計</td>
+                                    <td style="text-align: right;">¥${data.taxableSubtotal.toLocaleString()}</td>
+                                </tr>
+                                <tr class="row-sub">
+                                    <td colspan="3" style="text-align: right;">消費税額（10%）</td>
+                                    <td style="text-align: right;">¥${data.taxAmount.toLocaleString()}</td>
+                                </tr>
+                                <tr class="row-nontax">
+                                    <td colspan="4" style="padding-left: 12px;">【非課税項目・立替実費】</td>
+                                </tr>
+                                ${data.itemsNontaxable.map(i => `
+                                    <tr>
+                                        <td>${i.desc}</td>
+                                        <td style="text-align: center;">${i.qty}</td>
+                                        <td style="text-align: right;">¥${i.price.toLocaleString()}</td>
+                                        <td style="text-align: right; font-weight: 700;">¥${i.amount.toLocaleString()}</td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="row-total">
+                                    <td colspan="3" style="text-align: right;">総請求金額</td>
+                                    <td style="text-align: right;">¥${data.totalAmount.toLocaleString()}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 9.5px; border-top: 1px solid #e5e7eb; padding-top: 14px;">
+                            <div>
+                                <div style="font-weight: 700; color: #064e3b; margin-bottom: 4px;">■ お振込口座</div>
+                                <div style="color: #374151; line-height: 1.6;">
+                                    三菱UFJ銀行　新宿中央支店<br>
+                                    普通　４８４７０４４<br>
+                                    口座名義: ナカムラヒトシ（中村仁司）
+                                </div>
+                            </div>
+                            <div>
+                                <div style="font-weight: 700; color: #374151; margin-bottom: 4px;">■ 備考</div>
+                                <div style="color: #4b5563; line-height: 1.5;">
+                                    恐れ入りますがお振込手数料は貴社にてご負担願います。<br>
+                                    <span style="font-size: 8px; color: #6b7280;">※所得税法第204条第1項第2号規定により、行政書士報酬の支払調書提出は不要です。</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMinimalSheet(data) {
+            return `
+                <div class="sheet-container">
+                    <div class="sheet-label"><i data-lucide="feather" size="14"></i> C案: Minimalist Pure</div>
+                    <div class="a4-sheet theme-minimal">
+                        <div class="minimal-header">
+                            <div class="minimal-title">請求書</div>
+                            <div class="minimal-meta">
+                                <div>No. <strong>${data.invoiceNumber}</strong></div>
+                                <div>Date <strong>${data.invoiceDate}</strong></div>
+                                <div>Due <strong>${data.dueDate}</strong></div>
+                            </div>
+                        </div>
+
+                        <div class="minimal-grid">
+                            <div>
+                                <div style="font-size: 9px; color: #a1a1aa; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 1px;">Recipient</div>
+                                <div class="minimal-client-name">${data.customerName}　${data.customerTitle}</div>
+                                <div class="minimal-client-address">
+                                    ${data.customerPostal}<br>
+                                    ${data.customerAddress}<br>
+                                    ${data.customerBuilding}
+                                </div>
+                            </div>
+
+                            <div class="minimal-issuer">
+                                <img src="invoiceLOGO.png" style="max-width: 170px; height: auto; margin-bottom: 6px;" alt="Logo"><br>
+                                <div style="font-size: 9px; color: #71717a; line-height: 1.4;">
+                                    行政書士 中村事務所<br>
+                                    担当: ${data.salesRep}<br>
+                                    登録: T4011101011419
+                                </div>
+                                <img src="HANKO_syokuin.png" class="minimal-hanko" alt="印">
+                            </div>
+                        </div>
+
+                        <div class="minimal-amount-section">
+                            <span class="minimal-amount-label">Total Amount Due</span>
+                            <span class="minimal-amount-num">¥${data.totalAmount.toLocaleString()}</span>
+                        </div>
+
+                        <table class="minimal-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50%;">Description</th>
+                                    <th class="th-center" style="width: 10%;">Qty</th>
+                                    <th class="th-right" style="width: 20%;">Price</th>
+                                    <th class="th-right" style="width: 20%;">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.itemsTaxable.map(i => `
+                                    <tr>
+                                        <td><strong>${i.desc}</strong></td>
+                                        <td class="th-center" style="color: #71717a;">${i.qty}</td>
+                                        <td class="th-right" style="color: #71717a;">¥${i.price.toLocaleString()}</td>
+                                        <td class="th-right" style="font-weight: 700;">¥${i.amount.toLocaleString()}</td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="row-calc">
+                                    <td colspan="3" class="th-right">Subtotal</td>
+                                    <td class="th-right">¥${data.taxableSubtotal.toLocaleString()}</td>
+                                </tr>
+                                <tr class="row-calc">
+                                    <td colspan="3" class="th-right">Tax (10%)</td>
+                                    <td class="th-right">¥${data.taxAmount.toLocaleString()}</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" style="padding-top: 14px; font-size: 9.5px; font-weight: 700; color: #71717a; border-bottom: 1px solid #18181b;">
+                                        NON-TAXABLE ITEMS / 非課税実費
+                                    </td>
+                                </tr>
+                                ${data.itemsNontaxable.map(i => `
+                                    <tr>
+                                        <td>${i.desc}</td>
+                                        <td class="th-center" style="color: #71717a;">${i.qty}</td>
+                                        <td class="th-right" style="color: #71717a;">¥${i.price.toLocaleString()}</td>
+                                        <td class="th-right" style="font-weight: 700;">¥${i.amount.toLocaleString()}</td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="row-calc-total">
+                                    <td colspan="3" class="th-right">TOTAL</td>
+                                    <td class="th-right">¥${data.totalAmount.toLocaleString()}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px; font-size: 9px; color: #71717a; line-height: 1.5;">
+                            <div>
+                                <strong style="color: #18181b;">お振込先:</strong> 三菱UFJ銀行 新宿中央支店 (普) 4847044<br>
+                                口座名義: ナカムラヒトシ（中村仁司）
+                            </div>
+                            <div style="font-size: 8px;">
+                                ※振込手数料はお客様負担にてお願いいたします。行政書士報酬のため支払調書提出は不要です。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render Canvas Router
+        function renderCanvas() {
+            const container = document.getElementById('preview-stage');
+            const data = sampleDataStandard;
+
+            if (currentTheme === 'compare') {
+                container.innerHTML = `
+                    <div class="comparison-wrapper">
+                        ${renderModernSheet(data)}
+                        ${renderExecutiveSheet(data)}
+                        ${renderMinimalSheet(data)}
+                    </div>
+                `;
+            } else if (currentTheme === 'modern') {
+                container.innerHTML = renderModernSheet(data);
+            } else if (currentTheme === 'executive') {
+                container.innerHTML = renderExecutiveSheet(data);
+            } else if (currentTheme === 'minimal') {
+                container.innerHTML = renderMinimalSheet(data);
+            } else if (currentTheme === 'current') {
+                container.innerHTML = renderCurrentSheet(data);
+            }
+
+            // Update explanation in sidebar
+            document.getElementById('design-explanation').innerHTML = explanations[currentTheme] || '';
+
+            // Apply Zoom
+            applyZoom();
+
+            // Refresh icons
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function switchTheme(theme) {
+            currentTheme = theme;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            renderCanvas();
+        }
+
+        function adjustZoom(delta) {
+            currentZoom = Math.min(Math.max(currentZoom + delta, 0.5), 1.5);
+            applyZoom();
+        }
+
+        function resetZoom() {
+            currentZoom = 1.0;
+            applyZoom();
+        }
+
+        function applyZoom() {
+            document.getElementById('zoom-val').textContent = Math.round(currentZoom * 100) + '%';
+            document.querySelectorAll('.a4-sheet').forEach(el => {
+                el.style.transform = `scale(${currentZoom})`;
+            });
+        }
+
+        function updateSampleData(type) {
+            // Can extend with multi-items if needed
+            renderCanvas();
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCanvas();
+        });
+    </script>
+</body>
+</html>
