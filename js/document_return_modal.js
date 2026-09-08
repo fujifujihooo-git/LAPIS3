@@ -687,7 +687,6 @@
                 };
 
                 // localStorage にテンプレート種別のみ保存（本文は保存しない = 証跡汚染防止）
-                const selectedTpl = document.querySelector('input[name="doc_return_template"]:checked');
                 if (selectedTpl) {
                     localStorage.setItem('lapis3_doc_return_last_tpl', selectedTpl.value);
                 }

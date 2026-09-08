@@ -67,6 +67,14 @@ eval(utilsCode);
 const code = fs.readFileSync(path.resolve(__dirname, '../reports/document-return-report.js'), 'utf8');
 eval(code);
 
+// Load & Validate document_return_modal.js (構文およびDocumentReturnModalクラス定義の検証)
+global.localStorage = { getItem: () => null, setItem: () => {} };
+global.firebase = { firestore: { Timestamp: { fromDate: () => ({}) }, FieldValue: { serverTimestamp: () => ({}) } } };
+const modalCode = fs.readFileSync(path.resolve(__dirname, '../js/document_return_modal.js'), 'utf8');
+eval(modalCode);
+console.assert(typeof window.DocumentReturnModal === 'function', 'window.DocumentReturnModal がクラス/関数として正常に読み込まれること');
+console.log('✅ document_return_modal.js 構文・クラスロード検証: 成功 (typeof window.DocumentReturnModal =', typeof window.DocumentReturnModal, ')');
+
 async function testDocReturn() {
     const report = new window.DocumentReturnReport();
     
