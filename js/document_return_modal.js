@@ -149,6 +149,17 @@
                             <textarea id="doc-return-remarks-input" class="form-control" rows="2" placeholder="お客様への伝達事項や自由記述" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;"></textarea>
                         </div>
 
+                        <!-- 履歴自動登録オプション (推奨) -->
+                        <div style="margin-bottom:16px; padding:10px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px;">
+                            <label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:0.9rem; color:#1e40af; cursor:pointer; margin:0;">
+                                <input type="checkbox" id="doc-return-save-history-chk" style="width:16px; height:16px; accent-color:#1e40af;" checked>
+                                対応履歴に記録する（推奨）
+                            </label>
+                            <small style="display:block; margin-left:24px; color:#475569; font-size:0.8rem; margin-top:2px;">
+                                ※チェックONの場合、発行日時や発送詳細（宛先・追跡番号等）を顧客カルテの対応履歴へ自動保存します。
+                            </small>
+                        </div>
+
                         <!-- ボタン類 -->
                         <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #e2e8f0; padding-top:14px;">
                             <button type="button" id="doc-return-btn-cancel" class="btn btn-secondary" style="padding:8px 16px; background:#e2e8f0; color:#334155; border:none; border-radius:6px; cursor:pointer;">キャンセル</button>
@@ -235,6 +246,13 @@
             });
             document.getElementById('doc-return-items-other-input').value = '';
             document.getElementById('doc-return-items-other-container').style.display = 'none';
+
+            const historyChk = document.getElementById('doc-return-save-history-chk');
+            if (historyChk) {
+                historyChk.checked = true;
+                const submitBtn = document.getElementById('doc-return-btn-submit');
+                if (submitBtn) submitBtn.innerText = '💾 保存 & 帳票PDF発行';
+            }
 
             this.handleMethodChange();
         }
@@ -384,20 +402,53 @@
                 };
                 const deliveryMethodName = deliveryMethodNames[method] || 'その他';
 
-                // 履歴本文（content）: 事実ベースの簡潔なサマリーのみ
-                // 備考は record.remarks、追跡番号は record.tracking_number に個別保存済みのため
-                // content には含めない（概要=ダッシュボード / 履歴=台帳 の役割分離）
-                const contentSummary = `${deliveryMethodName}で ${itemLabels.join('、')} を返却しました`;
+                // 履歴保存フラグの取得
+                const historyChk = document.getElementById('doc-return-save-history-chk');
+                const shouldSaveHistory = historyChk ? historyChk.checked : true;
 
-                // レコードオブジェクト
+                // 宛先担当者名の取得
+                const contactSelect = document.getElementById('doc-return-contact-select');
+                let selectedContactName = null;
+                if (contactSelect && contactSelect.value) {
+                    const foundContact = this.contactsList.find(c => String(c.contact_id || c.id) === String(contactSelect.value));
+                    if (foundContact) selectedContactName = foundContact.contact_name;
+                }
+                const contactDisplay = selectedContactName ? `${selectedContactName} 様` : '（会社宛）';
+
+                // 発行日時の自動生成 (YYYY/MM/DD HH:mm)
+                const now = new Date();
+                const pad = (n) => String(n).padStart(2, '0');
+                const issuedAtStr = `${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+                // 返却書類リストのテキスト化
+                const itemsListStr = itemLabels.map(item => `・${item}`).join('\n');
+
+                // 履歴本文（content）: 発送の事実が100%再現できる完全フォーマット
+                const contentLines = [
+                    `発行日時：${issuedAtStr}`,
+                    `発送方法：${deliveryMethodName}`,
+                    trackingNumber ? `追跡番号：${trackingNumber}` : null,
+                    `宛先担当者：${contactDisplay}`,
+                    shipDate ? `発送日：${shipDate}` : null,
+                    arrivalDate ? `到着予定日：${arrivalDate}` : null,
+                    '',
+                    '返却書類：',
+                    itemsListStr
+                ];
+                if (remarks) {
+                    contentLines.push('', `伝達事項：\n${remarks}`);
+                }
+                const fullContent = contentLines.filter(line => line !== null).join('\n');
+
+                // レコードオブジェクト (第1弾: history_typeは「その他」を維持、remarksはcontentに統合)
                 const record = {
                     customer_id: Number(customerId),
 
-                    history_type: "その他",
+                    history_type: "書類発送",
                     history_category: HISTORY_CATEGORIES.DOCUMENT_RETURN,
 
                     subject: subject,
-                    content: contentSummary,
+                    content: fullContent,
 
                     delivery_method: method,
                     delivery_method_other: method === 'other' ? methodOther : null,
@@ -410,33 +461,31 @@
                     returned_items_other: returnedItems.includes('other') ? itemsOther : null,
 
                     staff_name: staffName || '担当者',
-                    remarks: remarks || null
+                    remarks: null
                 };
 
-                // 4. customer_histories コレクションへの保存 (response_date 責務分離: shipDate の Timestamp)
-                if (window.db) {
-                    const shipDateObj = shipDateRaw ? new Date(shipDateRaw) : new Date();
-                    
-                    const docData = Object.assign({}, record, {
-                        response_date: firebase.firestore.Timestamp.fromDate(shipDateObj),
-                        created_at: firebase.firestore.FieldValue.serverTimestamp(),
-                        created_by_name: createdBy,
-                        deleted_at: null
-                    });
+                // 4. customer_histories コレクションへの保存 (チェックON時のみ実行)
+                if (shouldSaveHistory) {
+                    if (window.db) {
+                        const shipDateObj = shipDateRaw ? new Date(shipDateRaw) : new Date();
+                        
+                        const docData = Object.assign({}, record, {
+                            response_date: firebase.firestore.Timestamp.fromDate(shipDateObj),
+                            created_at: firebase.firestore.FieldValue.serverTimestamp(),
+                            created_by_name: createdBy,
+                            deleted_at: null
+                        });
 
-                    await window.db.collection('customer_histories').add(docData);
-                    console.log('✅ customer_histories への書類返却履歴保存が完了しました。', docData);
+                        await window.db.collection('customer_histories').add(docData);
+                        console.log('✅ customer_histories への書類返却履歴保存が完了しました。', docData);
+                    } else {
+                        console.warn('⚠️ window.db が未定義のため、Firestore保存をスキップしてPDF生成を実行します。');
+                    }
                 } else {
-                    console.warn('⚠️ window.db が未定義のため、Firestore保存をスキップしてPDF生成を実行します。');
+                    console.log('ℹ️ 「対応履歴に記録する」がOFFのため、履歴保存はスキップされました。');
                 }
 
                 // 5. PDF 帳票発行
-                const contactSelect = document.getElementById('doc-return-contact-select');
-                let selectedContactName = null;
-                if (contactSelect && contactSelect.value) {
-                    const foundContact = this.contactsList.find(c => String(c.contact_id || c.id) === String(contactSelect.value));
-                    if (foundContact) selectedContactName = foundContact.contact_name;
-                }
                 const printCustomer = Object.assign({}, this.currentCustomer);
                 printCustomer.contact_name = selectedContactName || '';
 
@@ -445,11 +494,15 @@
 
                 report.preview();
 
-                alert('書類返却履歴を登録し、返却通知書PDFを発行しました。');
+                if (shouldSaveHistory) {
+                    alert('書類返却履歴を登録し、返却通知書PDFを発行しました。');
+                } else {
+                    alert('返却通知書PDFを発行しました。（※対応履歴の保存はスキップされました）');
+                }
 
                 this.close();
 
-                if (this.onSuccessCallback) {
+                if (this.onSuccessCallback && shouldSaveHistory) {
                     this.onSuccessCallback(record);
                 }
             } catch (err) {

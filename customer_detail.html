@@ -1331,7 +1331,9 @@
         }
 
         /* 種別カラー定義 */
-        .type-color-document { background-color: #1e40af; border: 1px solid #1e40af; } /* 濃ネイビーブルー */
+        .type-color-shipping { background-color: #1e40af; border: 1px solid #1e40af; } /* 📦 濃ネイビーブルー: 書類発送 */
+        .type-color-report { background-color: #0d9488; border: 1px solid #0d9488; } /* 📄 ティール/エメラルド: 帳票出力 */
+        .type-color-document { background-color: #1e40af; border: 1px solid #1e40af; } /* 濃ネイビーブルー (旧互換) */
         .type-color-phone { background-color: #16a34a; border: 1px solid #16a34a; } /* 緑 */
         .type-color-mail { background-color: #9333ea; border: 1px solid #9333ea; } /* 紫 */
         .type-color-visit { background-color: #ea580c; border: 1px solid #ea580c; } /* オレンジ */
@@ -2354,6 +2356,12 @@
                                                         <input type="checkbox" id="filter-type-all" checked> すべて
                                                     </label>
                                                     <label class="checkbox-label-inline">
+                                                        <input type="checkbox" name="filter-type" value="書類発送"> 書類発送
+                                                    </label>
+                                                    <label class="checkbox-label-inline">
+                                                        <input type="checkbox" name="filter-type" value="帳票出力"> 帳票出力
+                                                    </label>
+                                                    <label class="checkbox-label-inline">
                                                         <input type="checkbox" name="filter-type" value="電話"> 電話
                                                     </label>
                                                     <label class="checkbox-label-inline">
@@ -2782,7 +2790,7 @@
                     
                     <div class="form-group">
                         <label>種別 <span class="required">*</span></label>
-                        <div style="display: flex; gap: 12px; align-items: center; height: 44px; font-size: 11pt; flex-wrap: nowrap;">
+                        <div style="display: flex; gap: 12px; align-items: center; min-height: 44px; font-size: 11pt; flex-wrap: wrap; padding: 4px 0;">
                             <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0; white-space: nowrap;">
                                 <input type="radio" name="history-type" value="電話" checked style="width: auto; margin-right: 0;"> 電話
                             </label>
@@ -2791,6 +2799,12 @@
                             </label>
                             <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0; white-space: nowrap;">
                                 <input type="radio" name="history-type" value="訪問" style="width: auto; margin-right: 0;"> 訪問
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0; white-space: nowrap;">
+                                <input type="radio" name="history-type" value="書類発送" style="width: auto; margin-right: 0;"> 書類発送
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0; white-space: nowrap;">
+                                <input type="radio" name="history-type" value="帳票出力" style="width: auto; margin-right: 0;"> 帳票出力
                             </label>
                             <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0; white-space: nowrap;">
                                 <input type="radio" name="history-type" value="その他" style="width: auto; margin-right: 0;"> その他

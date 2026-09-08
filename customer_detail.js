@@ -3268,6 +3268,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    /**
+     * 対応履歴の種別メタ情報（表示種別名・アイコン・CSSクラス）を取得する
+     * ※ 過去データ破壊防止のため、既存Firestoreドキュメントそのものは更新せず表示時のみ安全に変換
+     */
+    function getHistoryTypeMeta(h) {
+        let type = h.history_type || '';
+        if (!type || type === 'その他') {
+            if (h.history_category === 'document_return' || h.history_category === 'document_shipping') {
+                type = '書類発送';
+            } else if (h.history_category === 'report_export' || h.history_category === 'carte_export') {
+                type = '帳票出力';
+            }
+        } else if (type === '書類返却') {
+            type = '書類発送';
+        }
+
+        switch (type) {
+            case '書類発送':
+                return { type: '書類発送', icon: 'package', className: 'type-color-shipping' };
+            case '帳票出力':
+                return { type: '帳票出力', icon: 'file-text', className: 'type-color-report' };
+            case '電話':
+                return { type: '電話', icon: 'phone', className: 'type-color-phone' };
+            case 'メール':
+                return { type: 'メール', icon: 'mail', className: 'type-color-mail' };
+            case '訪問':
+                return { type: '訪問', icon: 'users', className: 'type-color-visit' };
+            default:
+                return { type: type || 'その他', icon: 'more-horizontal', className: 'type-color-other' };
+        }
+    }
+
     function applyHistoryFilters() {
         const keyword = document.getElementById('history-search-keyword')?.value.trim().toLowerCase();
         const filterTypeAll = document.getElementById('filter-type-all')?.checked;
@@ -3276,12 +3308,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dateEndVal = document.getElementById('history-search-end')?.value;
 
         filteredHistories = histories.filter(h => {
-            // 1. 種別フィルタ (history_type 判定に加え history_category === 'document_return' も判定)
+            // 1. 種別フィルタ (表示メタ種別に基づき安全に判定)
             if (!filterTypeAll && checkedTypes.length > 0) {
-                const isDocReturnChecked = checkedTypes.includes('書類返却');
-                const matchesType = checkedTypes.includes(h.history_type);
-                const matchesCategory = isDocReturnChecked && (h.history_category === 'document_return' || h.history_type === '書類返却');
-                if (!matchesType && !matchesCategory) return false;
+                const meta = getHistoryTypeMeta(h);
+                if (!checkedTypes.includes(meta.type)) return false;
             }
             
             // 2. キーワード検索（件名、内容。部分一致）
@@ -3333,24 +3363,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         container.innerHTML = filteredHistories.map(h => {
-            let typeClass = 'type-color-other';
-            let iconName = 'file-text';
-            let typeLabel = h.history_type || 'その他';
-            
-            if (h.history_category === 'document_return' || h.history_type === '書類返却') {
-                typeClass = 'type-color-document';
-                iconName = 'package';
-                typeLabel = '書類返却';
-            } else if (h.history_type === '電話') {
-                typeClass = 'type-color-phone';
-                iconName = 'phone';
-            } else if (h.history_type === 'メール') {
-                typeClass = 'type-color-mail';
-                iconName = 'mail';
-            } else if (h.history_type === '訪問') {
-                typeClass = 'type-color-visit';
-                iconName = 'users';
-            }
+            const typeMeta = getHistoryTypeMeta(h);
+            const typeClass = typeMeta.className;
+            const iconName = typeMeta.icon;
+            const typeLabel = typeMeta.type;
             
             const rDate = h.response_date ? (h.response_date.toDate ? h.response_date.toDate() : new Date(h.response_date)) : null;
             const dateStr = rDate ? formatHistoryShortDate(rDate) : '―';
@@ -3465,7 +3481,15 @@ document.addEventListener('DOMContentLoaded', async () => {
        const cAtStr = cAt ? cAt.toLocaleString('ja-JP') : '―';
        const uAtStr = uAt ? uAt.toLocaleString('ja-JP') : '―';
 
-       detailContainer.innerHTML = `
+               let displayContent = h.content || '';
+        if (h.remarks && String(h.remarks).trim() !== '') {
+            const remarksText = String(h.remarks).trim();
+            if (!displayContent.includes(remarksText)) {
+                displayContent += (displayContent ? '\n\n' : '') + `【過去登録備考】\n${remarksText}`;
+            }
+        }
+
+        detailContainer.innerHTML = `
            <div class="detail-row">
                <div class="detail-label">対応日時</div>
                <div class="detail-value" style="font-weight: 600;">${dateStr}</div>
@@ -3482,14 +3506,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                <div class="detail-label">件名</div>
                <div class="detail-value" style="font-weight: 600;">${escapeHtml(h.subject || '')}</div>
            </div>
-           <div class="detail-row" style="flex-direction: column; gap: 8px;">
-               <div class="detail-label">内容</div>
-               <div class="detail-value-content">${escapeHtml(h.content || '')}</div>
-           </div>
-           <div class="detail-row" style="flex-direction: column; gap: 8px;">
-               <div class="detail-label">備考</div>
-               <div class="detail-value-content">${h.remarks ? escapeHtml(h.remarks).replace(/\n/g, '<br>') : '―'}</div>
-           </div>
+            <div class="detail-row" style="flex-direction: column; gap: 8px;">
+                <div class="detail-label">内容</div>
+                <div class="detail-value-content">${escapeHtml(displayContent || '') || '―'}</div>
+            </div>
            <div class="detail-row">
                <div class="detail-label">次回対応予定日</div>
                <div class="detail-value">${nextActionStr}</div>

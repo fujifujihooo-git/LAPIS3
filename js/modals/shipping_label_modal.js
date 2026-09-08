@@ -117,6 +117,13 @@
                             </div>
                         </div>
 
+                        <!-- 追跡番号 (任意) -->
+                        <div class="form-group">
+                            <label style="display:block; font-weight:600; margin-bottom:6px; color:#334155;">追跡番号（お問い合わせ番号・任意）</label>
+                            <input type="text" id="ship-label-tracking-input" class="form-control" placeholder="例: 3906-1259-5800" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:0.95rem;">
+                            <small style="color:#64748b; font-size:0.8rem; display:block; margin-top:4px;">※レターパックの追跡番号をあらかじめ記録する場合は入力してください。</small>
+                        </div>
+
                         <!-- 返信用レターパック オプション -->
                         <div class="form-group" style="border:2px solid #6366f1; border-radius:8px; padding:12px 16px; background:#eff6ff;">
                             <label style="display:flex; align-items:center; gap:10px; font-size:1.0rem; font-weight:700; color:#1e3a8a; cursor:pointer;">
@@ -124,6 +131,17 @@
                                 返信用レターパックを出力する（初期値: ON）
                             </label>
                             <small style="color:#334155; font-size:0.85rem; display:block; margin-top:4px; margin-left:28px;">※ONの場合、往信用・返信用および品名ラベル合計5面を一挙に出力します。カット線に沿って快適にご利用いただけます。</small>
+                        </div>
+
+                        <!-- 履歴自動登録オプション (推奨) -->
+                        <div style="margin-bottom:4px; padding:10px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px;">
+                            <label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:0.95rem; color:#1e40af; cursor:pointer; margin:0;">
+                                <input type="checkbox" id="ship-label-save-history-chk" style="width:16px; height:16px; accent-color:#1e40af;" checked>
+                                対応履歴に記録する（推奨）
+                            </label>
+                            <small style="display:block; margin-left:24px; color:#475569; font-size:0.8rem; margin-top:2px;">
+                                ※チェックONの場合、発行日時や発送詳細（宛先・追跡番号等）を顧客カルテの対応履歴へ自動保存します。
+                            </small>
                         </div>
 
                         <!-- ボタン群 -->
@@ -230,6 +248,18 @@
             if (otherCont) otherCont.style.display = 'none';
             const otherInp = document.getElementById('ship-label-other-input');
             if (otherInp) otherInp.value = '';
+
+            const trackingInp = document.getElementById('ship-label-tracking-input');
+            if (trackingInp) trackingInp.value = '';
+
+            const historyChk = document.getElementById('ship-label-save-history-chk');
+            if (historyChk) {
+                historyChk.checked = true;
+                const submitBtn = document.getElementById('ship-label-btn-submit');
+                if (submitBtn) {
+                    submitBtn.innerHTML = '🖨️ PDFプレビュー & 履歴保存';
+                }
+            }
         }
 
         /** イベント接続 */
@@ -282,6 +312,18 @@
                 removeListener(contactSelect, 'change');
                 contactSelect.addEventListener('change', contactChangeHandler);
                 contactSelect._hand = contactChangeHandler;
+            }
+
+            // 履歴保存チェック時のボタン文言切り替え
+            const historyChk = document.getElementById('ship-label-save-history-chk');
+            const submitBtn = document.getElementById('ship-label-btn-submit');
+            if (historyChk && submitBtn) {
+                const historyChangeHandler = () => {
+                    submitBtn.innerHTML = historyChk.checked ? '🖨️ PDFプレビュー & 履歴保存' : '🖨️ PDFプレビュー発行のみ';
+                };
+                removeListener(historyChk, 'change');
+                historyChk.addEventListener('change', historyChangeHandler);
+                historyChk._hand = historyChangeHandler;
             }
 
             // フォーム実行
@@ -397,7 +439,42 @@
                 const returnChk = document.getElementById('ship-label-return-chk');
                 const includeReturn = returnChk ? returnChk.checked : true;
 
-                // 4. customer_histories への発送履歴保存
+                // 履歴保存フラグの取得
+                const historyChk = document.getElementById('ship-label-save-history-chk');
+                const shouldSaveHistory = historyChk ? historyChk.checked : true;
+
+                // 追跡番号の取得
+                const trackingInp = document.getElementById('ship-label-tracking-input');
+                const trackingNumber = trackingInp ? trackingInp.value.trim() : '';
+
+                // 発行日時の自動生成 (YYYY/MM/DD HH:mm)
+                const now = new Date();
+                const pad = (n) => String(n).padStart(2, '0');
+                const issuedAtStr = `${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+                // 宛先担当者表示の整形
+                const contactDisplay = targetCustomer.contact_name ? `${targetCustomer.contact_name} 様` : '（会社宛・御中）';
+
+                // 同封書類リストのテキスト化
+                const docsListStr = selectedDocs.map(doc => {
+                    if (doc === 'その他' && otherText) return `・その他（${otherText}）`;
+                    return `・${doc}`;
+                }).join('\n');
+
+                // 履歴本文（content）: 発送の事実が100%再現できる完全フォーマット
+                const contentLines = [
+                    `発行日時：${issuedAtStr}`,
+                    `発送方法：レターパック（返信用同封: ${includeReturn ? 'あり' : 'なし'}）`,
+                    trackingNumber ? `追跡番号：${trackingNumber}` : null,
+                    `発送先：${targetCustomer.customer_name || '―'}`,
+                    `宛先担当者：${contactDisplay}`,
+                    '',
+                    '同封書類：',
+                    docsListStr
+                ];
+                const fullContent = contentLines.filter(line => line !== null).join('\n');
+
+                // 4. customer_histories への発送履歴レコード構築 (第1弾: history_typeは「その他」を維持)
                 const customerId = targetCustomer.customer_id || targetCustomer.id || 0;
                 let createdBy = '担当者';
                 try {
@@ -407,10 +484,11 @@
 
                 const historyRecord = {
                     customer_id: Number(customerId),
-                    history_type: "その他",
+                    history_type: "書類発送",
                     history_category: "document_shipping",
                     subject: "✉️ レターパック宛名印刷",
-                    content: `レターパック発送準備（${documentText}）`,
+                    content: fullContent,
+                    tracking_number: trackingNumber || null,
                     staff_name: senderStaffName || createdBy,
                     response_date: (window.firebase && window.firebase.firestore) ? window.firebase.firestore.Timestamp.fromDate(new Date()) : new Date(),
                     created_at: (window.firebase && window.firebase.firestore) ? window.firebase.firestore.FieldValue.serverTimestamp() : new Date(),
@@ -418,15 +496,19 @@
                     deleted_at: null
                 };
 
-                if (window.db) {
-                    try {
-                        await window.db.collection('customer_histories').add(historyRecord);
-                        console.log('✅ customer_histories への発送履歴保存完了:', historyRecord);
-                    } catch (dbErr) {
-                        console.error('⚠️ 履歴保存でエラー:', dbErr);
+                if (shouldSaveHistory) {
+                    if (window.db) {
+                        try {
+                            await window.db.collection('customer_histories').add(historyRecord);
+                            console.log('✅ customer_histories への発送履歴保存完了:', historyRecord);
+                        } catch (dbErr) {
+                            console.error('⚠️ 履歴保存でエラー:', dbErr);
+                        }
+                    } else {
+                        console.warn('⚠️ window.db 未接続のため、Firestore履歴保存はスキップしPDF生成を進めます。');
                     }
                 } else {
-                    console.warn('⚠️ window.db 未接続のため、Firestore履歴保存はスキップしPDF生成を進めます。');
+                    console.log('ℹ️ 「対応履歴に記録する」がOFFのため、履歴保存はスキップされました。');
                 }
 
                 // 5. PDF 帳票発行
@@ -441,10 +523,15 @@
                 });
 
                 report.preview();
-                alert('レターパック宛名PDFを発行し、発送履歴を登録しました。');
+
+                if (shouldSaveHistory) {
+                    alert('レターパック宛名PDFを発行し、発送履歴を登録しました。');
+                } else {
+                    alert('レターパック宛名PDFを発行しました。（※対応履歴の保存はスキップされました）');
+                }
 
                 this.close();
-                if (this.onSuccessCallback) {
+                if (this.onSuccessCallback && shouldSaveHistory) {
                     this.onSuccessCallback(historyRecord);
                 }
 
