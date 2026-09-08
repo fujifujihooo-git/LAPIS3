@@ -3314,9 +3314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         renderHistories();
-    }
-
-    function renderHistories() {
+    }    function renderHistories() {
         const container = document.getElementById('history-timeline-container');
         const countEl = document.getElementById('history-list-count');
         
@@ -3326,10 +3324,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         if (countEl) {
-            countEl.textContent = `(${filteredHistories.length}件)`;
+            countEl.textContent = `${filteredHistories.length}件`;
         }
-
-
 
         if (filteredHistories.length === 0) {
             container.innerHTML = '<div class="no-history-message">対応履歴はありません</div>';
@@ -3339,10 +3335,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         container.innerHTML = filteredHistories.map(h => {
             let typeClass = 'type-color-other';
             let iconName = 'file-text';
+            let typeLabel = h.history_type || 'その他';
             
             if (h.history_category === 'document_return' || h.history_type === '書類返却') {
                 typeClass = 'type-color-document';
                 iconName = 'package';
+                typeLabel = '書類返却';
             } else if (h.history_type === '電話') {
                 typeClass = 'type-color-phone';
                 iconName = 'phone';
@@ -3355,25 +3353,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             const rDate = h.response_date ? (h.response_date.toDate ? h.response_date.toDate() : new Date(h.response_date)) : null;
-            const dateStr = rDate ? formatHistoryDateTime(rDate) : '―';
+            const dateStr = rDate ? formatHistoryShortDate(rDate) : '―';
             
             const activeClass = selectedHistory && selectedHistory.id === h.id ? 'active' : '';
-            const excerpt = truncateText(h.content, 60);
             
             return `
                 <div class="history-item ${activeClass}" data-id="${h.id}">
-                    <div class="history-item-icon-wrapper">
-                        <div class="history-type-icon ${typeClass}">
-                            <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
-                        </div>
+                    <div class="history-item-top">
+                        <span class="history-item-badge ${typeClass}">
+                            <i data-lucide="${iconName}" style="width: 12px; height: 12px;"></i> ${escapeHtml(typeLabel)}
+                        </span>
+                        <span class="history-item-date">${dateStr}</span>
                     </div>
-                    <div class="history-item-content">
-                        <div class="history-item-header">
-                           <div class="history-item-date">${dateStr}</div>
-                           <div class="history-item-author">${h.created_by_name || '―'}</div>
-                        </div>
-                        <div class="history-item-subject">${escapeHtml(h.subject || '')}</div>
-                        <div class="history-item-excerpt">${escapeHtml(excerpt)}</div>
+                    <div class="history-item-subject" title="${escapeHtml(h.subject || '')}">${escapeHtml(h.subject || '（件名なし）')}</div>
+                    <div class="history-item-footer">
+                        <span>${escapeHtml(h.created_by_name || '―')}</span>
                     </div>
                 </div>
             `;
@@ -3383,8 +3377,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             lucide.createIcons({ root: container });
         }
 
-
-
         container.querySelectorAll('.history-item').forEach(item => {
             item.addEventListener('click', () => {
                 const id = item.dataset.id;
@@ -3393,7 +3385,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                     selectHistory(found);
                 }
             });
+            // ダブルクリックで即時編集モーダルを開く
+            item.addEventListener('dblclick', () => {
+                const id = item.dataset.id;
+                const found = filteredHistories.find(h => h.id === id);
+                if (found) {
+                    openHistoryModal(found);
+                }
+            });
         });
+    }
+
+    function formatHistoryShortDate(d) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hour = String(d.getHours()).padStart(2, '0');
+        const minute = String(d.getMinutes()).padStart(2, '0');
+        return `${year}/${month}/${day} ${hour}:${minute}`;
     }
 
     function formatHistoryDateTime(d) {
@@ -3502,24 +3511,29 @@ document.addEventListener('DOMContentLoaded', async () => {
        if (typeof lucide !== 'undefined') {
            lucide.createIcons({ root: detailContainer });
        }
-   }
+   }    function clearHistoryDetail() {
+        selectedHistory = null;
+        const actionsEl = document.getElementById('history-detail-actions-container');
+        if (actionsEl) actionsEl.style.display = 'none';
 
-   function clearHistoryDetail() {
-       selectedHistory = null;
-       const actionsEl = document.getElementById('history-detail-actions-container');
-       if (actionsEl) actionsEl.style.display = 'none';
+        const detailContainer = document.getElementById('history-detail-container');
+        if (detailContainer) {
+            detailContainer.innerHTML = `
+                <div class="select-history-placeholder">
+                    <div class="placeholder-icon">
+                        <i data-lucide="file-search" style="width: 44px; height: 44px;"></i>
+                    </div>
+                    <div class="placeholder-title">対応履歴が選択されていません</div>
+                    <div class="placeholder-desc">左側の一覧から対応履歴を選択すると、ここに詳細が表示されます。</div>
+                </div>
+            `;
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons({ root: detailContainer });
+            }
+        }
+    }
 
-       const detailContainer = document.getElementById('history-detail-container');
-       if (detailContainer) {
-           detailContainer.innerHTML = `
-               <div class="select-history-placeholder">
-                   一覧から対応履歴を選択してください。
-               </div>
-           `;
-       }
-   }
-
-   function openHistoryModal(h = null) {
+    function openHistoryModal(h = null) {
        const modal = document.getElementById('history-form-modal');
        const form = document.getElementById('history-modal-form');
        const titleEl = document.getElementById('history-modal-title');
@@ -3795,42 +3809,53 @@ document.addEventListener('DOMContentLoaded', async () => {
    }
 
     // =========================================================
-    //  顧客カルテ概要票 PDF 出力ロジック
+    //  顧客カルテ PDF 出力ロジック（メイン帳票・別タブ表示）
     // =========================================================
-    async function handleExportSummaryPdf() {
+    async function handleExportCartePdf() {
         if (!currentCustomer) {
             alert('顧客データがロードされていません。先に保存するか画面を再読み込みしてください。');
             return;
         }
 
-        const previewWindow = window.ReportEngine.openPreviewWindow();
-        if (!previewWindow) {
-            alert('プレビュー画面を開けませんでした。ブラウザのポップアップブロック設定を確認してください。');
-            return;
+        // クリック直後の同期スタックで別タブを確保
+        let previewWindow = null;
+        try {
+            previewWindow = window.open('about:blank', '_blank');
+        } catch (e) {
+            console.warn('[CartePDF] Failed to pre-open window:', e);
         }
 
-        const btn = document.getElementById('btn-export-summary-pdf');
+        const btn = document.getElementById('btn-export-carte-pdf');
         let originalHTML = '';
         if (btn) {
             originalHTML = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i data-lucide="loader" class="spin"></i> 処理中...';
+            btn.innerHTML = '<i data-lucide="loader" class="spin"></i> 生成中...';
             if (typeof lucide !== 'undefined') lucide.createIcons({ root: btn });
         }
 
         try {
-            // 顧客概要票レポートオブジェクトを作成してPDF生成
+            if (typeof window.CustomerCarteReport !== 'function') {
+                await loadScript('reports/customer-carte-report.js?v=' + Date.now());
+            }
+
             const dispData = resolveOverviewDisplayData(currentCustomer, contacts, offices, staffMembers);
-            const report = new window.CustomerSummaryReport();
+            const report = new window.CustomerCarteReport();
             await report.generate(currentCustomer, licenses, cases, histories, staffMembers, licenseTypes, dispData, governmentOffices);
 
-            // プレビュー表示
-            report.preview(previewWindow);
+            // PDFをBlob URL化して別タブに表示
+            const blob = report.doc.output('blob');
+            const pdfUrl = URL.createObjectURL(blob);
+
+            if (previewWindow && !previewWindow.closed) {
+                previewWindow.location.href = pdfUrl;
+            } else {
+                window.open(pdfUrl, '_blank');
+            }
         } catch (err) {
-            console.error('[ExportSummaryPDF] Failed to generate PDF report:', err);
-            // エラー表示 (フォントロード失敗時などもここに集約される)
+            console.error('[ExportCartePDF] Failed to generate PDF report:', err);
             alert('PDF出力に失敗しました: ' + err.message);
-            window.ReportEngine.closePreviewWindow(previewWindow);
+            if (previewWindow && !previewWindow.closed) previewWindow.close();
         } finally {
             if (btn) {
                 btn.disabled = false;
@@ -3840,8 +3865,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // イベント登録
-    document.getElementById('btn-export-summary-pdf')?.addEventListener('click', handleExportSummaryPdf);
+    document.getElementById('btn-export-carte-pdf')?.addEventListener('click', handleExportCartePdf);
 
     // =========================================================
     //  宛名ラベル PDF 出力ロジック

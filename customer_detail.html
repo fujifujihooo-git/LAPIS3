@@ -23,11 +23,11 @@
     <script src="report-system/report-engine/report_engine.js"></script>
     <script src="report-system/report-views/tax_certificate_view.js"></script>
     <script src="report-system/report-views/tax_certificate_national_view.js"></script>
-    <!-- 帳票共通基盤 ＆ 顧客カルテ概要票 ＆ 書類返却通知書 -->
+    <!-- 帳票共通基盤 ＆ 顧客カルテPDF ＆ 書類返却通知書 -->
     <script src="reports/report-engine.js"></script>
     <script src="reports/report-utils.js"></script>
     <script src="reports/base-report.js"></script>
-    <script src="reports/customer-summary-report.js"></script>
+    <script src="reports/customer-carte-report.js?v=2026090801"></script>
     <script src="reports/document-return-report.js"></script>
     <script src="js/document_return_modal.js"></script>
     <script src="reports/shipping-label-report.js"></script>
@@ -286,82 +286,6 @@
             gap: 8px;
             align-items: center;
             flex-wrap: wrap;
-        }
-
-        /* --- その他操作ドロップダウン --- */
-        .action-dropdown {
-            position: relative;
-            display: inline-block;
-        }
-        .btn-icon-only {
-            padding: 8px 10px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: #fff;
-            border: 1px solid var(--border-color);
-            color: var(--text-muted);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            height: 38px;
-        }
-        .btn-icon-only:hover {
-            background: #f8fafc;
-            color: var(--text-main);
-            border-color: #cbd5e1;
-        }
-        .btn-icon-only i,
-        .btn-icon-only svg {
-            width: 18px;
-            height: 18px;
-        }
-        .action-dropdown-menu {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: calc(100% + 4px);
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-            min-width: 170px;
-            z-index: 1000;
-            padding: 4px 0;
-        }
-        .action-dropdown-menu.show {
-            display: block;
-        }
-        .action-dropdown-item {
-            width: 100%;
-            text-align: left;
-            padding: 9px 14px;
-            background: none;
-            border: none;
-            font-size: 11pt;
-            color: var(--text-main);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: background 0.15s;
-            font-family: inherit;
-        }
-        .action-dropdown-item:hover {
-            background: #f8fafc;
-        }
-        .action-dropdown-item.text-danger {
-            color: #ef4444;
-        }
-        .action-dropdown-item.text-danger:hover {
-            background: #fef2f2;
-            color: #dc2626;
-        }
-        .action-dropdown-item i,
-        .action-dropdown-item svg {
-            width: 16px;
-            height: 16px;
-            flex-shrink: 0;
         }
 
         /* --- サマリーカード --- */
@@ -1157,118 +1081,120 @@
         }
 
         /* ========================================
-         * 履歴タブ（3カラムレイアウト）スタイル
+         * 履歴タブ（Master-Detail レイアウト v0.2）スタイル
          * ======================================== */
         .history-layout {
             display: flex;
-            gap: 20px;
-            min-height: 500px;
-            align-items: stretch;
-            margin-top: 12px;
-        }
-
-        .history-col {
-            background: #fff;
-            border: 1px solid var(--border-color, #e2e8f0);
-            border-radius: 8px;
-            padding: 16px;
-            display: flex;
             flex-direction: column;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-
-        .history-col-search {
-            width: 22%;
-            flex-shrink: 0;
-            justify-content: space-between;
-        }
-
-        .history-col-list {
-            width: 44%;
-            flex-shrink: 0;
-        }
-
-        .history-col-detail {
-            width: 34%;
-            flex-grow: 1;
-        }
-
-        .history-section-title {
-            font-size: 13pt;
-            font-weight: 700;
-            margin-top: 0;
-            margin-bottom: 16px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--border-color, #e2e8f0);
-            color: var(--text-main, #1e293b);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .history-count {
-            font-size: 11pt;
-            font-weight: 400;
-            color: #64748b;
-        }
-
-        /* 検索フォーム */
-        .history-col-search .form-group {
-            margin-bottom: 16px;
-        }
-        .history-col-search .form-group:last-child {
-            margin-bottom: 0;
-        }
-
-        .checkbox-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            gap: 12px;
             margin-top: 8px;
         }
 
-        .checkbox-label {
+        /* ① 上部検索・絞込バー */
+        .history-filter-bar {
+            background: #fff;
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 8px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        .history-filter-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .history-filter-item {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            font-size: 13pt;
+        }
+
+        .history-filter-item label {
+            font-size: 11pt;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 0;
+            white-space: nowrap;
+        }
+
+        .history-filter-search-wrapper {
+            position: relative;
+            width: 220px;
+        }
+
+        .history-filter-search-wrapper input {
+            padding-right: 28px;
+            height: 36px;
+            font-size: 11pt !important;
+        }
+
+        .history-filter-search-wrapper .search-icon {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            pointer-events: none;
+            font-size: 12px;
+        }
+
+        .checkbox-group-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-label-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11pt;
             color: var(--text-main, #1e293b);
             cursor: pointer;
             margin-bottom: 0;
             font-weight: 400;
+            white-space: nowrap;
         }
 
-        .checkbox-label input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
+        .checkbox-label-inline input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
             cursor: pointer;
         }
 
-        .date-range-wrapper {
-            display: flex;
+        .date-range-wrapper-inline {
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
-        .date-range-wrapper .form-control {
-            padding: 8px;
-            font-size: 12pt;
+        .date-range-wrapper-inline .form-control {
+            padding: 4px 8px;
+            font-size: 11pt !important;
+            height: 36px;
+            width: 140px;
         }
 
         .range-separator {
             color: #64748b;
-            font-size: 11pt;
-        }
-
-        .clear-btn-wrapper {
-            margin-top: 16px;
-            text-align: left;
+            font-size: 10pt;
         }
 
         .clear-search-link {
             color: #64748b;
-            font-size: 12pt;
+            font-size: 11pt;
             text-decoration: none;
+            cursor: pointer;
+            white-space: nowrap;
             transition: color 0.15s;
         }
 
@@ -1277,154 +1203,180 @@
             text-decoration: underline;
         }
 
-        .register-btn-wrapper {
-            margin-top: auto;
-            border-top: 1px solid var(--border-color, #e2e8f0);
-            padding-top: 16px;
+        .history-filter-actions {
+            flex-shrink: 0;
         }
 
-        /* タイムライン一覧 */
-        .history-timeline {
-            flex-grow: 1;
-            overflow-y: auto;
-            max-height: 600px;
-            padding-right: 4px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .no-history-message, .select-history-placeholder {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 150px;
-            color: #94a3b8;
-            font-size: 12pt;
-            font-style: italic;
-            text-align: center;
-            border: 2px dashed #e2e8f0;
-            border-radius: 8px;
-            padding: 16px;
-        }
-
-        .select-history-placeholder {
-            height: 250px;
-        }
-
-        .history-item {
+        /* ② 下部 Master-Detail 2ペインラッパー（独立スクロール） */
+        .history-panes-wrapper {
             display: flex;
             gap: 16px;
-            padding: 12px;
-            border: 1px solid #e2e8f0;
+            height: calc(100vh - 340px);
+            min-height: 560px;
+            align-items: stretch;
+        }
+
+        /* 左ペイン: 履歴一覧 (280px固定・独立スクロール) */
+        .history-pane-master {
+            flex: 0 0 280px;
+            width: 280px;
+            min-width: 280px;
+            background: #fff;
+            border: 1px solid var(--border-color, #e2e8f0);
             border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        .history-list-header {
+            padding: 12px 14px 8px 14px;
+            border-bottom: 1px solid var(--border-color, #e2e8f0);
+            background: #f8fafc;
+            flex-shrink: 0;
+        }
+
+        .history-list-title {
+            font-size: 12pt;
+            font-weight: 700;
+            color: var(--text-main, #1e293b);
+            margin: 0 0 2px 0;
+            line-height: 1.2;
+        }
+
+        .history-count-badge {
+            font-size: 10pt;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .history-timeline {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        /* スリム化された履歴アイテム */
+        .history-item {
+            padding: 8px 10px;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid transparent;
+            border-radius: 6px;
             cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
+            transition: all 0.15s ease;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
 
         .history-item:hover {
-            border-color: var(--primary, #2563eb);
+            border-color: #cbd5e1;
+            border-left-color: #94a3b8;
             background: #f8fafc;
         }
 
         .history-item.active {
-            border-color: var(--primary, #2563eb);
+            border-color: #bfdbfe;
+            border-left: 4px solid var(--primary, #2563eb);
             background: #eff6ff;
-            box-shadow: 0 0 0 1px var(--primary, #2563eb);
+            box-shadow: 0 1px 3px rgba(37, 99, 235, 0.1);
         }
 
-        .history-item-icon-wrapper {
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .history-type-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            color: #fff;
-        }
-
-        /* 種別カラー定義 */
-        .type-color-document { background-color: #1e40af; border: 2px solid #1e40af; } /* 濃ネイビーブルー */
-        .type-color-phone { background-color: #22c55e; border: 2px solid #22c55e; } /* 緑 */
-        .type-color-mail { background-color: #a855f7; border: 2px solid #a855f7; } /* 紫 */
-        .type-color-visit { background-color: #f97316; border: 2px solid #f97316; } /* オレンジ */
-        .type-color-other { background-color: #64748b; border: 2px solid #64748b; } /* グレー */
-
-        .history-item-content {
-            flex-grow: 1;
-            min-width: 0;
-        }
-
-        .history-item-header {
+        .history-item-top {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 4px;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .history-item-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 9pt;
+            font-weight: 600;
+            color: #fff;
+            flex-shrink: 0;
+            line-height: 1.4;
         }
 
         .history-item-date {
-            font-size: 10.5pt;
+            font-size: 9pt;
             color: #64748b;
-            font-weight: 500;
-        }
-
-        .history-item-author {
-            font-size: 10.5pt;
-            color: #64748b;
+            white-space: nowrap;
         }
 
         .history-item-subject {
-            font-size: 13pt;
+            font-size: 11pt;
             font-weight: 600;
             color: #1e293b;
-            margin-bottom: 4px;
+            line-height: 1.3;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .history-item-excerpt {
-            font-size: 12pt;
-            color: #64748b;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            line-height: 1.4;
+        .history-item-footer {
+            display: flex;
+            justify-content: flex-end;
+            font-size: 9pt;
+            color: #94a3b8;
         }
 
-        /* 履歴詳細 */
+        /* 種別カラー定義 */
+        .type-color-document { background-color: #1e40af; border: 1px solid #1e40af; } /* 濃ネイビーブルー */
+        .type-color-phone { background-color: #16a34a; border: 1px solid #16a34a; } /* 緑 */
+        .type-color-mail { background-color: #9333ea; border: 1px solid #9333ea; } /* 紫 */
+        .type-color-visit { background-color: #ea580c; border: 1px solid #ea580c; } /* オレンジ */
+        .type-color-other { background-color: #64748b; border: 1px solid #64748b; } /* グレー */
+
+        /* 右ペイン: 履歴詳細 (75%相当・独立スクロール) */
+        .history-pane-detail {
+            flex: 1;
+            min-width: 0;
+            background: #fff;
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
         .history-detail-header {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-color, #e2e8f0);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--border-color, #e2e8f0);
+            flex-shrink: 0;
+            background: #f8fafc;
         }
 
-        .history-detail-header .history-section-title {
-            margin-bottom: 0;
-            border-bottom: none;
-            padding-bottom: 0;
+        .history-detail-title {
+            font-size: 13pt;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text-main, #1e293b);
         }
 
         .history-detail-actions {
             display: flex;
+            align-items: center;
             gap: 8px;
         }
 
         .history-detail-content {
-            flex-grow: 1;
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
             display: flex;
             flex-direction: column;
             gap: 16px;
@@ -1438,7 +1390,7 @@
         }
 
         .detail-label {
-            width: 130px;
+            width: 140px;
             flex-shrink: 0;
             color: #64748b;
             font-weight: 500;
@@ -1454,11 +1406,13 @@
             white-space: pre-wrap;
             word-break: break-all;
             background: #f8fafc;
-            padding: 12px;
+            padding: 14px 16px;
             border-radius: 6px;
             border: 1px solid #e2e8f0;
-            max-height: 300px;
+            min-height: 80px;
+            max-height: 320px;
             overflow-y: auto;
+            line-height: 1.6;
         }
 
         .detail-type-badge {
@@ -1470,6 +1424,58 @@
             font-size: 11pt;
             font-weight: 600;
             color: #fff;
+        }
+
+        /* 案内強化された未選択プレースホルダー */
+        .no-history-message, .select-history-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 280px;
+            color: #64748b;
+            text-align: center;
+            padding: 32px;
+            border: 2px dashed #e2e8f0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        .placeholder-icon {
+            margin-bottom: 12px;
+            color: #94a3b8;
+        }
+
+        .placeholder-title {
+            font-size: 13pt;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+
+        .placeholder-desc {
+            font-size: 11pt;
+            color: #94a3b8;
+        }
+
+        /* レスポンシブ対応 (1024px以下で縦積みフォールバック) */
+        @media (max-width: 1024px) {
+            .history-panes-wrapper {
+                flex-direction: column;
+                height: auto;
+            }
+            .history-pane-master {
+                flex: 0 0 auto;
+                width: 100%;
+                min-width: 100%;
+                height: 320px;
+            }
+            .history-pane-detail {
+                flex: 0 0 auto;
+                width: 100%;
+                min-height: 480px;
+            }
         }
 
         /* モーダル内ラジオボタン用調整 */
@@ -1695,9 +1701,9 @@
                         <!-- その他操作ドロップダウン（削除ボタンを隔離） -->
                         <div class="action-dropdown">
                             <button type="button" class="btn-icon-only" id="btn-more-actions" title="その他の操作" onclick="toggleActionDropdown(event)">
-                                <i data-lucide="more-vertical"></i>
+                                ⋮
                             </button>
-                            <div class="action-dropdown-menu" id="action-dropdown-menu">
+                            <div class="action-dropdown-menu">
                                 <button type="button" class="action-dropdown-item text-danger" id="btn-delete">
                                     <i data-lucide="trash-2"></i> 顧客データを削除
                                 </button>
@@ -1765,8 +1771,8 @@
                             <!-- Tab Content: 概要（読取専用カルテ） -->
                             <div id="tab-overview" class="tab-content active">
                                 <div class="overview-actions" style="margin-bottom: 12px; display: flex; justify-content: flex-end;">
-                                    <button type="button" class="btn btn-pdf" id="btn-export-summary-pdf">
-                                        <i data-lucide="file-text"></i> 印刷・保存
+                                    <button type="button" class="btn btn-pdf" id="btn-export-carte-pdf" title="概要タブの内容を網羅した顧客カルテPDFを出力します">
+                                        <i data-lucide="printer"></i> 顧客カルテPDF
                                     </button>
                                 </div>
                                 <div class="overview-grid">
@@ -2329,87 +2335,102 @@
                             <!-- Tab Content: 履歴 -->
                             <div id="tab-history" class="tab-content">
                                 <div class="history-layout">
-                                    <!-- 左カラム: 検索 -->
-                                    <div class="history-col history-col-search">
-                                        <div class="search-section">
-                                            <h4 class="history-section-title">検索条件</h4>
-                                            
-                                            <div class="form-group">
-                                                <label for="history-search-keyword">キーワード検索</label>
-                                                <div class="search-input-wrapper" style="position: relative;">
-                                                    <input type="text" id="history-search-keyword" class="form-control" placeholder="件名・内容を検索" style="padding-right: 32px;">
-                                                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none;">🔍</span>
+                                    <!-- ① 上部検索・絞込バー -->
+                                    <div class="history-filter-bar">
+                                        <div class="history-filter-controls">
+                                            <!-- キーワード検索 -->
+                                            <div class="history-filter-item">
+                                                <div class="history-filter-search-wrapper">
+                                                    <input type="text" id="history-search-keyword" class="form-control" placeholder="件名・内容を検索">
+                                                    <span class="search-icon">🔍</span>
                                                 </div>
                                             </div>
 
-                                            <div class="form-group">
-                                                <label>種別フィルタ</label>
-                                                <div class="checkbox-group">
-                                                    <label class="checkbox-label">
+                                            <!-- 種別フィルタ -->
+                                            <div class="history-filter-item">
+                                                <label>種別:</label>
+                                                <div class="checkbox-group-inline">
+                                                    <label class="checkbox-label-inline">
                                                         <input type="checkbox" id="filter-type-all" checked> すべて
                                                     </label>
-                                                    <label class="checkbox-label">
+                                                    <label class="checkbox-label-inline">
                                                         <input type="checkbox" name="filter-type" value="電話"> 電話
                                                     </label>
-                                                    <label class="checkbox-label">
+                                                    <label class="checkbox-label-inline">
                                                         <input type="checkbox" name="filter-type" value="メール"> メール
                                                     </label>
-                                                    <label class="checkbox-label">
+                                                    <label class="checkbox-label-inline">
                                                         <input type="checkbox" name="filter-type" value="訪問"> 訪問
                                                     </label>
-                                                    <label class="checkbox-label">
+                                                    <label class="checkbox-label-inline">
                                                         <input type="checkbox" name="filter-type" value="その他"> その他
                                                     </label>
                                                 </div>
                                             </div>
 
-                                            <div class="form-group">
-                                                <label>期間指定</label>
-                                                <div class="date-range-wrapper">
+                                            <!-- 期間指定 -->
+                                            <div class="history-filter-item">
+                                                <label>期間:</label>
+                                                <div class="date-range-wrapper-inline">
                                                     <input type="date" id="history-search-start" class="form-control lapis-datepicker" placeholder="開始日">
                                                     <span class="range-separator">〜</span>
                                                     <input type="date" id="history-search-end" class="form-control lapis-datepicker" placeholder="終了日">
                                                 </div>
                                             </div>
 
-                                            <div class="clear-btn-wrapper">
-                                                <a href="javascript:void(0)" id="btn-clear-history-search" class="clear-search-link">検索条件をクリア</a>
+                                            <!-- 検索条件クリア -->
+                                            <div class="history-filter-item">
+                                                <a href="javascript:void(0)" id="btn-clear-history-search" class="clear-search-link">条件クリア</a>
                                             </div>
                                         </div>
-                                        
-                                        <div class="register-btn-wrapper">
-                                            <button type="button" class="btn btn-save btn-block" id="btn-open-history-modal" style="width: 100%; justify-content: center; display: flex; align-items: center; gap: 8px;">
-                                                <i data-lucide="plus" style="width:18px; height:18px;"></i> 対応履歴を登録
+
+                                        <!-- 新規登録ボタン -->
+                                        <div class="history-filter-actions">
+                                            <button type="button" class="btn btn-save" id="btn-open-history-modal" style="display: flex; align-items: center; gap: 6px; padding: 7px 16px;">
+                                                <i data-lucide="plus" style="width:16px; height:16px;"></i> 対応履歴を登録
                                             </button>
                                         </div>
                                     </div>
 
-                                    <!-- 中央カラム: タイムライン一覧 -->
-                                    <div class="history-col history-col-list">
-                                        <div class="history-list-header">
-                                            <h4 class="history-section-title">対応履歴一覧 <span class="history-count" id="history-list-count">(0件)</span></h4>
-                                        </div>
-                                        <div class="history-timeline" id="history-timeline-container">
-                                            <div class="no-history-message">対応履歴はありません</div>
-                                        </div>
-                                    </div>
-
-                                    <!-- 右カラム: 履歴詳細 -->
-                                    <div class="history-col history-col-detail">
-                                        <div class="history-detail-header">
-                                            <h4 class="history-section-title">対応履歴詳細</h4>
-                                            <div class="history-detail-actions" id="history-detail-actions-container" style="display: none;">
-                                                <button type="button" class="btn btn-secondary btn-sm" id="btn-edit-history" style="background:#f8fafc; border:1px solid #cbd5e1; color:#334155; display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px;">
-                                                    <i data-lucide="edit-3" style="width:14px; height:14px;"></i> 編集
-                                                </button>
-                                                <button type="button" class="btn btn-delete btn-sm" id="btn-delete-history-btn" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px;">
-                                                    <i data-lucide="trash-2" style="width:14px; height:14px;"></i> 削除
-                                                </button>
+                                    <!-- ② 下部 Master-Detail 2ペイン -->
+                                    <div class="history-panes-wrapper">
+                                        <!-- 左ペイン: 履歴一覧 (280px固定・独立スクロール) -->
+                                        <div class="history-pane-master">
+                                            <div class="history-list-header">
+                                                <div class="history-list-title">対応履歴一覧</div>
+                                                <div class="history-count-badge" id="history-list-count">0件</div>
+                                            </div>
+                                            <div class="history-timeline" id="history-timeline-container">
+                                                <div class="no-history-message">対応履歴はありません</div>
                                             </div>
                                         </div>
-                                        <div class="history-detail-content" id="history-detail-container">
-                                            <div class="select-history-placeholder">
-                                                一覧から対応履歴を選択してください。
+
+                                        <!-- 右ペイン: 履歴詳細 (75%相当・独立スクロール) -->
+                                        <div class="history-pane-detail">
+                                            <div class="history-detail-header">
+                                                <h4 class="history-detail-title">対応履歴詳細</h4>
+                                                <div class="history-detail-actions" id="history-detail-actions-container" style="display: none; align-items: center; gap: 8px;">
+                                                    <button type="button" class="btn btn-secondary btn-sm" id="btn-edit-history" style="background:#fff; border:1px solid #cbd5e1; color:#334155; display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; font-weight: 500;">
+                                                        <i data-lucide="edit-3" style="width:14px; height:14px;"></i> 編集
+                                                    </button>
+                                                    <div class="action-dropdown">
+                                                        <button type="button" class="btn-icon-only btn-icon-sm" title="その他の操作" onclick="toggleActionDropdown(event)">⋮</button>
+                                                        <div class="action-dropdown-menu">
+                                                            <button type="button" class="action-dropdown-item text-danger" id="btn-delete-history-btn">
+                                                                <i data-lucide="trash-2"></i> 対応履歴を削除
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="history-detail-content" id="history-detail-container">
+                                                <div class="select-history-placeholder">
+                                                    <div class="placeholder-icon">
+                                                        <i data-lucide="file-search" style="width: 44px; height: 44px;"></i>
+                                                    </div>
+                                                    <div class="placeholder-title">対応履歴が選択されていません</div>
+                                                    <div class="placeholder-desc">左側の一覧から対応履歴を選択すると、ここに詳細が表示されます。</div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -2875,9 +2896,9 @@
     <script src="reports/report-engine.js?v=2026061802"></script>
     <script src="reports/report-utils.js?v=2026061802"></script>
     <script src="reports/base-report.js?v=2026061802"></script>
-    <script src="reports/customer-summary-report.js?v=2026061802"></script>
-    <script src="reports/address-label-report.js?v=2026061802"></script>
-    <script src="customer_detail.js?v=2026061802"></script>
+    <script src="reports/customer-carte-report.js?v=2026090801"></script>
+    <script src="reports/address-label-report.js?v=2026090801"></script>
+    <script src="customer_detail.js?v=2026090707"></script>
 
     <script>
         const btnTop = document.getElementById('back-to-top');
@@ -2906,15 +2927,6 @@
             });
         });
 
-        // Action Dropdown Toggle Logic
-        function toggleActionDropdown(event) {
-            if (event) event.stopPropagation();
-            const menu = document.getElementById('action-dropdown-menu');
-            if (menu) {
-                menu.classList.toggle('show');
-            }
-        }
-
         // Close dropdown when clicking outside
         window.onclick = function (event) {
             if (!event.target.matches('.btn-secondary') && !event.target.matches('.btn-secondary *')) {
@@ -2922,12 +2934,6 @@
                 for (var i = 0; i < dropdowns.length; i++) {
                     var openDropdown = dropdowns[i];
                     if (openDropdown.classList.contains('show')) { openDropdown.classList.remove('show'); }
-                }
-            }
-            if (!event.target.closest('.action-dropdown')) {
-                const actionMenu = document.getElementById('action-dropdown-menu');
-                if (actionMenu && actionMenu.classList.contains('show')) {
-                    actionMenu.classList.remove('show');
                 }
             }
         };
