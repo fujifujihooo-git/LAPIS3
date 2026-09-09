@@ -31,6 +31,15 @@
             font-size: 13pt !important;
         }
 
+        /* フォームセクション共通余白（inline style排除） */
+        .form-section {
+            margin-bottom: 32px;
+        }
+
+        .form-section:last-child {
+            margin-bottom: 0;
+        }
+
         .form-section-title {
             font-size: 13pt;
             font-weight: 600;
@@ -38,6 +47,50 @@
             padding-bottom: 8px;
             border-bottom: 1px solid var(--border-color);
             color: var(--text-main);
+        }
+
+        /* 汎用情報レイアウト（閲覧・編集共通基盤） */
+        .info-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .info-label {
+            width: 130px;
+            min-width: 130px;
+            flex-shrink: 0;
+            margin-bottom: 0 !important;
+            font-weight: 500;
+            color: var(--text-main);
+            font-size: 13pt;
+        }
+
+        .info-value {
+            flex: 1;
+            max-width: 700px;
+        }
+
+        @media (max-width: 640px) {
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+            .info-label {
+                width: 100%;
+                min-width: 100%;
+            }
+            .info-value {
+                width: 100%;
+                max-width: 100%;
+            }
         }
 
         .form-grid {
@@ -209,7 +262,7 @@
                 <!-- Actions Bar -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">連絡先情報編集</h2>
+                        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">担当者編集</h2>
                         <span id="header-contact-name"
                             style="font-size: 1.1rem; color: var(--text-muted); font-weight: 500;">-</span>
                     </div>
@@ -230,77 +283,91 @@
                     <div class="block">
                         <div class="block-content">
                             <!-- Basic Info -->
-                            <h3 class="form-section-title">連絡先情報</h3>
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="contact_name">氏名 <span class="required">*</span></label>
-                                    <input type="text" id="contact_name" class="form-control" placeholder="例: 山田 花子">
+                            <section class="form-section">
+                                <h3 class="form-section-title">👤 担当者情報</h3>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="contact_name">👤 氏名 <span class="required">*</span></label>
+                                        <input type="text" id="contact_name" class="form-control" placeholder="例: 山田 花子">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="contact_kana">📝 フリガナ</label>
+                                        <input type="text" id="contact_kana" class="form-control" placeholder="例: ヤマダ ハナコ" data-validate="kana">
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="contact_kana">フリガナ</label>
-                                    <input type="text" id="contact_kana" class="form-control" placeholder="例: ヤマダ ハナコ" data-validate="kana">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="department">🏢 部署</label>
+                                        <input type="text" id="department" class="form-control" placeholder="例: 総務部">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="title">🎖 役職</label>
+                                        <input type="text" id="title" class="form-control" placeholder="例: 部長">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="office_id">📍 所属拠点</label>
+                                        <select id="office_id" class="form-select">
+                                            <option value="">(未選択)</option>
+                                            <!-- JS generated -->
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="department">部署</label>
-                                    <input type="text" id="department" class="form-control" placeholder="例: 総務部">
+                                <div class="form-group" style="margin-top: 8px;">
+                                    <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" id="is_primary" style="width: auto;">
+                                        主担当者に設定する
+                                    </label>
                                 </div>
-                                <div class="form-group">
-                                    <label for="title">役職</label>
-                                    <input type="text" id="title" class="form-control" placeholder="例: 部長">
-                                </div>
-                                <div class="form-group">
-                                    <label for="office_id">所属拠点</label>
-                                    <select id="office_id" class="form-select">
-                                        <option value="">(未選択)</option>
-                                        <!-- JS generated -->
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="form-group" style="margin-top: 8px;">
-                                <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
-                                    <input type="checkbox" id="is_primary" style="width: auto;">
-                                    主担当者に設定する
-                                </label>
-                            </div>
+                            </section>
 
                             <!-- Contact Info -->
-                            <h3 class="form-section-title" style="margin-top: 32px;">連絡先</h3>
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="phone">電話番号</label>
-                                    <input type="tel" id="phone" class="form-control" data-validate="tel">
+                            <section class="form-section">
+                                <h3 class="form-section-title">☎ 連絡先</h3>
+                                <div class="info-list">
+                                    <div class="info-row">
+                                        <label for="phone" class="info-label">☎ 電話番号</label>
+                                        <div class="info-value">
+                                            <input type="tel" id="phone" class="form-control" data-validate="tel" placeholder="例: 044-201-8335">
+                                        </div>
+                                    </div>
+                                    <div class="info-row">
+                                        <label for="mobile" class="info-label">📱 携帯番号</label>
+                                        <div class="info-value">
+                                            <input type="tel" id="mobile" class="form-control" data-validate="tel" placeholder="例: 090-xxxx-xxxx">
+                                        </div>
+                                    </div>
+                                    <div class="info-row">
+                                        <label for="email" class="info-label">✉ メールアドレス</label>
+                                        <div class="info-value">
+                                            <input type="email" id="email" class="form-control" data-validate="email" placeholder="例: xxxxx@example.co.jp">
+                                        </div>
+                                    </div>
+                                    <div class="info-row">
+                                        <label for="fax" class="info-label">📠 FAX番号</label>
+                                        <div class="info-value">
+                                            <input type="tel" id="fax" class="form-control" data-validate="tel" placeholder="例: 044-xxxx-xxxx">
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="mobile">携帯番号</label>
-                                    <input type="tel" id="mobile" class="form-control" data-validate="tel">
-                                </div>
-                                <div class="form-group">
-                                    <label for="email">メールアドレス</label>
-                                    <input type="email" id="email" class="form-control" data-validate="email">
-                                </div>
-                            </div>
-                            <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-                                <div class="form-group">
-                                    <label for="fax">FAX番号</label>
-                                    <input type="tel" id="fax" class="form-control" data-validate="tel">
-                                </div>
-                            </div>
+                            </section>
 
-                            <div class="form-group" style="margin-top: 24px;">
-                                <label for="status">状態</label>
-                                <select id="status" class="form-select" style="max-width: 200px;">
-                                    <option value="在籍">在籍</option>
-                                    <option value="退職">退職</option>
-                                    <option value="異動">異動</option>
-                                </select>
-                            </div>
+                            <!-- Management Info -->
+                            <section class="form-section">
+                                <h3 class="form-section-title">📌 管理情報</h3>
+                                <div class="form-group">
+                                    <label for="status">状態</label>
+                                    <select id="status" class="form-select" style="max-width: 200px;">
+                                        <option value="在籍">在籍</option>
+                                        <option value="退職">退職</option>
+                                        <option value="異動">異動</option>
+                                    </select>
+                                </div>
 
-                            <div class="form-group" style="margin-top: 24px;">
-                                <label for="remarks">備考</label>
-                                <textarea id="remarks" class="form-control" rows="4" placeholder="備考..."></textarea>
-                            </div>
+                                <div class="form-group" style="margin-top: 20px;">
+                                    <label for="remarks">備考</label>
+                                    <textarea id="remarks" class="form-control" rows="4" placeholder="備考..."></textarea>
+                                </div>
+                            </section>
                         </div>
                     </div>
                 </form>
