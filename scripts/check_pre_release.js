@@ -62,7 +62,8 @@ function main() {
         { name: '3. 宛名ラベル印刷テスト (全32項目)', cmd: 'node tests/reports/verify_shipping_label.js' },
         { name: '4. 書類返却通知書テスト', cmd: 'node tests/test_document_return_unit.js' },
         { name: '5. 見積書PDFテスト (全10項目)', cmd: 'node tests/reports/verify_estimate_pdf.js' },
-        { name: '6. 顧客カルテ履歴・帳票運用改善テスト (フェーズ1〜3 & 5)', cmd: 'node tests/test_phase1_to_3_improvements.js' }
+        { name: '6. 顧客カルテ履歴・帳票運用改善テスト (フェーズ1〜3 & 5)', cmd: 'node tests/test_phase1_to_3_improvements.js' },
+        { name: '7. 顧客カルテ請求書一覧クリック遷移テスト', cmd: 'node tests/test_customer_billing_navigation.js' }
     ];
 
     let allPassed = true;

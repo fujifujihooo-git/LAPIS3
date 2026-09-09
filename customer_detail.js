@@ -4430,18 +4430,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         invoices.forEach(inv => {
             const tr = document.createElement('tr');
+            const docId = inv.doc_id || inv.id;
+
+            tr.className = 'invoice-row';
+            if (docId) {
+                tr.dataset.id = docId;
+            }
 
             // 取消 (cancelled) の場合はグレーアウト
             const isCancelled = normalizeStatus(inv.status) === 'cancelled';
             if (isCancelled) {
-                tr.style.opacity = '0.6';
-                tr.style.background = '#f8fafc';
+                tr.classList.add('is-cancelled');
             }
 
             // 未収あり (balance > 0) かつ 取消以外の場合、薄い赤背景で強調
             const hasBalance = (inv.balance || 0) > 0 && !isCancelled;
             if (hasBalance) {
-                tr.style.backgroundColor = 'rgba(239, 68, 68, 0.04)';
+                tr.classList.add('has-balance');
             }
 
             const balanceColor = hasBalance ? '#dc2626' : '#64748b';
@@ -4465,6 +4470,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // イベント登録（手動更新 ＆ タブクリックによる遅延ロード）
+    // 請求書一覧の行クリックによる詳細画面遷移（イベント委譲方式）
+    const billingListBody = document.getElementById('customer-billing-list-body');
+    if (billingListBody && !billingListBody.dataset.clickBound) {
+        billingListBody.dataset.clickBound = 'true';
+        billingListBody.addEventListener('click', (e) => {
+            const row = e.target.closest('.invoice-row');
+            if (!row) return;
+            const docId = row.dataset.id;
+            if (!docId) {
+                console.warn('[Billing] Invoice docId is missing.');
+                return;
+            }
+            window.location.href = `invoice_detail.html?id=${encodeURIComponent(docId)}`;
+        });
+    }
+
     document.getElementById('btn-refresh-billing')?.addEventListener('click', () => {
         const cId = document.getElementById('customer_id')?.value;
         if (cId && cId !== 'new') {

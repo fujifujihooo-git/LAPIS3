@@ -1553,7 +1553,24 @@ textarea.invalid {
 }
 
 .billing-table tbody tr:hover {
-    background-color: #f8fafc !important;
+    background-color: #f8fafc;
+}
+
+.billing-table tbody tr.has-balance {
+    background-color: rgba(239, 68, 68, 0.04);
+}
+
+.billing-table tbody tr.is-cancelled {
+    opacity: 0.6;
+    background-color: #f8fafc;
+}
+
+.billing-table tbody tr.invoice-row {
+    cursor: pointer;
+}
+
+.billing-table tbody tr.invoice-row:hover {
+    background-color: #f5f8ff;
 }
 
 /* スピナー回転アニメーション */
